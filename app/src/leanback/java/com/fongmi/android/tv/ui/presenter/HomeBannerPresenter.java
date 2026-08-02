@@ -120,7 +120,8 @@ public class HomeBannerPresenter extends Presenter {
     /** 静态单张显示（走马灯数据不足时使用）——复用 slot3 居中展示 */
     private void showStaticBanner(ViewHolder holder, Vod vod) {
         layoutCoverFlow(holder);
-        int cardW = ResUtil.dp2px(CARD_WIDTH_DP);
+        // 由 layoutCoverFlow 自适应反解好的卡片宽度（px），不再引用已删除的 CARD_WIDTH_DP
+        int cardW = holder.cardWidth;
         // 使用 layoutCoverFlow 算好的 centerTX（它已经考虑 sidePad + content 居中，与动态轮播位置一致）
         int centerTX = holder.centerTX;
 

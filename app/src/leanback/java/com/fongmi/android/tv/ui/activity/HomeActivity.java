@@ -173,24 +173,26 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         }
         final List<Site> sites = getRecommendSites();
         mLoadingHomeRecommends = true;
+        // hasCached 升到 final，让后面的 lambda/内部类能引用
+        final boolean[] hasCachedHolder = {false};
         try {
             // 有缓存先立刻展示缓存：保证 Config 刚就绪的瞬间 UI 有真实海报图，不是空占位
-            boolean hasCached = false;
             synchronized (mHomeRecommends) {
                 mHomeRecommends.clear();
                 for (Site site : sites) addCachedRecommends(mHomeRecommends, site);
                 if (!mHomeRecommends.isEmpty()) {
-                    hasCached = true;
+                    hasCachedHolder[0] = true;
                 }
             }
-            if (hasCached) {
+            if (hasCachedHolder[0]) {
                 final List<Vod> snapshot = new ArrayList<>();
                 synchronized (mHomeRecommends) { snapshot.addAll(mHomeRecommends); }
                 runOnUiThread(() -> setHomeBanner(snapshot));
             }
         } finally {
-            // 无论缓存分支是否抛错，都放行到下面网络分支（finally 里只是置位变量不需要）
+            // 无论缓存分支是否抛错，都放行到下面网络分支
         }
+        final boolean hasCached = hasCachedHolder[0];
 
         com.fongmi.android.tv.utils.Task.executor().submit(() -> {
             try {
@@ -850,7 +852,17 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     /** 当前焦点是否在分类 recyclerType（或它的子项）上 */
     private boolean isRecyclerTypeFocused() {
         View focus = getCurrentFocus();
-        return focus != null && android.view.ViewCompat.isAncestorOf(mBinding.recyclerType, focus);
+        if (focus == null || mBinding.recyclerType == null) return false;
+        // AndroidX ViewCompat 包路径是 androidx.core.view.ViewCompat，
+        // 为了不用再引入 import，直接手写递归祖先判断
+        View v = focus;
+        while (v != null) {
+            if (v == mBinding.recyclerType) return true;
+            android.view.ViewParent p = v.getParent();
+            if (!(p instanceof View)) break;
+            v = (View) p;
+        }
+        return false;
     }
 
     /** 从 recycler 中找到第 0 行 HomeBanner 的 middleCard 聚焦容器并 requestFocus
