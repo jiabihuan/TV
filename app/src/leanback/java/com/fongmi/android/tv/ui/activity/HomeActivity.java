@@ -150,33 +150,94 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     private final List<Vod> mHomeRecommends = new ArrayList<>();
+    /** loadHomeRecommends 并发保护：避免配置刷新后重复 submit 多个线程，
+     *  让前一个线程 submit 完成后再允许下一次；每个线程内部拿到 home site 后还要再校验一次
+     *  home key 是否仍然与当前 getHome().getKey() 一致，避免用户在刷新中切了首页源导致数据乱 */
+    private volatile boolean mLoadingHomeRecommends = false;
 
     private void loadHomeRecommends() {
-        List<Site> sites = getRecommendSites();
-        mHomeRecommends.clear();
-        for (Site site : sites) addCachedRecommends(mHomeRecommends, site);
-        if (!mHomeRecommends.isEmpty()) setHomeBanner(mHomeRecommends);
+        loadHomeRecommends(false);
+    }
 
-        com.fongmi.android.tv.utils.Task.executor().submit(() -> {
-            List<Vod> recommends = new ArrayList<>();
-            for (Site site : sites) {
-                try {
-                    com.fongmi.android.tv.bean.Result result = com.fongmi.android.tv.api.SiteApi.homeContent(site);
-                    if (result != null && result.getList() != null && !result.getList().isEmpty()) {
-                        com.fongmi.android.tv.setting.Setting.putHomeRecommend(site.getKey(), result.toString());
-                        addRecommends(recommends, site, result);
-                    } else {
-                        addCachedRecommends(recommends, site);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    addCachedRecommends(recommends, site);
+    private void loadHomeRecommends(boolean forceRefresh) {
+        final Site home = getHome();
+        final String homeKey = home == null ? "" : (home.getKey() == null ? "" : home.getKey());
+        // 启动时如果 home 站点还没初始化（initConfig 还没跑完），就不要白跑 —— 等 onRefreshEvent HOME
+        // 触发时再调用一次即可，避免第一次就展示 15 条占位 vod
+        if (!forceRefresh && TextUtils.isEmpty(homeKey)) {
+            return;
+        }
+        if (mLoadingHomeRecommends) {
+            // 强制刷新场景：如果当前已有一次在跑，直接 return；等待完成后 UI 会拿到最新数据
+            return;
+        }
+        final List<Site> sites = getRecommendSites();
+        mLoadingHomeRecommends = true;
+        try {
+            // 有缓存先立刻展示缓存：保证 Config 刚就绪的瞬间 UI 有真实海报图，不是空占位
+            boolean hasCached = false;
+            synchronized (mHomeRecommends) {
+                mHomeRecommends.clear();
+                for (Site site : sites) addCachedRecommends(mHomeRecommends, site);
+                if (!mHomeRecommends.isEmpty()) {
+                    hasCached = true;
                 }
             }
-            if (!recommends.isEmpty()) {
-                mHomeRecommends.clear();
-                mHomeRecommends.addAll(recommends);
-                runOnUiThread(() -> setHomeBanner(mHomeRecommends));
+            if (hasCached) {
+                final List<Vod> snapshot = new ArrayList<>();
+                synchronized (mHomeRecommends) { snapshot.addAll(mHomeRecommends); }
+                runOnUiThread(() -> setHomeBanner(snapshot));
+            }
+        } finally {
+            // 无论缓存分支是否抛错，都放行到下面网络分支（finally 里只是置位变量不需要）
+        }
+
+        com.fongmi.android.tv.utils.Task.executor().submit(() -> {
+            try {
+                List<Vod> recommends = new ArrayList<>();
+                // forceRefresh = true 时直接走网络；forceRefresh = false 时有缓存就先展示缓存，
+                // 但只要还没成功拿到网络数据就继续请求（避免缓存过期图一直停在那）
+                if (!forceRefresh && hasCached) {
+                    // 先把缓存再塞一份给 recommends 集合（下面 size>0 时会再次 setHomeBanner）
+                    synchronized (mHomeRecommends) { recommends.addAll(mHomeRecommends); }
+                }
+                for (Site site : sites) {
+                    try {
+                        com.fongmi.android.tv.bean.Result result = com.fongmi.android.tv.api.SiteApi.homeContent(site);
+                        if (result != null && result.getList() != null && !result.getList().isEmpty()) {
+                            com.fongmi.android.tv.setting.Setting.putHomeRecommend(site.getKey(), result.toString());
+                            // 有了真实网络结果 → 先清空 recommends 再按网络 add（否则缓存残留会一直顶在前面）
+                            if (!forceRefresh && hasCached && !recommends.isEmpty()) {
+                                recommends.clear();
+                            }
+                            addRecommends(recommends, site, result);
+                        } else if (recommends.isEmpty()) {
+                            addCachedRecommends(recommends, site);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        if (recommends.isEmpty()) addCachedRecommends(recommends, site);
+                    }
+                }
+                // 防并发：真正写回前再校验一次 homeKey（如果用户在刷新中切了首页源，这批数据就作废）
+                Site latestHome = getHome();
+                String latestHomeKey = latestHome == null ? "" : (latestHome.getKey() == null ? "" : latestHome.getKey());
+                if (!TextUtils.isEmpty(homeKey) && !homeKey.equals(latestHomeKey)) {
+                    return;
+                }
+                if (!recommends.isEmpty()) {
+                    synchronized (mHomeRecommends) {
+                        mHomeRecommends.clear();
+                        mHomeRecommends.addAll(recommends);
+                    }
+                    runOnUiThread(() -> {
+                        List<Vod> snap;
+                        synchronized (mHomeRecommends) { snap = new ArrayList<>(mHomeRecommends); }
+                        setHomeBanner(snap);
+                    });
+                }
+            } finally {
+                mLoadingHomeRecommends = false;
             }
         });
     }
@@ -647,6 +708,10 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             case HOME:
                 getVideo();
                 setTitle();
+                // initConfig() 异步跑完后 VodConfig.getHome() 才会有豆瓣推荐等真实站点，
+                // 这里再触发一次 loadHomeRecommends(force=true) 走网络，
+                // 否则 initView 时那次 home==null 直接 return，banner 就永远停在占位"暂无推荐"
+                loadHomeRecommends(true);
                 break;
             case HISTORY:
                 getHistory();
