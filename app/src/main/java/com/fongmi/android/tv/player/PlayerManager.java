@@ -434,16 +434,30 @@ public class PlayerManager implements ParseCallback {
 
     private void switchEngineOnly() {
         PlayerEngine old = engine;
-        try { if (player != null) player.removeListener(listener); } catch (Exception e) { e.printStackTrace(); }
+        Player oldPlayer = player;
+        // 1. 先把旧 player 暂停、stop 并移除 listener（防止旧引擎在 release 时还回调到 listener
+        //    或内部 MediaCodec 状态和新引擎并发导致闪退）
+        if (oldPlayer != null) {
+            try { oldPlayer.stop(); } catch (Throwable e) { e.printStackTrace(); }
+            try { oldPlayer.removeListener(listener); } catch (Throwable e) { e.printStackTrace(); }
+        }
         try {
             engine = createEngine(old == null ? PlayerEngine.HARD : old.getDecode());
             player = engine.getPlayer();
+            if (player != null) try { player.addListener(listener); } catch (Throwable e) { e.printStackTrace(); }
             callback.onPlayerRebuild(player);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             e.printStackTrace();
             if (callback != null) callback.onError(e.getMessage());
         }
-        try { if (old != null) old.release(); } catch (Exception e) { e.printStackTrace(); }
+        // 2. 延迟 release 旧 engine（避免新 engine 刚创建就和旧 engine 同时在 CCodec/MediaCodec
+        //    层争夺同一路解码实例，导致 IllegalStateException/Native crash）
+        if (old != null) {
+            final PlayerEngine oldEngineForRelease = old;
+            com.fongmi.android.tv.App.post(() -> {
+                try { oldEngineForRelease.release(); } catch (Throwable e) { e.printStackTrace(); }
+            }, 400);
+        }
     }
 
     private long getSwitchPosition() {

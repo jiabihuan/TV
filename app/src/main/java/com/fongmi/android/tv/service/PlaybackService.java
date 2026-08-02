@@ -487,11 +487,39 @@ public class PlaybackService extends MediaLibraryService implements MediaLibrary
 
     @Override
     public void onPlayerRebuild(Player newPlayer) {
-        exoPlayer.removeListener(listener);
+        final Player previous = exoPlayer;
+        // 1. 先把旧 player 的 listener 移除并 stop（避免 rebuild 时状态竞争闪退）
+        try {
+            if (previous != null && listener != null) previous.removeListener(listener);
+        } catch (Throwable e) { e.printStackTrace(); }
+        try {
+            if (previous != null && previous != newPlayer) {
+                try { previous.stop(); } catch (Throwable ignored) {}
+            }
+        } catch (Throwable ignored) {}
+        // 2. 切换新 player
         exoPlayer = newPlayer;
-        exoPlayer.addListener(listener);
-        if (session != null) session.setPlayer(wrap(newPlayer));
-        playerCallbacks.forEach(callback -> callback.onPlayerRebuild(newPlayer));
+        try {
+            if (exoPlayer != null && listener != null) exoPlayer.addListener(listener);
+        } catch (Throwable e) { e.printStackTrace(); }
+        // 3. MediaSession.setPlayer 内部会重新绑定 MediaSource，在 ExoPlayer 刚创建/重建时
+        //    很容易触发 "Empty playlist only allowed in STATE_IDLE" 的竞争，
+        //    延迟 250ms 让新 Player 状态稳定后再设置，防止闪退
+        final Player safeNew = newPlayer;
+        com.fongmi.android.tv.App.post(() -> {
+            try {
+                if (session != null && safeNew != null) session.setPlayer(wrap(safeNew));
+            } catch (Throwable e) { e.printStackTrace(); }
+        }, 250);
+        try {
+            playerCallbacks.forEach(callback -> callback.onPlayerRebuild(newPlayer));
+        } catch (Throwable e) { e.printStackTrace(); }
+        // 4. 延迟 release 旧 player（让解码资源先平稳切换）
+        if (previous != null && previous != newPlayer) {
+            com.fongmi.android.tv.App.post(() -> {
+                try { previous.release(); } catch (Throwable e) { e.printStackTrace(); }
+            }, 800);
+        }
     }
 
     private final Player.Listener listener = new Player.Listener() {

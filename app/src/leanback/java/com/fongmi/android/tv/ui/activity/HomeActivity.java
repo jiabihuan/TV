@@ -88,6 +88,7 @@ import android.os.IBinder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import android.view.ViewGroup;
@@ -181,10 +182,18 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     private List<Site> getRecommendSites() {
-        return Arrays.asList(
-                createRecommendSite("iqiyi", "爱奇艺首页", "iqiyi.py"),
-                createRecommendSite("tencent", "Tencent Video", "tencent.py")
-        );
+        // 首页推荐海报直接使用当前用户选中的首页源（比如"豆瓣推荐"那个），
+        // 不再用假的 iqiyi/tencent 源，保证海报图漂亮、且 siteKey 正确不会跳搜索。
+        Site home = getHome();
+        if (home != null && !TextUtils.isEmpty(home.getKey())) {
+            return Collections.singletonList(home);
+        }
+        // 兜底：如果当前首页源还没初始化，用 VodConfig 里第一个源
+        List<Site> sites = VodConfig.get().getSites();
+        if (sites != null && !sites.isEmpty()) {
+            return Collections.singletonList(sites.get(0));
+        }
+        return Collections.emptyList();
     }
 
     private Site createRecommendSite(String key, String name, String api) {
@@ -700,10 +709,13 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         else if (getHome().isIndex()) CollectActivity.start(this, item.getName());
         else {
             String siteKey = TextUtils.isEmpty(item.getSiteKey()) ? getHome().getKey() : item.getSiteKey();
-            if ("iqiyi".equals(siteKey) || "tencent".equals(siteKey)) {
+            // 轮播海报现在使用当前首页源（如豆瓣推荐）的真实siteKey，不再硬跳搜索；
+            // 只有当 vodId 为空时才走搜索兜底（防止白屏）。
+            String vodId = item.getId();
+            if (vodId == null || vodId.isEmpty() || vodId.startsWith("placeholder_")) {
                 SearchActivity.start(this, item.getName());
             } else {
-                VideoActivity.start(this, siteKey, item.getId(), item.getName(), item.getPic());
+                VideoActivity.start(this, siteKey, vodId, item.getName(), item.getPic());
             }
         }
     }
@@ -812,6 +824,15 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             setHistoryDelete(false);
         } else if (mBinding.pager.getVisibility() == View.VISIBLE && folder != null && folder.canBack()) {
             folder.goBack();
+        } else if (isBannerFocused()) {
+            // 如果焦点在轮播海报上，先把焦点跳到下面的分类或列表（不要直接退出 App）
+            if (mBinding.recyclerType.getVisibility() == View.VISIBLE) {
+                mBinding.recyclerType.requestFocus();
+            } else if (mBinding.recycler.getChildCount() > 0) {
+                mBinding.recycler.requestFocus();
+            } else {
+                mBinding.title.requestFocus();
+            }
         } else if (mBinding.recyclerType.getVisibility() == View.VISIBLE && mBinding.recyclerType.getSelectedPosition() != 0) {
             mBinding.recyclerType.setSelectedPosition(0);
             onCategoryClick(0);
@@ -820,6 +841,20 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         } else {
             exitApp();
         }
+    }
+
+    /** 判断当前焦点是否在 Banner 轮播（middleCard 或其内部）上 */
+    private boolean isBannerFocused() {
+        View focus = getCurrentFocus();
+        if (focus == null) return false;
+        // 如果焦点的父链里有 id=middleCard（Banner 轮播容器），认为焦点在轮播里
+        View v = focus;
+        while (v != null) {
+            if (v.getId() == R.id.middleCard) return true;
+            Object p = v.getParent();
+            v = (p instanceof View) ? (View) p : null;
+        }
+        return false;
     }
 
     private void exitApp() {

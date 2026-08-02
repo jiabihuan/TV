@@ -65,6 +65,10 @@ public class HomeBannerPresenter extends Presenter {
         HomeBanner item = (HomeBanner) object;
         ViewHolder holder = (ViewHolder) viewHolder;
 
+        // === 0. 先停掉之前的动画/runable（防止 onBind 多次调用时叠加状态），
+        //         但不清图片 —— 返回首页时轮播变黑/空档就是因为之前清了
+        stopMarqueeKeepImages(holder);
+
         // === 1. 布局：删除右侧推荐后，走马灯占满整个 Banner 宽度 ===
         LinearLayout.LayoutParams leftParams = (LinearLayout.LayoutParams) holder.binding.leftLayout.getLayoutParams();
         LinearLayout.LayoutParams middleParams = (LinearLayout.LayoutParams) holder.binding.middleCard.getLayoutParams();
@@ -101,7 +105,6 @@ public class HomeBannerPresenter extends Presenter {
 
         if (carouselList.size() < 2) {
             showStaticBanner(holder, carouselList.isEmpty() ? createNoRecommendVod() : carouselList.get(0));
-            stopMarquee(holder);
         } else {
             startCoverFlowMarquee(holder, carouselList);
         }
@@ -260,8 +263,11 @@ public class HomeBannerPresenter extends Presenter {
 
     private static final int MARQUEE_INTERVAL_MS = 5000;
     private static final int MARQUEE_ANIM_MS    = 800;
-    private static final int CARD_WIDTH_DP      = 185;
-    private static final int CARD_GAP_DP        = 14;
+    // 卡片尺寸 + 间距：统一小间距，保证 5 张全部完整显示（不被左右边界裁切）
+    private static final int CARD_WIDTH_DP      = 175;   // 每张卡片宽度
+    private static final int CARD_GAP_DP        = 16;    // 相邻卡片之间的"可见空隙"（所有位置都相等：-2↔-1、-1↔0、0↔+1、+1↔+2 都是 16dp）
+    // Banner 左右两侧额外安全内边距，保证最左 / 最右海报不被边缘裁切
+    private static final int BANNER_SIDE_PADDING_DP = 16;
     private static final int NUM_SLOTS          = 8;
     private static final int CENTER_SLOT        = 3;  // 静态时 slot3 承载中间卡片（position=0）
 
@@ -276,24 +282,30 @@ public class HomeBannerPresenter extends Presenter {
     /** 计算整个 Cover Flow 的容器尺寸、卡片间距、各逻辑位置的 translationX 基准 */
     private void layoutCoverFlow(ViewHolder holder) {
         int containerW = holder.binding.marqueeContainer.getWidth();
+        int sidePad = ResUtil.dp2px(BANNER_SIDE_PADDING_DP);
         if (containerW <= 0) {
             int screenW = ResUtil.getScreenWidth();
             int padding = ResUtil.dp2px(48 + 16); // 外层padding + banner内部padding
             containerW = Math.max(screenW - padding, ResUtil.dp2px(800));
         }
+        // 实际可用内容宽度（左右两侧保留安全边距，保证最左/最右海报不被裁切）
+        int contentW = Math.max(containerW - 2 * sidePad, ResUtil.dp2px(800));
         holder.containerWidth = containerW;
         int cardW = ResUtil.dp2px(CARD_WIDTH_DP);
-        int step   = ResUtil.dp2px(CARD_WIDTH_DP + CARD_GAP_DP); // 相邻卡片中心点间距 = 卡片宽 + 间距（保证不重叠完整显示）
+        // 相邻卡片中心点间距 = （平均每张卡片 + 间距），这样所有相邻两张之间的"可见空隙"严格 = CARD_GAP_DP
+        int step = cardW + ResUtil.dp2px(CARD_GAP_DP);
         holder.cardWidth = cardW;
         holder.stepX = step;
-        // 中间卡片 (position 0) 的 translationX = 容器中心 - 卡片半宽
-        holder.centerTX = (containerW - cardW) / 2;
+        // 中间卡片 (position 0) 的 translationX = 内容区中心 - 卡片半宽 + 左侧安全边距
+        holder.centerTX = sidePad + (contentW - cardW) / 2;
 
         // 详情文字层宽度 = 中间卡片宽度
         try {
             FrameLayout.LayoutParams dlp = (FrameLayout.LayoutParams) holder.binding.centerDetailsLayout.getLayoutParams();
             if (dlp != null) {
                 dlp.width = cardW;
+                // 详情层位置：整体对齐中间卡片（centerTX + 卡片半宽）
+                dlp.leftMargin = holder.centerTX;
                 holder.binding.centerDetailsLayout.setLayoutParams(dlp);
             }
         } catch (Exception ignored) {}
@@ -333,8 +345,28 @@ public class HomeBannerPresenter extends Presenter {
 
     // ============ 初始化 & 预加载 ============
 
+    /**
+     * 重新绑定所有 8 个 slot 的图片/名字 + 点击事件（onBind 每次都调用）
+     * 保证：返回首页后数据刷新、或 activity 回来后，不会残留"空白/黑色/空一格"的 slot
+     */
+    private void rebindAllSlots(ViewHolder holder, List<Vod> carouselVods, int n) {
+        for (int i = 0; i < NUM_SLOTS; i++) {
+            int pos = holder.slotPosition[i];
+            int dataIdx = mod(holder.currentCenterIdx + pos, n);
+            if (dataIdx < 0 || dataIdx >= carouselVods.size()) continue;
+            Vod vod = carouselVods.get(dataIdx);
+            holder.slotDataIndex[i] = dataIdx;
+            // 重新加载图片（即使是同一个 url，Glide 有缓存所以很快；关键是保证不会因为之前 onUnbindViewHolder clear 过而变成空/黑色）
+            try { ImgUtil.load(vod.getName(), vod.getPic(), holder.imgs[i]); } catch (Exception ignored) {}
+            if (holder.names[i] != null) {
+                holder.names[i].setText(vod.getName() == null ? "" : vod.getName());
+            }
+            slotClickListenerReset(holder, i);
+        }
+    }
+
     private void startCoverFlowMarquee(ViewHolder holder, List<Vod> carouselVods) {
-        stopMarquee(holder);
+        stopMarqueeKeepImages(holder);
         holder.carouselVods = carouselVods;
         holder.carouselSize = carouselVods.size();
         holder.currentCenterIdx = 0;
@@ -357,14 +389,17 @@ public class HomeBannerPresenter extends Presenter {
             slot.setPivotY(slot.getHeight() > 0 ? slot.getHeight() / 2f : ResUtil.dp2px(150));
         }
 
-        // 绑定初始数据：slot i 对应数据索引 = currentCenterIdx + INITIAL_POSITION[i]
+        // === 先把每个 slot 的"逻辑位置"和"数据索引"复位到初始值 ===
         for (int i = 0; i < NUM_SLOTS; i++) {
-            int pos = INITIAL_POSITION[i];
-            int dataIdx = mod(holder.currentCenterIdx + pos, holder.carouselSize);
+            holder.slotPosition[i] = INITIAL_POSITION[i];
+        }
+        final int n = carouselVods.size();
+        for (int i = 0; i < NUM_SLOTS; i++) {
+            int pos = holder.slotPosition[i];
+            int dataIdx = mod(holder.currentCenterIdx + pos, n);
             Vod vod = carouselVods.get(dataIdx);
             holder.slotDataIndex[i] = dataIdx;
-            holder.slotPosition[i] = pos;
-            ImgUtil.load(vod.getName(), vod.getPic(), holder.imgs[i]);
+            try { ImgUtil.load(vod.getName(), vod.getPic(), holder.imgs[i]); } catch (Exception ignored) {}
             if (holder.names[i] != null) {
                 holder.names[i].setText(vod.getName() == null ? "" : vod.getName());
             }
@@ -607,18 +642,21 @@ public class HomeBannerPresenter extends Presenter {
                     slotClickListenerReset(holder, exitSlotIdx);
                 }
 
-                // === 步骤 3：5 张可见 slot（-2..+2）修正 VISIBLE + 精确对齐 ===
+                // === 步骤 3：修正 8 个 slot 的可见性 + 精确位置（★ 防止 buffer 残留导致黑空一格 ★）===
                 for (int i = 0; i < NUM_SLOTS; i++) {
                     int p = holder.slotPosition[i];
+                    FrameLayout sl = holder.slots[i];
                     if (p >= -2 && p <= 2) {
-                        holder.slots[i].setVisibility(View.VISIBLE);
-                        // 防动画浮点误差，强制对齐到精确静态值
-                        holder.slots[i].setTranslationX(posToTranslationX(holder, p));
-                        holder.slots[i].setScaleX(posToScale(p));
-                        holder.slots[i].setScaleY(posToScale(p));
-                        holder.slots[i].setAlpha(posToAlpha(p));
-                        holder.slots[i].setTranslationZ(posToZ(p));
+                        sl.setVisibility(View.VISIBLE);
+                    } else {
+                        // |p| >= 3：buffer / exit，必须不可见（否则会有"黑空一格"）
+                        sl.setVisibility(View.INVISIBLE);
                     }
+                    sl.setTranslationX(posToTranslationX(holder, p));
+                    sl.setScaleX(posToScale(p));
+                    sl.setScaleY(posToScale(p));
+                    sl.setAlpha(posToAlpha(p));
+                    sl.setTranslationZ(posToZ(p));
                 }
 
                 // === 步骤 4：更新中间卡片详情 + 索引 + 指示器 ===
@@ -740,17 +778,20 @@ public class HomeBannerPresenter extends Presenter {
                     slotClickListenerReset(holder, exitSlotIdx);
                 }
 
-                // === 步骤 3：5 张可见 slot（-2..+2）修正 VISIBLE + 精确对齐 ===
+                // === 步骤 3：修正 8 个 slot 可见性 + 精确位置（retreat 对称版，防 buffer 残留） ===
                 for (int i = 0; i < NUM_SLOTS; i++) {
                     int p = holder.slotPosition[i];
+                    FrameLayout sl = holder.slots[i];
                     if (p >= -2 && p <= 2) {
-                        holder.slots[i].setVisibility(View.VISIBLE);
-                        holder.slots[i].setTranslationX(posToTranslationX(holder, p));
-                        holder.slots[i].setScaleX(posToScale(p));
-                        holder.slots[i].setScaleY(posToScale(p));
-                        holder.slots[i].setAlpha(posToAlpha(p));
-                        holder.slots[i].setTranslationZ(posToZ(p));
+                        sl.setVisibility(View.VISIBLE);
+                    } else {
+                        sl.setVisibility(View.INVISIBLE);
                     }
+                    sl.setTranslationX(posToTranslationX(holder, p));
+                    sl.setScaleX(posToScale(p));
+                    sl.setScaleY(posToScale(p));
+                    sl.setAlpha(posToAlpha(p));
+                    sl.setTranslationZ(posToZ(p));
                 }
 
                 // === 步骤 4：更新中间卡片详情 + 索引 + 指示器 ===
@@ -784,26 +825,32 @@ public class HomeBannerPresenter extends Presenter {
     }
 
     private void stopMarquee(ViewHolder holder) {
-        if (holder.marqueeRunnable != null) {
-            holder.binding.getRoot().removeCallbacks(holder.marqueeRunnable);
-            holder.marqueeRunnable = null;
-        }
-        if (holder.marqueeAnimator != null && holder.marqueeAnimator.isRunning()) {
-            holder.marqueeAnimator.cancel();
-        }
-        holder.marqueeAnimator = null;
+        stopMarqueeKeepImages(holder);
         if (holder.binding.indicatorLayout != null) {
             holder.binding.indicatorLayout.removeAllViews();
         }
     }
 
+    /** 停止轮播：取消 runnable 和动画，但不清图片/名字 — 这是返回首页时不出现黑色空档的关键 */
+    private void stopMarqueeKeepImages(ViewHolder holder) {
+        if (holder == null) return;
+        if (holder.marqueeRunnable != null) {
+            try { holder.binding.getRoot().removeCallbacks(holder.marqueeRunnable); } catch (Exception ignored) {}
+            holder.marqueeRunnable = null;
+        }
+        if (holder.marqueeAnimator != null && holder.marqueeAnimator.isRunning()) {
+            try { holder.marqueeAnimator.cancel(); } catch (Exception ignored) {}
+        }
+        holder.marqueeAnimator = null;
+    }
+
     @Override
     public void onUnbindViewHolder(@NonNull Presenter.ViewHolder viewHolder) {
         ViewHolder holder = (ViewHolder) viewHolder;
-        stopMarquee(holder);
-        for (int i = 0; i < NUM_SLOTS; i++) {
-            try { Glide.with(holder.binding.getRoot().getContext()).clear(holder.imgs[i]); } catch (Exception ignored) {}
-        }
+        stopMarqueeKeepImages(holder);
+        // 不再 Glide.clear() 图片！否则返回首页后 onBindViewHolder 复用同一 ViewHolder 时
+        // 图片已经被置空，在重新加载前会显示黑色/透明，看起来就是"黑空一格"。
+        // 只重置 focus/scale 等视觉辅助属性：
         resetScale(holder.binding.btnVod);
         resetScale(holder.binding.btnLive);
         resetScale(holder.binding.btnKeep);
