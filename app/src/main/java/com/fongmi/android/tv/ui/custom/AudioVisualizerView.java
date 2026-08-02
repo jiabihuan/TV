@@ -79,19 +79,27 @@ public class AudioVisualizerView extends View {
             visualizer.setCaptureSize(Visualizer.getCaptureSizeRange()[0]);
             visualizer.setDataCaptureListener(new Visualizer.OnDataCaptureListener() {
                 @Override
-                public void onWaveFormData(Visualizer visualizer, byte[] waveform, int samplingRate) {
-                    processWaveform(waveform);
+                public void onWaveFormDataCapture(Visualizer visualizer, byte[] waveform, int samplingRate) {
+                    try { processWaveform(waveform); } catch (Throwable ignored) {}
                 }
 
                 @Override
                 public void onFftDataCapture(Visualizer visualizer, byte[] fft, int samplingRate) {
-                    processFft(fft);
+                    try { processFft(fft); } catch (Throwable ignored) {}
                 }
             }, Visualizer.getMaxCaptureRate() / 2, true, true);
             visualizer.setEnabled(true);
             isActive = true;
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Throwable e) {
+            // SecurityException / RuntimeException (某些设备/ROM 不允许第三方 App 用 Visualizer)
+            // 直接吞掉，不影响播放器主体功能
+            try {
+                if (visualizer != null) {
+                    visualizer.release();
+                }
+            } catch (Throwable ignored) {}
+            visualizer = null;
+            isActive = false;
         }
     }
 
