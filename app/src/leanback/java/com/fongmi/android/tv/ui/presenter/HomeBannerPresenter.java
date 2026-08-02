@@ -147,14 +147,11 @@ public class HomeBannerPresenter extends Presenter {
             holder.names[CENTER_SLOT].setText(vod.getName() == null ? "" : vod.getName());
         }
 
-        // 详情层（在 marqueeContainer 底部居中）宽度等于中间卡片宽度，位置也对齐 slot3
+        // 详情层（在 marqueeContainer 底部居中）：5 卡紧凑布局下每张卡片底部已经有 nameSlotX 显示名字，
+        // 独立详情层在 TV 上会有文字漏到右边外面（截图"停！2"），直接隐藏。
         try {
-            FrameLayout.LayoutParams dlp = (FrameLayout.LayoutParams) holder.binding.centerDetailsLayout.getLayoutParams();
-            if (dlp != null) {
-                dlp.width = cardW;
-                dlp.leftMargin = centerTX;
-                holder.binding.centerDetailsLayout.setLayoutParams(dlp);
-            }
+            android.view.View dl = holder.binding.centerDetailsLayout;
+            if (dl != null) dl.setVisibility(View.GONE);
         } catch (Exception ignored) {}
 
         bindCenterDetails(holder, vod);
@@ -198,21 +195,13 @@ public class HomeBannerPresenter extends Presenter {
         setupFocus(view, 1.1f);
     }
 
-    /** 绑定中间卡片（主海报）详情文字 — 文字层 centerDetailsLayout 悬浮在中间卡片上方 */
+    /** 绑定中间卡片（主海报）详情文字
+     *  注意：为了避免截图里右侧漏出半截字"停！2"的 bug，centerDetailsLayout 已被隐藏。
+     *  这里只保留 vodId 追踪（loadDetails 的异步回调仍依赖 mCurrentVodId 做归属校验），
+     *  不再写任何 UI；名字统一显示在每张卡片底部的 nameSlotX 上。
+     */
     private void bindCenterDetails(ViewHolder holder, Vod vod) {
         mCurrentVodId = vod.getId();
-        holder.binding.middleName.setText(vod.getName());
-        if (isExternalRecommend(vod)) {
-            holder.binding.middleDirector.setVisibility(View.GONE);
-            holder.binding.middleActor.setVisibility(View.GONE);
-            holder.binding.middleContent.setText(vod.getRemarks());
-        } else {
-            holder.binding.middleDirector.setVisibility(View.VISIBLE);
-            holder.binding.middleActor.setVisibility(View.VISIBLE);
-            holder.binding.middleDirector.setText("导演: " + getNonNullString(vod.getDirector()));
-            holder.binding.middleActor.setText("演员: " + getNonNullString(vod.getActor()));
-            holder.binding.middleContent.setText(getNonNullString(vod.getContent()));
-        }
         loadDetails(vod, holder);
     }
 
@@ -233,21 +222,8 @@ public class HomeBannerPresenter extends Presenter {
                     vod.setDirector(d.getDirector());
                     vod.setActor(d.getActor());
                     vod.setContent(d.getContent());
-                    if (id.equals(mCurrentVodId)) {
-                        activity.runOnUiThread(() -> {
-                            if (isExternalRecommend(vod)) {
-                                holder.binding.middleDirector.setVisibility(View.GONE);
-                                holder.binding.middleActor.setVisibility(View.GONE);
-                                holder.binding.middleContent.setText(vod.getRemarks());
-                            } else {
-                                holder.binding.middleDirector.setVisibility(View.VISIBLE);
-                                holder.binding.middleActor.setVisibility(View.VISIBLE);
-                                holder.binding.middleDirector.setText("导演: " + getNonNullString(vod.getDirector()));
-                                holder.binding.middleActor.setText("演员: " + getNonNullString(vod.getActor()));
-                                holder.binding.middleContent.setText(getNonNullString(vod.getContent()));
-                            }
-                        });
-                    }
+                    // centerDetailsLayout 已隐藏，不再回写 UI；
+                    // 只把数据回填 vod，后续用户切到详情页时能直接显示（不用再拉一次）
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -270,14 +246,12 @@ public class HomeBannerPresenter extends Presenter {
     private static final int MARQUEE_INTERVAL_MS = 5000;
     private static final int MARQUEE_ANIM_MS    = 800;
     // 相邻卡片「可见边缘空隙」严格相等：-2↔-1、-1↔0、0↔+1、+1↔+2 都是 CARD_GAP_DP
-    // （注意：因为每张卡片缩放不同，中心点间距不是均匀的；posToTranslationX 会按 (scaleL+scaleR)*半卡宽+GAP 累加）
-    private static final int CARD_GAP_DP        = 14;
-    // Banner 左右两侧额外安全内边距（数学意义上的，不设置物理 padding），防止 TV overscan 裁切
-    private static final int BANNER_SIDE_PADDING_DP = 20;
-    // 自适应反解出来的 cardW 会夹紧到 [MIN..MAX] 这个 dp 范围，
-    // 保证超大屏上卡片不会无限大、小屏上不会被压得过小
+    private static final int CARD_GAP_DP        = 18;
+    // Banner 左右两侧安全内边距（TV overscan 时需要一点），缩小到 8dp 让 5 张卡填满
+    private static final int BANNER_SIDE_PADDING_DP = 8;
+    // 自适应反解出来的 cardW 夹紧范围，上限放宽到 195dp（大屏 TV 让卡更大，减少两侧留空）
     private static final int CARD_MIN_WIDTH_DP  = 120;
-    private static final int CARD_MAX_WIDTH_DP  = 165;
+    private static final int CARD_MAX_WIDTH_DP  = 195;
     // 5 张可见卡片的缩放系数之和（用于 totalSpan 反解 cardW）
     // Σ = 0.72 + 0.85 + 1.00 + 0.85 + 0.72 = 4.14
     private static final float SUM_VISIBLE_SCALES = 4.14f;
@@ -304,60 +278,68 @@ public class HomeBannerPresenter extends Presenter {
     /** 计算整个 Cover Flow 的容器尺寸、按 contentW 自适应反解卡片宽度、摆放中心位置
      *  核心：
      *    totalSpan = contentW（5 张卡 + 4 个 gap 恰好塞满可见内容宽度）
-     *    cardW 由 totalSpan = cardW * Σ(visible_scales) + 4*gap 反解得到，再夹紧到 [MIN,MAX]dp
-     *    centerTX（pos=0 左边缘）= sidePad + halfW * COEFF + 2*gap，
-     *    这样 pos=-2 左边缘严格 = sidePad，pos=+2 右边缘严格 = containerW - sidePad
-     *    （如果 cardW 被夹紧到上限，整个 band 会在 contentW 内水平居中，两侧留空）
-     *  另：关闭 clipChildren / clipToPadding，卡片缩放动画期间不被容器边界裁切
+     *    cardW 由 totalSpan = cardW * Σ(visible_scales) + 4*gap 反解得到，
+     *      先夹紧到 [MIN,MAX]dp；夹紧后若 actualBand < contentW，
+     *      再允许 cardW 弹性放宽到 MAX*1.25（最多 25%）让卡和间隙一起放大，消灭两侧留空
+     *    centerTX（pos=0 左边缘）= sidePad + halfW * COEFF + 2*gap
+     *  另：
+     *    - 关闭 clipChildren / clipToPadding
+     *    - 隐藏 centerDetailsLayout（截图里右侧漏出"停！2"半截字的来源），
+     *      名字统一显示在每张卡片底部的 nameSlotX 上，不再需要独立详情层
      */
     private void layoutCoverFlow(ViewHolder holder) {
         int containerW = holder.binding.marqueeContainer.getWidth();
         final int sidePadPx = ResUtil.dp2px(BANNER_SIDE_PADDING_DP);
         if (containerW <= 0) {
             int screenW = ResUtil.getScreenWidth();
-            int padding = ResUtil.dp2px(48 + 16); // 外层padding + banner内部padding
+            int padding = ResUtil.dp2px(48 + 16);
             containerW = Math.max(screenW - padding, ResUtil.dp2px(800));
         }
         final int contentW = Math.max(containerW - 2 * sidePadPx, ResUtil.dp2px(600));
         holder.containerWidth = containerW;
         final float gapPx = ResUtil.dp2px(CARD_GAP_DP);
-        // 反解 cardW：totalSpan = cardW * Σ(visible_scales) + 4*gap = contentW
-        // 然后夹紧到 [MIN,MAX]dp
         float idealCardW = (contentW - 4f * gapPx) / SUM_VISIBLE_SCALES;
         final int minCard = ResUtil.dp2px(CARD_MIN_WIDTH_DP);
         final int maxCard = ResUtil.dp2px(CARD_MAX_WIDTH_DP);
         if (idealCardW < minCard) idealCardW = minCard;
         if (idealCardW > maxCard) idealCardW = maxCard;
+        // 夹紧后如果 actualBand 仍小于 contentW（大屏 TV 常见），弹性放宽 cardW 上限 25%，
+        // 让 actualBand = contentW，彻底干掉两侧大片空白
+        float bandAfterClamp = idealCardW * SUM_VISIBLE_SCALES + 4f * gapPx;
+        if (bandAfterClamp < contentW && idealCardW > 0f) {
+            float elasticMax = maxCard * 1.25f;
+            float idealToFill = (contentW - 4f * gapPx) / SUM_VISIBLE_SCALES;
+            if (idealToFill > idealCardW && idealToFill <= elasticMax) {
+                idealCardW = idealToFill;
+            }
+        }
         final int cardW = Math.round(idealCardW);
         final float halfW = cardW / 2f;
         holder.cardWidth = cardW;
 
-        // 实际占用宽度（夹紧后可能 < contentW）：band 两侧剩余空间均分 → centerBandOffset
+        // 实际占用宽度（若仍小于 contentW，则 band 居中两侧等距留空）
         float actualBand = cardW * SUM_VISIBLE_SCALES + 4f * gapPx;
         float centerBandOffset = Math.max(0, (contentW - actualBand) / 2f);
-        // pos=-2 左边缘 = sidePad + centerBandOffset
-        // centerTX (pos=0 左边缘) = pos(-2)leftEdge + halfW*(s(-2)+2s(-1)+s(0)) + 2*gap
         holder.centerTX = Math.round(
             sidePadPx + centerBandOffset
                 + halfW * COEFF_CENTER_TX_HALFW
                 + 2f * gapPx
         );
 
-        // 禁止容器边界裁切：保证卡片在缩放/动画时不被左右边界切掉
+        // 禁止容器边界裁切
         try {
             android.view.ViewGroup mc = holder.binding.marqueeContainer;
             mc.setClipChildren(false);
             mc.setClipToPadding(false);
         } catch (Exception ignored) {}
 
-        // 详情文字层宽度 = 中间卡片宽度，位置对齐中间卡片（centerTX）
+        // 截图里右侧漏出"停！2"等半截字的根因：
+        // centerDetailsLayout 层的 leftMargin = centerTX（与 pos=0 卡片左边缘对齐），
+        // 但 middleName/middleContent 文字太长会超出 cardW 宽度，跑到右侧外面。
+        // 每张卡底部已经有 nameSlotX 显示名字，详情层在这种紧凑 5 卡布局里没必要。
         try {
-            FrameLayout.LayoutParams dlp = (FrameLayout.LayoutParams) holder.binding.centerDetailsLayout.getLayoutParams();
-            if (dlp != null) {
-                dlp.width = cardW;
-                dlp.leftMargin = holder.centerTX;
-                holder.binding.centerDetailsLayout.setLayoutParams(dlp);
-            }
+            android.view.View dl = holder.binding.centerDetailsLayout;
+            if (dl != null) dl.setVisibility(View.GONE);
         } catch (Exception ignored) {}
     }
 
