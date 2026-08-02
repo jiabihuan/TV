@@ -268,13 +268,21 @@ public class HomeBannerPresenter extends Presenter {
 
     private static final int MARQUEE_INTERVAL_MS = 5000;
     private static final int MARQUEE_ANIM_MS    = 800;
-    // 卡片尺寸：缩小到 156dp + 等间距 14dp，保证大多数 TV (1080p / 4K overscan) 下 5 张可见卡片完整显示不被切
-    private static final int CARD_WIDTH_DP      = 156;
     // 相邻卡片「可见边缘空隙」严格相等：-2↔-1、-1↔0、0↔+1、+1↔+2 都是 CARD_GAP_DP
-    // （注意：因为每张卡片缩放不同，中心点间距不是均匀的；新的 posToTranslationX 会按 (scaleL+scaleR)*半卡宽+GAP 累加）
+    // （注意：因为每张卡片缩放不同，中心点间距不是均匀的；posToTranslationX 会按 (scaleL+scaleR)*半卡宽+GAP 累加）
     private static final int CARD_GAP_DP        = 14;
-    // Banner 左右两侧额外安全内边距（数学意义上的，不设置物理 padding 避免双重位移），防止 TV overscan 裁切
-    private static final int BANNER_SIDE_PADDING_DP = 28;
+    // Banner 左右两侧额外安全内边距（数学意义上的，不设置物理 padding），防止 TV overscan 裁切
+    private static final int BANNER_SIDE_PADDING_DP = 20;
+    // 自适应反解出来的 cardW 会夹紧到 [MIN..MAX] 这个 dp 范围，
+    // 保证超大屏上卡片不会无限大、小屏上不会被压得过小
+    private static final int CARD_MIN_WIDTH_DP  = 120;
+    private static final int CARD_MAX_WIDTH_DP  = 165;
+    // 5 张可见卡片的缩放系数之和（用于 totalSpan 反解 cardW）
+    // Σ = 0.72 + 0.85 + 1.00 + 0.85 + 0.72 = 4.14
+    private static final float SUM_VISIBLE_SCALES = 4.14f;
+    // pos=-2 → pos=0 中心点位移累加公式系数：halfW * (s(-2) + 2*s(-1) + s(0)) + 2*gap
+    // s(-2)=0.72, s(-1)=0.85, s(0)=1.00  →  0.72 + 2*0.85 + 1.00 = 3.42
+    private static final float COEFF_CENTER_TX_HALFW = 3.42f;
     private static final int NUM_SLOTS          = 8;
     private static final int CENTER_SLOT        = 3;  // 静态时 slot3 承载中间卡片（position=0）
 
@@ -292,28 +300,47 @@ public class HomeBannerPresenter extends Presenter {
     /** Material fast-out-slow-in interpolator */
     private static final PathInterpolator SMOOTH_INTERP = new PathInterpolator(0.25f, 0.1f, 0.25f, 1.0f);
 
-    /** 计算整个 Cover Flow 的容器尺寸、内容中心、各逻辑位置的 translationX 基准
-     *  关键点：
-     *    - 不使用物理 padding（避免和 translationX 双重位移）
-     *    - 关闭 clipChildren / clipToPadding，保证缩放动画期间卡片超出容器边界不被切
-     *    - pos=0 的左边缘 = sidePad + (contentW - cardW)/2（保证中间卡片几何居中）
-     *    - 其余位置用「(scaleL + scaleR) * 半卡宽 + GAP」累加，保证可见边缘空隙严格相等
+    /** 计算整个 Cover Flow 的容器尺寸、按 contentW 自适应反解卡片宽度、摆放中心位置
+     *  核心：
+     *    totalSpan = contentW（5 张卡 + 4 个 gap 恰好塞满可见内容宽度）
+     *    cardW 由 totalSpan = cardW * Σ(visible_scales) + 4*gap 反解得到，再夹紧到 [MIN,MAX]dp
+     *    centerTX（pos=0 左边缘）= sidePad + halfW * COEFF + 2*gap，
+     *    这样 pos=-2 左边缘严格 = sidePad，pos=+2 右边缘严格 = containerW - sidePad
+     *    （如果 cardW 被夹紧到上限，整个 band 会在 contentW 内水平居中，两侧留空）
+     *  另：关闭 clipChildren / clipToPadding，卡片缩放动画期间不被容器边界裁切
      */
     private void layoutCoverFlow(ViewHolder holder) {
         int containerW = holder.binding.marqueeContainer.getWidth();
-        int sidePad = ResUtil.dp2px(BANNER_SIDE_PADDING_DP);
+        final int sidePadPx = ResUtil.dp2px(BANNER_SIDE_PADDING_DP);
         if (containerW <= 0) {
             int screenW = ResUtil.getScreenWidth();
             int padding = ResUtil.dp2px(48 + 16); // 外层padding + banner内部padding
             containerW = Math.max(screenW - padding, ResUtil.dp2px(800));
         }
-        // 实际可用内容宽度（左右两侧保留安全边距，保证最左/最右海报不被裁切）
-        int contentW = Math.max(containerW - 2 * sidePad, ResUtil.dp2px(800));
+        final int contentW = Math.max(containerW - 2 * sidePadPx, ResUtil.dp2px(600));
         holder.containerWidth = containerW;
-        int cardW = ResUtil.dp2px(CARD_WIDTH_DP);
+        final float gapPx = ResUtil.dp2px(CARD_GAP_DP);
+        // 反解 cardW：totalSpan = cardW * Σ(visible_scales) + 4*gap = contentW
+        // 然后夹紧到 [MIN,MAX]dp
+        float idealCardW = (contentW - 4f * gapPx) / SUM_VISIBLE_SCALES;
+        final int minCard = ResUtil.dp2px(CARD_MIN_WIDTH_DP);
+        final int maxCard = ResUtil.dp2px(CARD_MAX_WIDTH_DP);
+        if (idealCardW < minCard) idealCardW = minCard;
+        if (idealCardW > maxCard) idealCardW = maxCard;
+        final int cardW = Math.round(idealCardW);
+        final float halfW = cardW / 2f;
         holder.cardWidth = cardW;
-        // 中间卡片 (position 0) 的左边缘 translationX
-        holder.centerTX = sidePad + (contentW - cardW) / 2;
+
+        // 实际占用宽度（夹紧后可能 < contentW）：band 两侧剩余空间均分 → centerBandOffset
+        float actualBand = cardW * SUM_VISIBLE_SCALES + 4f * gapPx;
+        float centerBandOffset = Math.max(0, (contentW - actualBand) / 2f);
+        // pos=-2 左边缘 = sidePad + centerBandOffset
+        // centerTX (pos=0 左边缘) = pos(-2)leftEdge + halfW*(s(-2)+2s(-1)+s(0)) + 2*gap
+        holder.centerTX = Math.round(
+            sidePadPx + centerBandOffset
+                + halfW * COEFF_CENTER_TX_HALFW
+                + 2f * gapPx
+        );
 
         // 禁止容器边界裁切：保证卡片在缩放/动画时不被左右边界切掉
         try {

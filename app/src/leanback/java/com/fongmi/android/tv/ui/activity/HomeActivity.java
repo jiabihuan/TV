@@ -782,14 +782,51 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         return focus == mBinding.title || focus == mBinding.search || focus == mBinding.keep || focus == mBinding.live || focus == mBinding.push || focus == mBinding.history || focus == mBinding.setting || focus == mBinding.net;
     }
 
+    /** 当前焦点是否在分类 recyclerType（或它的子项）上 */
+    private boolean isRecyclerTypeFocused() {
+        View focus = getCurrentFocus();
+        return focus != null && android.view.ViewCompat.isAncestorOf(mBinding.recyclerType, focus);
+    }
+
+    /** 从 recycler 中找到第 0 行 HomeBanner 的 middleCard 聚焦容器并 requestFocus
+     *  找不到时兜底：让 recycler 先聚焦，再走 Leanback 默认 focusSearch 找到最上面那行
+     */
+    private boolean requestFocusOnHomeBanner() {
+        try {
+            RecyclerView rv = mBinding.recycler;
+            if (rv == null || rv.getAdapter() == null || rv.getAdapter().getItemCount() <= 0) return false;
+            RecyclerView.ViewHolder vh = rv.findViewHolderForAdapterPosition(0);
+            if (vh != null && vh.itemView != null) {
+                View mc = vh.itemView.findViewById(R.id.middleCard);
+                if (mc != null) return mc.requestFocus();
+            }
+            // 兜底：如果 VH 还没被布局（首次进入还没滚动到），直接让 recycler 拿焦点并把滚动位置置顶
+            if (rv.getChildCount() > 0) return rv.getChildAt(0).requestFocus();
+            rv.scrollToPosition(0);
+            return rv.requestFocus();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (KeyUtil.isMenuKey(event)) showDialog();
-        if (KeyUtil.isActionDown(event) && KeyUtil.isDownKey(event) && isToolbarFocused()) {
-            if (mBinding.recyclerType.getVisibility() == View.VISIBLE) {
-                return mBinding.recyclerType.requestFocus();
-            } else if (mBinding.recycler.getChildCount() > 0) {
-                return mBinding.recycler.getChildAt(0).requestFocus();
+        if (KeyUtil.isActionDown(event) && KeyUtil.isDownKey(event)) {
+            // 工具栏（顶部）按 ↓ → 先聚焦分类
+            if (isToolbarFocused()) {
+                if (mBinding.recyclerType.getVisibility() == View.VISIBLE) {
+                    return mBinding.recyclerType.requestFocus();
+                } else if (requestFocusOnHomeBanner()) {
+                    return true;
+                } else if (mBinding.recycler.getChildCount() > 0) {
+                    return mBinding.recycler.getChildAt(0).requestFocus();
+                }
+            }
+            // 分类 recyclerType（横排那排「首页 综合配置 ...」）按 ↓ → 直接跳到 Banner 轮播
+            else if (isRecyclerTypeFocused() && mBinding.recyclerType.getVisibility() == View.VISIBLE) {
+                if (requestFocusOnHomeBanner()) return true;
             }
         }
         return super.dispatchKeyEvent(event);
