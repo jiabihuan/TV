@@ -3,7 +3,7 @@ name: Build Mobile Arm64 APK
 on:
   push:
     branches:
-      - main
+      - mobile-v8a
   workflow_dispatch:
 
 permissions:
