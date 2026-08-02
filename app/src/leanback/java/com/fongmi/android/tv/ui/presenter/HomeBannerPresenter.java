@@ -120,9 +120,9 @@ public class HomeBannerPresenter extends Presenter {
     /** 静态单张显示（走马灯数据不足时使用）——复用 slot3 居中展示 */
     private void showStaticBanner(ViewHolder holder, Vod vod) {
         layoutCoverFlow(holder);
-        int containerW = holder.containerWidth;
         int cardW = ResUtil.dp2px(CARD_WIDTH_DP);
-        int centerTX = (containerW - cardW) / 2;
+        // 使用 layoutCoverFlow 算好的 centerTX（它已经考虑 sidePad + content 居中，与动态轮播位置一致）
+        int centerTX = holder.centerTX;
 
         // 隐藏所有 slot，只显示 slot3
         for (int i = 0; i < NUM_SLOTS; i++) {
@@ -147,9 +147,14 @@ public class HomeBannerPresenter extends Presenter {
         }
 
         // 详情层（在 marqueeContainer 底部居中）宽度等于中间卡片宽度，位置也对齐 slot3
-        FrameLayout.LayoutParams dlp = (FrameLayout.LayoutParams) holder.binding.centerDetailsLayout.getLayoutParams();
-        dlp.width = cardW;
-        holder.binding.centerDetailsLayout.setLayoutParams(dlp);
+        try {
+            FrameLayout.LayoutParams dlp = (FrameLayout.LayoutParams) holder.binding.centerDetailsLayout.getLayoutParams();
+            if (dlp != null) {
+                dlp.width = cardW;
+                dlp.leftMargin = centerTX;
+                holder.binding.centerDetailsLayout.setLayoutParams(dlp);
+            }
+        } catch (Exception ignored) {}
 
         bindCenterDetails(holder, vod);
         holder.binding.indicatorLayout.setVisibility(View.GONE);
@@ -263,23 +268,37 @@ public class HomeBannerPresenter extends Presenter {
 
     private static final int MARQUEE_INTERVAL_MS = 5000;
     private static final int MARQUEE_ANIM_MS    = 800;
-    // 卡片尺寸 + 间距：统一小间距，保证 5 张全部完整显示（不被左右边界裁切）
-    private static final int CARD_WIDTH_DP      = 175;   // 每张卡片宽度
-    private static final int CARD_GAP_DP        = 16;    // 相邻卡片之间的"可见空隙"（所有位置都相等：-2↔-1、-1↔0、0↔+1、+1↔+2 都是 16dp）
-    // Banner 左右两侧额外安全内边距，保证最左 / 最右海报不被边缘裁切
-    private static final int BANNER_SIDE_PADDING_DP = 16;
+    // 卡片尺寸：缩小到 156dp + 等间距 14dp，保证大多数 TV (1080p / 4K overscan) 下 5 张可见卡片完整显示不被切
+    private static final int CARD_WIDTH_DP      = 156;
+    // 相邻卡片「可见边缘空隙」严格相等：-2↔-1、-1↔0、0↔+1、+1↔+2 都是 CARD_GAP_DP
+    // （注意：因为每张卡片缩放不同，中心点间距不是均匀的；新的 posToTranslationX 会按 (scaleL+scaleR)*半卡宽+GAP 累加）
+    private static final int CARD_GAP_DP        = 14;
+    // Banner 左右两侧额外安全内边距（数学意义上的，不设置物理 padding 避免双重位移），防止 TV overscan 裁切
+    private static final int BANNER_SIDE_PADDING_DP = 28;
     private static final int NUM_SLOTS          = 8;
     private static final int CENTER_SLOT        = 3;  // 静态时 slot3 承载中间卡片（position=0）
 
     /** 位置 -2..+2 (5个可见) 对应的缩放比例；|pos|>=3 buffer scale=0.5 */
     private static final float[] SCALE_BY_POS = {0.72f, 0.85f, 1.00f, 0.85f, 0.72f};
+
+    /** 任意逻辑位置返回其应有的缩放比例（可见 5 张用 SCALE_BY_POS，buffer 固定 0.5） */
+    private static float getScaleAt(int pos) {
+        if (pos >= -2 && pos <= 2) return SCALE_BY_POS[pos + 2];
+        return 0.50f;
+    }
     /** 每个物理 slot 8 张卡片在初始化/复位时对应的"逻辑位置"（-3,-2,-1,0,+1,+2,+3,+4） */
     private static final int[] INITIAL_POSITION = {-3, -2, -1, 0, 1, 2, 3, 4};
 
     /** Material fast-out-slow-in interpolator */
     private static final PathInterpolator SMOOTH_INTERP = new PathInterpolator(0.25f, 0.1f, 0.25f, 1.0f);
 
-    /** 计算整个 Cover Flow 的容器尺寸、卡片间距、各逻辑位置的 translationX 基准 */
+    /** 计算整个 Cover Flow 的容器尺寸、内容中心、各逻辑位置的 translationX 基准
+     *  关键点：
+     *    - 不使用物理 padding（避免和 translationX 双重位移）
+     *    - 关闭 clipChildren / clipToPadding，保证缩放动画期间卡片超出容器边界不被切
+     *    - pos=0 的左边缘 = sidePad + (contentW - cardW)/2（保证中间卡片几何居中）
+     *    - 其余位置用「(scaleL + scaleR) * 半卡宽 + GAP」累加，保证可见边缘空隙严格相等
+     */
     private void layoutCoverFlow(ViewHolder holder) {
         int containerW = holder.binding.marqueeContainer.getWidth();
         int sidePad = ResUtil.dp2px(BANNER_SIDE_PADDING_DP);
@@ -292,28 +311,50 @@ public class HomeBannerPresenter extends Presenter {
         int contentW = Math.max(containerW - 2 * sidePad, ResUtil.dp2px(800));
         holder.containerWidth = containerW;
         int cardW = ResUtil.dp2px(CARD_WIDTH_DP);
-        // 相邻卡片中心点间距 = （平均每张卡片 + 间距），这样所有相邻两张之间的"可见空隙"严格 = CARD_GAP_DP
-        int step = cardW + ResUtil.dp2px(CARD_GAP_DP);
         holder.cardWidth = cardW;
-        holder.stepX = step;
-        // 中间卡片 (position 0) 的 translationX = 内容区中心 - 卡片半宽 + 左侧安全边距
+        // 中间卡片 (position 0) 的左边缘 translationX
         holder.centerTX = sidePad + (contentW - cardW) / 2;
 
-        // 详情文字层宽度 = 中间卡片宽度
+        // 禁止容器边界裁切：保证卡片在缩放/动画时不被左右边界切掉
+        try {
+            android.view.ViewGroup mc = holder.binding.marqueeContainer;
+            mc.setClipChildren(false);
+            mc.setClipToPadding(false);
+        } catch (Exception ignored) {}
+
+        // 详情文字层宽度 = 中间卡片宽度，位置对齐中间卡片（centerTX）
         try {
             FrameLayout.LayoutParams dlp = (FrameLayout.LayoutParams) holder.binding.centerDetailsLayout.getLayoutParams();
             if (dlp != null) {
                 dlp.width = cardW;
-                // 详情层位置：整体对齐中间卡片（centerTX + 卡片半宽）
                 dlp.leftMargin = holder.centerTX;
                 holder.binding.centerDetailsLayout.setLayoutParams(dlp);
             }
         } catch (Exception ignored) {}
     }
 
-    /** 给定逻辑位置 pos，返回该 slot 的 translationX / scale / alpha / z */
+    /** 给定逻辑位置 pos，返回该 slot 的 translationX（左边缘）
+     *  非均匀累加：从 pos=0 出发，每跨过一对相邻位置都按 (scale左 + scale右) * 半卡宽 + GAP 前进。
+     *  这样可见 5 张卡片之间的「可见边缘空隙」严格 = CARD_GAP_DP，且整体以 pos=0 为几何中心。
+     */
     private float posToTranslationX(ViewHolder holder, int pos) {
-        return holder.centerTX + pos * holder.stepX;
+        final float gap = ResUtil.dp2px(CARD_GAP_DP);
+        final float halfW = holder.cardWidth / 2f;
+        final float tx0 = holder.centerTX;
+        if (pos == 0) return tx0;
+        if (pos > 0) {
+            float tx = tx0;
+            for (int p = 0; p < pos; p++) {
+                tx += halfW * (getScaleAt(p) + getScaleAt(p + 1)) + gap;
+            }
+            return tx;
+        } else {
+            float tx = tx0;
+            for (int p = 0; p > pos; p--) {
+                tx -= halfW * (getScaleAt(p - 1) + getScaleAt(p)) + gap;
+            }
+            return tx;
+        }
     }
 
     private float posToScale(int pos) {
@@ -408,6 +449,10 @@ public class HomeBannerPresenter extends Presenter {
 
         // 把每个 slot 摆放到初始位置 + 缩放 + 透明度 + z
         applyStaticPositions(holder, true);
+        // ★ 强制重绑所有 8 个 slot 的图片/名字/点击事件（双重保险）：
+        // 返回首页时 ViewHolder 被复用，如果之前 onUnbindViewHolder 清过资源（虽然我们现在不再 clear 了），
+        // 这里再 ImgUtil.load 一次 Glide 会直接命中缓存、不会变黑；同时修正所有 slot 点击事件的 vod 引用。
+        rebindAllSlots(holder, carouselVods, n);
 
         // 中间卡片详情文字
         Vod centerVod = carouselVods.get(holder.currentCenterIdx);
@@ -514,6 +559,9 @@ public class HomeBannerPresenter extends Presenter {
         holder.binding.marqueeContainer.post(() -> {
             layoutCoverFlow(holder);
             applyStaticPositions(holder, true);
+            // 首帧精确 layout 后再次强制重绑 8 张图片：此时容器宽度是真实值，
+            // 且某些 TV 上 Glide/View 首帧还没完全就绪，第二次 load 能确保不显示黑框
+            rebindAllSlots(holder, carouselVods, holder.carouselSize);
             holder.binding.getRoot().postDelayed(holder.marqueeRunnable, MARQUEE_INTERVAL_MS);
         });
     }

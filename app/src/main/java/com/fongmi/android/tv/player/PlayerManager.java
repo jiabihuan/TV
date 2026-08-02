@@ -417,12 +417,35 @@ public class PlayerManager implements ParseCallback {
     }
 
     private void rebuildPlayer() {
+        Player oldPlayer = player;
+        PlayerEngine oldEngine = engine;
+        // 1. 旧 player 先 stop / removeListener（避免硬软解切换时旧 player 还在回调 listener，
+        //    或与新 rebuild 的 Player 在 MediaCodec 层竞争状态导致 IllegalStateException / Native crash）
+        if (oldPlayer != null) {
+            try { oldPlayer.stop(); } catch (Throwable e) { e.printStackTrace(); }
+            try { oldPlayer.removeListener(listener); } catch (Throwable e) { e.printStackTrace(); }
+        }
         try {
-            player = engine.rebuild(listener);
+            player = oldEngine != null ? oldEngine.rebuild(listener) : null;
+            if (player != null) {
+                try { player.addListener(listener); } catch (Throwable e) { e.printStackTrace(); }
+            }
             callback.onPlayerRebuild(player);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             e.printStackTrace();
-            if (callback != null) callback.onError(engine != null && e instanceof PlaybackException ? engine.getErrorMessage((PlaybackException) e) : e.getMessage());
+            if (callback != null) {
+                callback.onError(oldEngine != null && e instanceof PlaybackException ? oldEngine.getErrorMessage((PlaybackException) e) : e.getMessage());
+            }
+        }
+        // 2. 延迟清理旧 engine 残留资源（给新 player 一点时间稳定，避免同一路解码资源冲突）
+        if (oldEngine != null) {
+            final PlayerEngine delayedRelease = oldEngine;
+            // 注意：这里不直接 release engine（因为 engine 引用本身没有变，只是内部 player 被 rebuild 了）
+            // 真实需要延迟释放的是旧 player 对象，但 PlayerEngine 内部会自己处理 rebuild 前后资源交接；
+            // 这里只额外延迟触发一次 stop 兜底，避免旧 MediaCodec 句柄残留
+            com.fongmi.android.tv.App.post(() -> {
+                try { if (oldPlayer != null && oldPlayer != player) oldPlayer.release(); } catch (Throwable ignored) {}
+            }, 500);
         }
     }
 
