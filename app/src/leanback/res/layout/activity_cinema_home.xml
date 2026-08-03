@@ -9,7 +9,7 @@
 
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/coverBg"
-        android:layout_width="760dp"
+        android:layout_width="300dp"
         android:layout_height="match_parent"
         android:layout_gravity="end|center"
         android:alpha="0.82"

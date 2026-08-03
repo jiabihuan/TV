@@ -44,6 +44,9 @@ public class Vod implements Parcelable, Diffable<Vod> {
     @Element(name = "pic", required = false)
     @SerializedName("vod_pic")
     private String vodPic;
+    @Element(name = "backdrop", required = false)
+    @SerializedName(value = "vod_backdrop", alternate = {"vod_pic_land", "vod_land", "backdrop_path"})
+    private String vodBackdrop;
     @Element(name = "note", required = false)
     @SerializedName("vod_remarks")
     private String vodRemarks;
@@ -93,6 +96,7 @@ public class Vod implements Parcelable, Diffable<Vod> {
         this.vodName = in.readString();
         this.typeName = in.readString();
         this.vodPic = in.readString();
+        this.vodBackdrop = in.readString();
         this.vodRemarks = in.readString();
         this.vodYear = in.readString();
         this.vodArea = in.readString();
@@ -150,6 +154,15 @@ public class Vod implements Parcelable, Diffable<Vod> {
 
     public void setPic(String vodPic) {
         this.vodPic = vodPic;
+    }
+
+    public String getBackdrop() {
+        String backdrop = TextUtils.isEmpty(vodBackdrop) ? "" : vodBackdrop.trim();
+        return backdrop.startsWith("//") ? "https:" + backdrop : backdrop;
+    }
+
+    public void setBackdrop(String vodBackdrop) {
+        this.vodBackdrop = vodBackdrop;
     }
 
     public String getRemarks() {
@@ -353,6 +366,7 @@ public class Vod implements Parcelable, Diffable<Vod> {
         dest.writeString(this.vodName);
         dest.writeString(this.typeName);
         dest.writeString(this.vodPic);
+        dest.writeString(this.vodBackdrop);
         dest.writeString(this.vodRemarks);
         dest.writeString(this.vodYear);
         dest.writeString(this.vodArea);

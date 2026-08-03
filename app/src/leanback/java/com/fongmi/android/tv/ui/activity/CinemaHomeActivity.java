@@ -70,6 +70,8 @@ public class CinemaHomeActivity extends BaseActivity implements
     private Clock mClock;
     private boolean mConfigReady;
     private boolean mHasMovieSelected;
+    private String mLastCoverUrl = "";
+    private String mLastTitleUrl = "";
 
     private final BroadcastReceiver mNetworkReceiver = new BroadcastReceiver() {
         @Override
@@ -188,21 +190,65 @@ public class CinemaHomeActivity extends BaseActivity implements
         mHasMovieSelected = true;
         mBinding.appTitle.setText(item.getName());
         if (!TextUtils.isEmpty(item.getActor())) {
-            mBinding.actor.setText(item.getActor());
+            mBinding.actor.setText("主演：" + item.getActor());
             mBinding.actor.setVisibility(View.VISIBLE);
         } else {
             mBinding.actor.setVisibility(View.GONE);
         }
-        if (!TextUtils.isEmpty(item.getPic())) {
-            ImgUtil.load(item.getName(), item.getPic(), mBinding.coverBg);
-            mBinding.coverBg.setVisibility(View.VISIBLE);
-        } else {
-            mBinding.coverBg.setVisibility(View.INVISIBLE);
-        }
         String tipText = item.getContent();
-        if (TextUtils.isEmpty(tipText)) tipText = item.getRemarks();
-        if (TextUtils.isEmpty(tipText)) tipText = getString(R.string.home_tip);
-        mBinding.tip.setText(tipText);
+        if (!TextUtils.isEmpty(tipText)) {
+            mBinding.tip.setText("简介：" + tipText);
+        } else if (!TextUtils.isEmpty(item.getRemarks())) {
+            mBinding.tip.setText(item.getRemarks());
+        } else {
+            mBinding.tip.setText(R.string.home_tip);
+        }
+        updateCoverBg(item);
+    }
+
+    private void updateCoverBg(Vod item) {
+        String backdrop = item.getBackdrop();
+        String coverUrl;
+        if (!TextUtils.isEmpty(backdrop)) {
+            coverUrl = backdrop;
+        } else {
+            coverUrl = item.getPic();
+        }
+        if (TextUtils.isEmpty(coverUrl)) {
+            mLastCoverUrl = "";
+            mBinding.coverTint.setBackgroundResource(R.drawable.bg_tv_cinema_backdrop_tint);
+            mBinding.coverTint.setAlpha(1.0f);
+            mBinding.homeMask.setAlpha(1.0f);
+            mBinding.coverBg.setVisibility(View.INVISIBLE);
+            return;
+        }
+        if (TextUtils.equals(mLastCoverUrl, coverUrl)) return;
+        mLastCoverUrl = coverUrl;
+        boolean hasBackdrop = !TextUtils.isEmpty(backdrop);
+        android.widget.FrameLayout.LayoutParams lp = (android.widget.FrameLayout.LayoutParams) mBinding.coverBg.getLayoutParams();
+        if (hasBackdrop) {
+            lp.width = getResources().getDimensionPixelSize(R.dimen.tv_cinema_cover_width);
+        } else {
+            lp.width = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
+        }
+        lp.height = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
+        if (hasBackdrop) {
+            lp.gravity = android.view.Gravity.END | android.view.Gravity.CENTER_VERTICAL;
+        } else {
+            lp.gravity = android.view.Gravity.CENTER;
+        }
+        mBinding.coverBg.setAlpha(hasBackdrop ? 0.7f : 1.0f);
+        mBinding.homeMask.setAlpha(1.0f);
+        if (hasBackdrop) {
+            mBinding.coverTint.setBackgroundResource(R.drawable.bg_tv_cinema_cover_tint);
+        } else {
+            mBinding.coverTint.setBackgroundResource(R.drawable.bg_tv_cinema_backdrop_tint);
+        }
+        mBinding.coverTint.setAlpha(1.0f);
+        mBinding.coverBg.setLayoutParams(lp);
+        mBinding.coverBg.setVisibility(View.VISIBLE);
+        mBinding.coverBg.setScaleType(hasBackdrop ? android.widget.ImageView.ScaleType.CENTER_CROP : android.widget.ImageView.ScaleType.FIT_START);
+        ImgUtil.load(item.getName(), coverUrl, mBinding.coverBg);
     }
 
     private void setCategories(List<Class> types) {
@@ -256,6 +302,7 @@ public class CinemaHomeActivity extends BaseActivity implements
             return;
         }
         mHasMovieSelected = false;
+        mLastCoverUrl = "";
         mBinding.loading.setVisibility(View.VISIBLE);
         mBinding.loadingProgress.setVisibility(View.VISIBLE);
         mBinding.empty.setText(R.string.home_loading);
