@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="page_margin">32.0dip</dimen>
+    <dimen name="radius_sm">6.0dip</dimen>
+    <dimen name="space_xs">4.0dip</dimen>
+    <dimen name="space_sm">8.0dip</dimen>
+    <dimen name="space_md">12.0dip</dimen>
+    <dimen name="space_lg">16.0dip</dimen>
+    <dimen name="space_xl">24.0dip</dimen>
+    <dimen name="space_2xl">32.0dip</dimen>
+    <dimen name="space_3xl">48.0dip</dimen>
+    <dimen name="text_caption">10.0sp</dimen>
+    <dimen name="text_body">11.0sp</dimen>
+    <dimen name="text_label">12.0sp</dimen>
+    <dimen name="text_body_large">13.0sp</dimen>
+    <dimen name="text_title">14.0sp</dimen>
+    <dimen name="text_title_large">22.0sp</dimen>
+    <dimen name="text_display">30.0sp</dimen>
+    <dimen name="focus_stroke">1.5dip</dimen>
+</resources>

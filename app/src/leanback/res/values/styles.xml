@@ -2,6 +2,8 @@
 
     <style name="Theme.Base" parent="Theme.Material3.Dark.NoActionBar">
         <item name="colorPrimary">@color/white</item>
+        <item name="colorSecondary">@color/accent_blue</item>
+        <item name="android:colorAccent">@color/accent_blue</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowTranslucentStatus">true</item>
         <item name="android:windowTranslucentNavigation">true</item>
@@ -44,6 +46,63 @@
         <item name="android:nextFocusDown">@id/timeBar</item>
         <item name="android:textColor">@color/text</item>
         <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- TV 文本外观体系 -->
+    <style name="TextAppearance.Tv" parent="@style/TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+    <style name="TextAppearance.Tv.Body" parent="@style/TextAppearance.Tv">
+        <item name="android:textSize">@dimen/text_body</item>
+    </style>
+    <style name="TextAppearance.Tv.Body.Secondary" parent="@style/TextAppearance.Tv.Body">
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+    <style name="TextAppearance.Tv.Body.Tertiary" parent="@style/TextAppearance.Tv.Body">
+        <item name="android:textColor">@color/text_tertiary</item>
+    </style>
+    <style name="TextAppearance.Tv.BodyLarge" parent="@style/TextAppearance.Tv">
+        <item name="android:textSize">@dimen/text_body_large</item>
+    </style>
+    <style name="TextAppearance.Tv.Caption" parent="@style/TextAppearance.Tv">
+        <item name="android:textSize">@dimen/text_caption</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+    <style name="TextAppearance.Tv.Display" parent="@style/TextAppearance.Tv">
+        <item name="android:textSize">@dimen/text_display</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="TextAppearance.Tv.Label" parent="@style/TextAppearance.Tv">
+        <item name="android:textSize">@dimen/text_label</item>
+    </style>
+    <style name="TextAppearance.Tv.Label.Secondary" parent="@style/TextAppearance.Tv.Label">
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+    <style name="TextAppearance.Tv.Numeric" parent="@style/TextAppearance.Tv.Body">
+        <item name="android:fontFeatureSettings">tnum</item>
+    </style>
+    <style name="TextAppearance.Tv.Numeric.Caption" parent="@style/TextAppearance.Tv.Numeric">
+        <item name="android:textSize">@dimen/text_caption</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+    <style name="TextAppearance.Tv.Title" parent="@style/TextAppearance.Tv">
+        <item name="android:textSize">@dimen/text_title</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="TextAppearance.Tv.TitleLarge" parent="@style/TextAppearance.Tv">
+        <item name="android:textSize">@dimen/text_title_large</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="ShapeAppearance.Tv.DetailBackdrop" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">31.0dip</item>
+    </style>
+    <style name="TextAppearance.Tv.Body.Emphasis" parent="@style/TextAppearance.Tv.Body">
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+    <style name="TextAppearance.Tv.Label.Emphasis" parent="@style/TextAppearance.Tv.Label">
+        <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 
 </resources>

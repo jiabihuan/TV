@@ -93,6 +93,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private boolean passthroughEnabled;
     private boolean passthroughRecoveryAttempted;
     private boolean hlsAbortRetryAttempted;
+    private int liveRetryCount;
+    private static final int MAX_LIVE_RETRIES = 3;
     private boolean audioOnlyFallback;
     private boolean manualStop;
     private boolean ignoreNextEndFile;
@@ -427,6 +429,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 }
                 ignoreNextEndFile = false;
                 loadedFileActive = true;
+                liveRetryCount = 0;
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_PLAYBACK_RESTART) {
                 playerError = null;
                 playbackState = Player.STATE_READY;
@@ -437,6 +440,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 buildTracks();
                 markRenderedFirstFrame();
                 hlsAbortRetryAttempted = false;
+                liveRetryCount = 0;
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_SEEK) {
                 playbackState = Player.STATE_BUFFERING;
                 loading = true;
@@ -459,6 +463,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                     playbackState = Player.STATE_IDLE;
                 } else if (!manualStop && !renderedFirstFrame && !audioOnlyFallback && mediaItem != null) {
                     if (retryHlsAbortError()) return;
+                    if (retryLiveStream()) return;
                     setError(lastErrorMessage == null ? "MPV 播放失败" : lastErrorMessage);
                 }
                 else playbackState = Player.STATE_ENDED;
@@ -544,6 +549,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         if (!TextUtils.equals(activeLoadUrl, url)) {
             activeLoadUrl = url;
             hlsAbortRetryAttempted = false;
+            liveRetryCount = 0;
         }
         applyHeaders(mediaItem);
         applyDecodeOption();
@@ -1114,6 +1120,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         externalSubtitlesAdded = false;
         passthroughRecoveryAttempted = false;
         hlsAbortRetryAttempted = false;
+        liveRetryCount = 0;
         audioOnlyFallback = false;
         manualStop = false;
         activeLoadUrl = null;
@@ -1175,6 +1182,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         lastErrorMessage = null;
         lastErrorUrl = null;
         hlsAbortRetryAttempted = false;
+        liveRetryCount = 0;
         audioOnlyFallback = false;
         if (initialized) {
             setMpvProperty("pause", true);
@@ -1243,6 +1251,31 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         if (TextUtils.isEmpty(lastErrorMessage)) return false;
         String lower = lastErrorMessage.toLowerCase(Locale.ROOT);
         return lower.contains("opening failed or was aborted") || lower.contains("operation was aborted") || lower.contains("immediate exit requested");
+    }
+
+    /**
+     * 直播流静默重试：当直播/HLS 流在首帧渲染前失败时，不立即弹出错误代码，
+     * 而是保持黑屏（STATE_BUFFERING）并静默重试，最多重试 MAX_LIVE_RETRIES 次。
+     * 只有所有重试都失败后才会上报错误。
+     */
+    private boolean retryLiveStream() {
+        if (mediaItem == null || mediaItem.localConfiguration == null) return false;
+        String url = mediaItem.localConfiguration.uri.toString();
+        if (!shouldTreatAsHls(mediaItem, url)) return false;
+        if (liveRetryCount >= MAX_LIVE_RETRIES) return false;
+        liveRetryCount++;
+        loading = true;
+        playbackState = Player.STATE_BUFFERING;
+        lastErrorMessage = null;
+        lastErrorUrl = null;
+        final String retryUrl = url;
+        handler.postDelayed(() -> {
+            if (released || mediaItem == null || mediaItem.localConfiguration == null) return;
+            if (!TextUtils.equals(retryUrl, mediaItem.localConfiguration.uri.toString())) return;
+            loadMediaItem(C.TIME_UNSET, false);
+        }, 500);
+        invalidateState();
+        return true;
     }
 
     @Nullable

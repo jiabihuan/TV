@@ -10,7 +10,9 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:indeterminate="true"
-        app:indicatorColor="@color/white" />
+        app:indicatorColor="@color/accent_blue"
+        app:indicatorSize="48dp"
+        app:trackThickness="4dp" />
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/traffic"

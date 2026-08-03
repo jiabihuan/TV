@@ -23,6 +23,14 @@
     <string name="detail_actor">Actor: <xliff:g name="name">%s</xliff:g></string>
     <string name="detail_content">Summary: <xliff:g name="name">%s</xliff:g></string>
     <string name="detail_desc">Summary</string>
+    <string name="detail_fullscreen_ok">OK · Fullscreen</string>
+    <string name="detail_hint_more">▼ Episodes · Lines · More</string>
+    <string name="detail_flag">Line</string>
+    <string name="detail_flag_count">%d lines</string>
+    <string name="detail_episode">Episodes</string>
+    <string name="detail_episode_count">%d episodes</string>
+    <string name="detail_other_sites">Also on</string>
+    <string name="detail_other_sites_count">%d results</string>
 
     <!-- Keep -->
     <string name="keep">Keep</string>
@@ -334,8 +342,12 @@
     </string-array>
 
     <string name="home_local">Local Resources</string>
+    <string name="home_vod">Vod</string>
+    <string name="home_live">Live</string>
+    <string name="home_keep">Keep</string>
     <string name="home_vod_brief">Watch movies and TV shows</string>
     <string name="home_live_brief">Live TV broadcast channels</string>
+    <string name="home_keep_brief">Selected high-quality movies and TV series</string>
     <string name="home_local_brief">Play local video and audio fast</string>
 
     <string name="nas_type">Protocol</string>
@@ -371,6 +383,12 @@
 
     <string name="home_no_recommend">No Recommendations</string>
     <string name="home_no_recommend_desc">Recommendation load failed. Click right cards to search.</string>
+    <string name="home_loading">Loading recommendations…</string>
+    <string name="home_recommend_tag">Hot</string>
+    <string name="home_tip">Press direction keys to pick a video from below</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_history">History</string>
+    <string name="nav_setting">Settings</string>
 
     <string name="setting_search">Search Layout</string>
     <string-array name="select_search">

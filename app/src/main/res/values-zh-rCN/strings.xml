@@ -23,6 +23,14 @@
     <string name="detail_actor">演员：<xliff:g name="name">%s</xliff:g></string>
     <string name="detail_content">简介：<xliff:g name="name">%s</xliff:g></string>
     <string name="detail_desc">简介</string>
+    <string name="detail_fullscreen_ok">按 OK 全屏</string>
+    <string name="detail_hint_more">▼ 选集 · 线路 · 更多</string>
+    <string name="detail_flag">线路</string>
+    <string name="detail_flag_count">共 %d 条线路</string>
+    <string name="detail_episode">选集</string>
+    <string name="detail_episode_count">共 %d 集</string>
+    <string name="detail_other_sites">其他站点</string>
+    <string name="detail_other_sites_count">共 %d 个结果</string>
 
     <!-- Keep -->
     <string name="keep">收藏</string>
@@ -329,8 +337,12 @@
     </string-array>
 
     <string name="home_local">本地资源</string>
+    <string name="home_vod">点播</string>
+    <string name="home_live">直播</string>
+    <string name="home_keep">收藏</string>
     <string name="home_vod_brief">海量影音随心看</string>
     <string name="home_live_brief">央视卫视在线直播</string>
+    <string name="home_keep_brief">精选优质影视内容</string>
     <string name="home_local_brief">畅享本地影音</string>
 
     <string name="nas_type">协议</string>
@@ -366,6 +378,12 @@
 
     <string name="home_no_recommend">暂无推荐</string>
     <string name="home_no_recommend_desc">首页推荐加载失败，点击右侧卡片可进入搜索页。</string>
+    <string name="home_loading">正在加载首页推荐...</string>
+    <string name="home_recommend_tag">热门推荐</string>
+    <string name="home_tip">按下方向键，从下方挑选一部开始观看</string>
+    <string name="nav_search">搜索</string>
+    <string name="nav_history">历史</string>
+    <string name="nav_setting">设置</string>
 
     <string name="setting_search">搜索排列</string>
     <string-array name="select_search">

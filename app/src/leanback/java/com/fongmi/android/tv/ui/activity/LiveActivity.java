@@ -505,7 +505,13 @@ public class LiveActivity extends PlaybackActivity implements GroupAdapter.OnCli
         player().resetTrack();
         player().reset();
         player().stop();
-        showError(msg);
+        // 直播播放时不立即显示错误代码，用黑屏代替
+        // 如果还有其他线路可尝试，保持黑屏让 startFlow() 自动切换
+        if (LiveSetting.isChange() && mChannel != null && !mChannel.isLast()) {
+            hideError();
+        } else {
+            showError(msg);
+        }
         startFlow();
     }
 

@@ -27,4 +27,27 @@
     <color name="white_80">#CCFFFFFF</color>
     <color name="white_90">#E6FFFFFF</color>
 
+    <color name="accent_blue">#4A9EFF</color>
+    <color name="accent_blue_dark">#2D7DD2</color>
+    <color name="accent_glow">#334A9EFF</color>
+    <color name="card_gradient_top">#00000000</color>
+    <color name="card_gradient_bottom">#CC000000</color>
+
+    <!-- APK 借鉴的颜色体系 -->
+    <color name="accent">#FFE8502D</color>
+    <color name="accent_bright">#FFFF7A57</color>
+    <color name="accent_container">#33E8502D</color>
+    <color name="surface_0">#FF0B0D10</color>
+    <color name="surface_1">#FF141821</color>
+    <color name="surface_glass">#1FFFFFFF</color>
+    <color name="text_primary">#FFF3F6FA</color>
+    <color name="text_secondary">#FFA6B0BD</color>
+    <color name="text_tertiary">#FF6B7684</color>
+    <color name="text_nav">#FFF3F6FA</color>
+    <color name="state_ok">#FF3DDC84</color>
+    <color name="focus_surface">#24FFFFFF</color>
+
+    <color name="bg_year">#99000000</color>
+    <color name="bg_site">#99000000</color>
+
 </resources>
