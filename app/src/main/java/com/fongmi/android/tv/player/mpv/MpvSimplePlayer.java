@@ -114,6 +114,11 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private String activeLoadUrl;
     private String lastErrorMessage;
     private String lastErrorUrl;
+    // 每次 MPV_EVENT_START_FILE 到达时，把"当前 mediaItem 的 URL"记下来。
+    // 后续 MPV_EVENT_END_FILE 只有在"endFile 对应的就是最后一次 startFile 的那个 URL"
+    // 时才会走"播放失败"分支。否则就是"切台太快、旧频道的 end 事件晚到"这种过期事件，
+    // 必须忽略，否则会误给正在正常播放的新频道报"MPV 播放失败"。
+    private String lastStartedUrl;
 
     public MpvSimplePlayer(Context context, int decode) {
         super(Looper.getMainLooper());
@@ -403,6 +408,12 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 audioOnlyFallback = false;
                 renderedFirstFrame = false;
                 reportRenderedFirstFrame = false;
+                // 记录"这一轮 start 对应的是哪个 URL"，用于 END_FILE 时过滤过期事件
+                if (mediaItem != null && mediaItem.localConfiguration != null) {
+                    lastStartedUrl = mediaItem.localConfiguration.uri.toString();
+                } else {
+                    lastStartedUrl = null;
+                }
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED) {
                 updateVideoSize();
                 buildTracks();
@@ -439,6 +450,11 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                     ignoreNextEndFile = false;
                 } else if (isStaleEndFileError()) {
                     return;
+                } else if (isStaleEndFileForUrlChange()) {
+                    // 切台竞态：B 频道已经 START_FILE（lastStartedUrl=B），
+                    // 但此时收到的是 A 频道"没出第一帧就被 stop"的 END_FILE（mediaItem 已是 B，
+                    // 但 lastStartedUrl != 当前 mediaItem.url 说明 end 事件是 A 的、不是 B 的）。
+                    // 绝对不能走 setError，否则 B 正常播放时被误报"MPV 播放失败"。
                 } else if (manualStop || mediaItem == null) {
                     playbackState = Player.STATE_IDLE;
                 } else if (!manualStop && !renderedFirstFrame && !audioOnlyFallback && mediaItem != null) {
@@ -626,19 +642,62 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private String getLoadOptions(long positionMs, boolean useStartOption, MediaItem item, String url) {
         List<String> options = new ArrayList<>();
         if (positionMs > 0 && useStartOption) options.add("start=" + formatSeconds(positionMs));
-        if (isHls(item, url)) {
+        if (shouldTreatAsHls(item, url)) {
+            // 直播 / HLS（以及无法从 URL 看出格式的动态 PHP 代理链接）一律按 HLS 来处理：
+            //   - demuxer=lavf + demuxer-lavf-format=hls → 强制走 libavformat 的 HLS 解复用
+            //     （避免 mpv 对"扩展名不明显"的直播源误判成 raw MPEG-TS / FLV，造成切台快时探测失败报"MPV 播放失败"）
+            //   - keep-open=yes + keep-open-pause=no → 流结束/超时后不自动停，配合上层重试
+            //   - hls-seekable=no → 直播禁止 seek，避免 mpv 误把 HLS 当点播做 range 请求卡死
+            //   - demuxer-lavf-probe-info=nostreams + demuxer-readahead-secs=2 → 减少探测耗时，
+            //     快速切台时"还没探测完就被下一次 loadfile 打断"的概率降低，降低误报播放失败
             options.add("demuxer=lavf");
             options.add("demuxer-lavf-format=hls");
+            options.add("demuxer-lavf-probe-info=nostreams");
+            options.add("demuxer-readahead-secs=2");
             options.add("keep-open=yes");
             options.add("keep-open-pause=no");
+            options.add("hls-seekable=no");
         } else if (MpvMedia.isRadioAudio(url)) {
             options.add("demuxer=lavf");
             options.add("vid=no");
             options.add("aid=auto");
             options.add("keep-open=yes");
             options.add("keep-open-pause=no");
+        } else if (isMp4LikeContainer(url)) {
+            // 明确是点播 mp4/mkv 等容器时，放宽探测、不要强制 hls
+            options.add("demuxer-lavf-probe-info=nostreams");
+            options.add("demuxer-readahead-secs=2");
         }
         return TextUtils.join(",", options);
+    }
+
+    /**
+     * 是否按 HLS 处理。
+     *
+     * 原则：只要不是"明确的音频电台"、不是"明确的点播视频扩展名（mp4/mkv/avi/...）"，
+     * 一律按 HLS/m3u8 解复用处理。这是因为直播接口大量使用 PHP 代理链接（如
+     * xxx.php?url=...&id=...），从扩展名或 mime 上根本看不出来是 HLS，之前的
+     * 探测逻辑一旦遇到快速切台就会中断并报"MPV 播放失败"。
+     */
+    private boolean shouldTreatAsHls(MediaItem item, String url) {
+        if (isHls(item, url)) return true;
+        if (MpvMedia.isRadioAudio(url)) return false;
+        if (isMp4LikeContainer(url)) return false;
+        // 剩下的情况：动态链接、.ts/.flv 直播流、或任何不明确的 http(s) 直播
+        // —— 统统按 HLS 容器探测，省掉切台时的格式探测竞态。
+        String u = url == null ? "" : url.toLowerCase(Locale.ROOT);
+        return u.startsWith("http://") || u.startsWith("https://") || u.startsWith("rtmp://")
+                || u.startsWith("rtsp://") || u.startsWith("flv://") || u.startsWith("mms://");
+    }
+
+    private boolean isMp4LikeContainer(String url) {
+        String path = MpvMedia.getPlayableUrl(url);
+        if (TextUtils.isEmpty(path)) return false;
+        path = path.split("[?#]", 2)[0].toLowerCase(Locale.ROOT);
+        return path.endsWith(".mp4") || path.endsWith(".mkv") || path.endsWith(".avi")
+                || path.endsWith(".mov") || path.endsWith(".webm") || path.endsWith(".wmv")
+                || path.endsWith(".mpd") || path.endsWith(".flac") || path.endsWith(".wav")
+                || path.endsWith(".iso") || path.endsWith(".m4v");
     }
 
     private boolean isHls(MediaItem item, String url) {
@@ -1058,6 +1117,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         audioOnlyFallback = false;
         manualStop = false;
         activeLoadUrl = null;
+        lastStartedUrl = null;
         lastErrorMessage = null;
         lastErrorUrl = null;
         renderedFirstFrame = false;
@@ -1111,6 +1171,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         loadedFileActive = false;
         playerError = null;
         activeLoadUrl = null;
+        lastStartedUrl = null;
         lastErrorMessage = null;
         lastErrorUrl = null;
         hlsAbortRetryAttempted = false;
@@ -1141,6 +1202,23 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         String currentUrl = mediaItem.localConfiguration.uri.toString();
         String currentPlayableUrl = MpvMedia.getPlayableUrl(currentUrl);
         return !TextUtils.equals(lastErrorUrl, currentUrl) && !TextUtils.equals(lastErrorUrl, currentPlayableUrl);
+    }
+
+    /**
+     * 切台竞态保护：如果最后一次 START_FILE 的 URL（lastStartedUrl）与当前 mediaItem 的 URL
+     * 不匹配，那么这个 END_FILE 一定是"旧频道 A 的结束事件晚到了"，而当前播放器已经在播
+     * 频道 B。此时绝对不能走"没出第一帧就报播放失败"分支，否则会把正常播放中的 B 搞成失败。
+     */
+    private boolean isStaleEndFileForUrlChange() {
+        if (mediaItem == null || mediaItem.localConfiguration == null) return false;
+        if (TextUtils.isEmpty(lastStartedUrl)) return false;
+        String currentUrl = mediaItem.localConfiguration.uri.toString();
+        String playable = MpvMedia.getPlayableUrl(currentUrl);
+        // 只要 lastStartedUrl 跟当前 mediaItem 对得上，就说明 END_FILE 是本轮自己的事件
+        if (TextUtils.equals(lastStartedUrl, currentUrl)) return false;
+        if (TextUtils.equals(lastStartedUrl, playable)) return false;
+        // lastStartedUrl 与当前 mediaItem.url 不匹配 → 是过期事件
+        return true;
     }
 
     private boolean retryHlsAbortError() {

@@ -486,6 +486,10 @@ public class LiveActivity extends PlaybackActivity implements GroupAdapter.OnCli
 
     @Override
     protected void onPrepare() {
+        // 切台 / 换源开始播放准备前，务必先清掉上一次残留的"MPV播放失败"提示框。
+        // 否则如果上一个频道报错后立即切台，新频道的 onPrepare 不会调 showProgress
+        // （比如直接走到 STATE_READY），错误 UI 就会永久卡在画面上。
+        hideError();
         setEngine();
         setDecode();
     }
@@ -523,6 +527,7 @@ public class LiveActivity extends PlaybackActivity implements GroupAdapter.OnCli
                     player().play();
                 }
                 hideProgress();
+                hideError();
                 player().reset();
                 break;
             case Player.STATE_ENDED:
@@ -793,6 +798,7 @@ public class LiveActivity extends PlaybackActivity implements GroupAdapter.OnCli
 
     private void fetch(EpgData item) {
         if (mChannel == null) return;
+        hideError();
         mViewModel.getUrl(mChannel, item);
         player().clear();
         player().stop();
@@ -809,9 +815,11 @@ public class LiveActivity extends PlaybackActivity implements GroupAdapter.OnCli
             setArtwork();
             showInfo();
             hideProgress();
+            hideError();
             return;
         }
         android.util.Log.d("AntigravityLive", "fetch: calling getUrl for channel: " + mChannel.getName());
+        hideError();
         mViewModel.getUrl(mChannel);
         player().clear();
         player().stop();
