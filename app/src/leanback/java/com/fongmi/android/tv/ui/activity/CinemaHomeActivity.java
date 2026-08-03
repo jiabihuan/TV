@@ -69,6 +69,7 @@ public class CinemaHomeActivity extends BaseActivity implements
     private Result mResult;
     private Clock mClock;
     private boolean mConfigReady;
+    private boolean mHasMovieSelected;
 
     private final BroadcastReceiver mNetworkReceiver = new BroadcastReceiver() {
         @Override
@@ -176,12 +177,15 @@ public class CinemaHomeActivity extends BaseActivity implements
         else greeting = getString(R.string.cinema_greeting_night);
         mBinding.greeting.setText(greeting);
         mBinding.timeReminder.setText(getString(R.string.cinema_welcome, getString(R.string.app_name)));
-        mBinding.appTitle.setText(getString(R.string.app_name));
+        if (!mHasMovieSelected) {
+            mBinding.appTitle.setText(getString(R.string.app_name));
+        }
     }
 
     private void updateHero(int position) {
         Vod item = mPosterAdapter.getItem(position);
         if (item == null) return;
+        mHasMovieSelected = true;
         mBinding.appTitle.setText(item.getName());
         if (!TextUtils.isEmpty(item.getActor())) {
             mBinding.actor.setText(item.getActor());
@@ -192,10 +196,13 @@ public class CinemaHomeActivity extends BaseActivity implements
         if (!TextUtils.isEmpty(item.getPic())) {
             ImgUtil.load(item.getName(), item.getPic(), mBinding.coverBg);
             mBinding.coverBg.setVisibility(View.VISIBLE);
+        } else {
+            mBinding.coverBg.setVisibility(View.INVISIBLE);
         }
-        if (!TextUtils.isEmpty(item.getRemarks())) {
-            mBinding.tip.setText(item.getRemarks());
-        }
+        String tipText = item.getContent();
+        if (TextUtils.isEmpty(tipText)) tipText = item.getRemarks();
+        if (TextUtils.isEmpty(tipText)) tipText = getString(R.string.home_tip);
+        mBinding.tip.setText(tipText);
     }
 
     private void setCategories(List<Class> types) {
@@ -237,16 +244,18 @@ public class CinemaHomeActivity extends BaseActivity implements
     }
 
     private void setTitle() {
+        ImgUtil.logo(mBinding.logo);
+        if (mHasMovieSelected) return;
         List<String> items = Arrays.asList(getHome() != null ? getHome().getName() : "", getConfig().getName(), getString(R.string.app_name));
         Optional<String> optional = items.stream().filter(s -> !TextUtils.isEmpty(s)).findFirst();
         optional.ifPresent(s -> mBinding.appTitle.setText(s));
-        ImgUtil.logo(mBinding.logo);
     }
 
     private void loadHomeContent() {
         if (getHome() == null || TextUtils.isEmpty(getHome().getKey())) {
             return;
         }
+        mHasMovieSelected = false;
         mBinding.loading.setVisibility(View.VISIBLE);
         mBinding.loadingProgress.setVisibility(View.VISIBLE);
         mBinding.empty.setText(R.string.home_loading);

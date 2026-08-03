@@ -9,7 +9,7 @@
 
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/coverBg"
-        android:layout_width="300dp"
+        android:layout_width="760dp"
         android:layout_height="match_parent"
         android:layout_gravity="end|center"
         android:alpha="0.82"
@@ -177,7 +177,7 @@
         <LinearLayout
             android:id="@+id/greetingRow"
             android:layout_width="wrap_content"
-            android:layout_height="20dp"
+            android:layout_height="24dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -191,6 +191,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
+                android:singleLine="true"
                 android:textColor="#ffff7d9c"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -199,8 +200,10 @@
         <TextView
             android:id="@+id/timeReminder"
             android:layout_width="520dp"
-            android:layout_height="22dp"
+            android:layout_height="24dp"
+            android:ellipsize="end"
             android:gravity="center_vertical"
+            android:singleLine="true"
             android:textColor="#ffff7d9c"
             android:textSize="13sp"
             android:textStyle="bold" />
@@ -257,6 +260,7 @@
             android:id="@+id/tip"
             android:layout_width="520dp"
             android:layout_height="76dp"
+            android:ellipsize="end"
             android:lineSpacingExtra="2dp"
             android:maxLines="3"
             android:text="@string/home_tip"
