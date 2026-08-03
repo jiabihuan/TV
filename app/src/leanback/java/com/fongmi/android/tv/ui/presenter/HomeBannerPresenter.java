@@ -270,7 +270,12 @@ public class HomeBannerPresenter extends Presenter {
         return 0.50f;
     }
     /** 每个物理 slot 8 张卡片在初始化/复位时对应的"逻辑位置"（-3,-2,-1,0,+1,+2,+3,+4） */
-    private static final int[] INITIAL_POSITION = {-3, -2, -1, 0, 1, 2, 3, 4};
+    // 8 个 slot 合法唯一 pos 区间就是 [-4..3]，永远保持 8 个整数互不冲突。
+    //   -4, -3  左边 buffer（不可见，alpha=0）
+    //   -2..+2  可见 5 张
+    //   +2, +3  右边 buffer（不可见，alpha=0，pos=+2 还是可见）
+    // 每一步 advance/retreat 都会踢出越界 slot → 从另一端回收回来，保证集合保持不变。
+    private static final int[] INITIAL_POSITION = {-4, -3, -2, -1, 0, 1, 2, 3};
 
     /** Material fast-out-slow-in interpolator */
     private static final PathInterpolator SMOOTH_INTERP = new PathInterpolator(0.25f, 0.1f, 0.25f, 1.0f);
@@ -670,31 +675,30 @@ public class HomeBannerPresenter extends Presenter {
         set.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
+                // === 步骤 0：先算好本轮的新中心索引（rebindAllSlots 要用！） ===
+                // 关键：rebindAllSlots 内部用 holder.currentCenterIdx + slotPosition[i] 计算数据下标。
+                // 如果 currentCenterIdx 还是旧值、但 slotPosition 已经更新为新位置，
+                // 就会算出错误的数据下标 → 反复按右键累积错位 → 出现空白海报。
+                // 所以必须先把 currentCenterIdx 更新到新值，再 rebindAllSlots。
+                int newCenterIdx = mod(oldCenter + 1, n);
+
                 // === 步骤 1：更新所有 slot 逻辑位置（p → p-1） ===
+                // 合法 slot pos 区间是 [-4..3]（8 个唯一整数）。
+                // 所有 slot 都减 1 之后，原本 pos=-4 的那个会变成 pos=-5（越出左边界），
+                // 这就是本轮真正被踢出滑动窗口的 slot —— 从右边回收回来。
                 int exitSlotIdx = -1;
                 for (int i = 0; i < NUM_SLOTS; i++) {
                     holder.slotPosition[i] -= 1;
-                    if (holder.slotPosition[i] == -3) exitSlotIdx = i;
+                    if (holder.slotPosition[i] == -5) exitSlotIdx = i;
                 }
 
-                // === 步骤 2：把退出可见区的 slot（pos=-3）回收为新的最右缓冲 ===
-                // ★ 关键修复：回收位不能硬编码为 4（[-3..4] 只有 8 个唯一整数，
-                //   上一轮已经把其他 slot 用到了 pos=3/4，硬写 4 会导致两个 slot 同号
-                //   → 其中一个 slot 在步骤 3 修正可见性时被错误地置为 INVISIBLE → 出现空白）
-                //   正确做法：找到 [-3..4] 中当前 slotPosition 数组里唯一缺失的那个整数作为回收位。
+                // === 步骤 2：回收 exitSlotIdx 到右边 buffer pos=3 ===
+                // 对称性证明：
+                //   回收前 slotPosition 集合 = [-5, -4, -3, -2, -1, 0, 1, 2]
+                //   把 -5 替换成 3  →  [-4, -3, -2, -1, 0, 1, 2, 3]  = INITIAL_POSITION ✓
                 if (exitSlotIdx >= 0) {
-                    boolean[] used = new boolean[9]; // 对应 [-3..4] 映射到 [0..7]
-                    for (int i = 0; i < NUM_SLOTS; i++) {
-                        if (i == exitSlotIdx) continue;
-                        int p = holder.slotPosition[i];
-                        if (p >= -3 && p <= 4) used[p - (-3)] = true;
-                    }
-                    int recyclePos = 4; // 默认放最右边
-                    for (int k = -3; k <= 4; k++) {
-                        if (!used[k - (-3)]) { recyclePos = k; break; }
-                    }
-                    int newCenter = mod(oldCenter + 1, n);
-                    int newDataIdx = mod(newCenter + recyclePos, n);
+                    final int recyclePos = 3;
+                    int newDataIdx = mod(newCenterIdx + recyclePos, n);
                     holder.slotDataIndex[exitSlotIdx] = newDataIdx;
                     Vod newVod = holder.carouselVods.get(newDataIdx);
                     ImgUtil.load(newVod.getName(), newVod.getPic(), holder.imgs[exitSlotIdx]);
@@ -708,18 +712,18 @@ public class HomeBannerPresenter extends Presenter {
                     s.setScaleY(posToScale(recyclePos));
                     s.setAlpha(posToAlpha(recyclePos));
                     s.setTranslationZ(posToZ(recyclePos));
-                    s.setVisibility(View.INVISIBLE);
+                    s.setVisibility(posToVisibility(recyclePos));
                     slotClickListenerReset(holder, exitSlotIdx);
                 }
 
-                // === 步骤 2½：强制重新绑定 8 个 slot 的图片 / 名字 / 点击事件 ===
-                // ★ 关键修复：连续左右切时，步骤 2 的 ImgUtil.load 是异步的，
-                //   如果 slot 在下一次动画就被推到可见区但图还没回，就会"空一格"。
-                //   这里兜底 rebindAllSlots 再重新提交一次 load 任务，
-                //   保证所有可见 5 张 slot 在进入下一步之前一定有图可显示。
+                // ★ 先更新 currentCenterIdx 到新中心 —— 这样下面 rebindAllSlots 里
+                //   mod(holder.currentCenterIdx + pos, n) 才能算出正确的数据下标！
+                holder.currentCenterIdx = newCenterIdx;
+
+                // === 步骤 2½：兜底重绑所有 8 个 slot（连续快速左右切不出空白） ===
                 rebindAllSlots(holder, holder.carouselVods, n);
 
-                // === 步骤 3：修正 8 个 slot 的可见性 + 精确位置 ===
+                // === 步骤 3：修正 8 个 slot 的可见性 + 精确位置（最终落点） ===
                 for (int i = 0; i < NUM_SLOTS; i++) {
                     int p = holder.slotPosition[i];
                     FrameLayout sl = holder.slots[i];
@@ -730,10 +734,7 @@ public class HomeBannerPresenter extends Presenter {
                     sl.setAlpha(posToAlpha(p));
                     sl.setTranslationZ(posToZ(p));
                 }
-
-                // === 步骤 4：更新中间卡片详情 + 索引 + 指示器 ===
-                int newCenterIdx = mod(oldCenter + 1, n);
-                holder.currentCenterIdx = newCenterIdx;
+                // === 步骤 4：更新中间卡片详情 + 指示器 ===
                 Vod newCenterVod = holder.carouselVods.get(newCenterIdx);
                 bindCenterDetails(holder, newCenterVod);
 
@@ -820,30 +821,29 @@ public class HomeBannerPresenter extends Presenter {
         set.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
+                // === 步骤 0：先算好本轮的新中心索引（rebindAllSlots 要用！） ===
+                // 与 advance 严格对称：rebindAllSlots 内部用
+                //   holder.currentCenterIdx + slotPosition[i]
+                // 计算数据下标。如果 currentCenterIdx 还是旧值、但 slotPosition 已更新，
+                // 就会算出错误下标 → 反复按左键累积错位 → 出现空白海报。
+                int newCenterIdx = mod(oldCenter - 1, n);
+
                 // === 步骤 1：更新所有 slot 逻辑位置（p → p+1） ===
+                // 合法区间 [-4..3]。所有 slot 都加 1 之后，原本 pos=3 的那个会变成 pos=4（越出右边界），
+                // 这就是本轮真正被踢出滑动窗口的 slot —— 从左边回收回来。
                 int exitSlotIdx = -1;
                 for (int i = 0; i < NUM_SLOTS; i++) {
                     holder.slotPosition[i] += 1;
-                    if (holder.slotPosition[i] == 3) exitSlotIdx = i;
+                    if (holder.slotPosition[i] == 4) exitSlotIdx = i;
                 }
 
-                // === 步骤 2：把退出可见区的 slot（pos=+3）回收为新的最左缓冲 ===
-                // ★ 关键修复：回收位不能硬编码为 -4（[-3..4] 只有 8 个唯一整数，
-                //   硬写 -4 会导致两个 slot 同号 → 其中一个在步骤 3 被置 INVISIBLE 而空白）。
-                //   正确做法：找 [-3..4] 中当前缺失的整数作为回收位。
+                // === 步骤 2：回收 exitSlotIdx 到左边 buffer pos=-4 ===
+                // 对称性证明：
+                //   回收前 slotPosition 集合 = [-3, -2, -1, 0, 1, 2, 3, 4]
+                //   把  4 替换成 -4 →  [-4, -3, -2, -1, 0, 1, 2, 3]  = INITIAL_POSITION ✓
                 if (exitSlotIdx >= 0) {
-                    boolean[] used = new boolean[9];
-                    for (int i = 0; i < NUM_SLOTS; i++) {
-                        if (i == exitSlotIdx) continue;
-                        int p = holder.slotPosition[i];
-                        if (p >= -3 && p <= 4) used[p - (-3)] = true;
-                    }
-                    int recyclePos = -3; // 默认放最左边
-                    for (int k = 4; k >= -3; k--) {
-                        if (!used[k - (-3)]) { recyclePos = k; break; }
-                    }
-                    int newCenter = mod(oldCenter - 1, n);
-                    int newDataIdx = mod(newCenter + recyclePos, n);
+                    final int recyclePos = -4;
+                    int newDataIdx = mod(newCenterIdx + recyclePos, n);
                     holder.slotDataIndex[exitSlotIdx] = newDataIdx;
                     Vod newVod = holder.carouselVods.get(newDataIdx);
                     ImgUtil.load(newVod.getName(), newVod.getPic(), holder.imgs[exitSlotIdx]);
@@ -857,14 +857,18 @@ public class HomeBannerPresenter extends Presenter {
                     s.setScaleY(posToScale(recyclePos));
                     s.setAlpha(posToAlpha(recyclePos));
                     s.setTranslationZ(posToZ(recyclePos));
-                    s.setVisibility(View.INVISIBLE);
+                    s.setVisibility(posToVisibility(recyclePos));
                     slotClickListenerReset(holder, exitSlotIdx);
                 }
 
-                // === 步骤 2½：兜底重绑所有 slot（连续左右切不空白） ===
+                // ★ 先更新 currentCenterIdx 到新中心 —— 这样下面 rebindAllSlots 里
+                //   mod(holder.currentCenterIdx + pos, n) 才能算出正确的数据下标！
+                holder.currentCenterIdx = newCenterIdx;
+
+                // === 步骤 2½：兜底重绑所有 8 个 slot（连续快速左右切不出空白） ===
                 rebindAllSlots(holder, holder.carouselVods, n);
 
-                // === 步骤 3：修正 8 个 slot 的可见性 + 精确位置（与 advance 对称） ===
+                // === 步骤 3：修正 8 个 slot 的可见性 + 精确位置（最终落点） ===
                 for (int i = 0; i < NUM_SLOTS; i++) {
                     int p = holder.slotPosition[i];
                     FrameLayout sl = holder.slots[i];
@@ -875,10 +879,7 @@ public class HomeBannerPresenter extends Presenter {
                     sl.setAlpha(posToAlpha(p));
                     sl.setTranslationZ(posToZ(p));
                 }
-
-                // === 步骤 4：更新中间卡片详情 + 索引 + 指示器 ===
-                int newCenterIdx = mod(oldCenter - 1, n);
-                holder.currentCenterIdx = newCenterIdx;
+                // === 步骤 4：更新中间卡片详情 + 指示器 ===
                 Vod newCenterVod = holder.carouselVods.get(newCenterIdx);
                 bindCenterDetails(holder, newCenterVod);
 
