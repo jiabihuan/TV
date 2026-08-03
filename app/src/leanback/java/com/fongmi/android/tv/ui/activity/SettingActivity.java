@@ -53,6 +53,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
     private ActivitySettingBinding mBinding;
     private String[] size;
     private String[] search;
+    private String[] homeStyle;
 
     public static void start(Activity activity) {
         activity.startActivity(new Intent(activity, SettingActivity.class));
@@ -94,6 +95,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.liveBootText.setText(getSwitch(LiveSetting.isBootGlobal()));
         mBinding.sizeText.setText((size = ResUtil.getStringArray(R.array.select_size))[PlayerSetting.getSize()]);
         mBinding.searchText.setText((search = ResUtil.getStringArray(R.array.select_search))[Setting.getSearchMode()]);
+        mBinding.homeStyleText.setText((homeStyle = ResUtil.getStringArray(R.array.select_home_style))[Setting.getHomeStyle()]);
         mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary());
     }
 
@@ -129,6 +131,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.incognito.setOnClickListener(this::setIncognito);
         mBinding.liveBoot.setOnClickListener(this::setLiveBoot);
         mBinding.search.setOnClickListener(this::setSearch);
+        mBinding.homeStyle.setOnClickListener(this::setHomeStyle);
         mBinding.vodHistory.setOnClickListener(this::onVodHistory);
         mBinding.liveHistory.setOnClickListener(this::onLiveHistory);
         mBinding.wallDefault.setOnClickListener(this::setWallDefault);
@@ -283,6 +286,16 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         int index = (Setting.getSearchMode() + 1) % search.length;
         mBinding.searchText.setText(search[index]);
         Setting.putSearchMode(index);
+    }
+
+    private void setHomeStyle(View view) {
+        int index = (Setting.getHomeStyle() + 1) % homeStyle.length;
+        mBinding.homeStyleText.setText(homeStyle[index]);
+        Setting.putHomeStyle(index);
+        Notify.show(R.string.setting_home_style);
+        Intent intent = new Intent(this, Setting.isHomeCapsule() ? CinemaHomeActivity.class : HomeActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
     }
 
     private void setDoh(View view) {

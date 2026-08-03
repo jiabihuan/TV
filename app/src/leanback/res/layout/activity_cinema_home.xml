@@ -7,7 +7,6 @@
     android:clipChildren="false"
     android:clipToPadding="false">
 
-    <!-- 右侧封面背景 -->
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/coverBg"
         android:layout_width="300dp"
@@ -17,23 +16,27 @@
         android:scaleType="centerCrop"
         android:visibility="invisible" />
 
-    <!-- 封面遮罩 -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/homeMask"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/home_vod_bg" />
+
     <View
         android:id="@+id/coverTint"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@drawable/bg_tv_cinema_cover_tint" />
 
-    <!-- 分隔线 -->
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="74dp"
         android:background="#12ffffff" />
 
-    <!-- 顶部导航栏 -->
     <LinearLayout
-        android:id="@+id/toolbar"
+        android:id="@+id/nav"
         android:layout_width="match_parent"
         android:layout_height="72dp"
         android:gravity="center_vertical"
@@ -59,7 +62,7 @@
             android:gravity="center"
             android:paddingStart="8dp"
             android:paddingEnd="8dp"
-            android:text="@string/nav_search"
+            android:text="@string/home_search"
             android:textColor="@color/white"
             android:textSize="15sp"
             android:textStyle="bold" />
@@ -74,7 +77,7 @@
             android:gravity="center"
             android:paddingStart="8dp"
             android:paddingEnd="8dp"
-            android:text="@string/keep"
+            android:text="@string/home_keep"
             android:textColor="@color/white"
             android:textSize="15sp"
             android:textStyle="bold" />
@@ -104,7 +107,7 @@
             android:gravity="center"
             android:paddingStart="8dp"
             android:paddingEnd="8dp"
-            android:text="@string/push"
+            android:text="@string/home_push"
             android:textColor="@color/white"
             android:textSize="15sp"
             android:textStyle="bold" />
@@ -150,9 +153,8 @@
             android:src="@drawable/ic_net_wifi" />
     </LinearLayout>
 
-    <!-- 分类标签栏 -->
     <androidx.leanback.widget.HorizontalGridView
-        android:id="@+id/recycler_type"
+        android:id="@+id/categories"
         android:layout_width="match_parent"
         android:layout_height="46dp"
         android:layout_marginTop="78dp"
@@ -164,7 +166,6 @@
         app:focusOutEnd="false"
         app:focusOutFront="false" />
 
-    <!-- Hero 区域 -->
     <LinearLayout
         android:id="@+id/hero"
         android:layout_width="wrap_content"
@@ -174,6 +175,7 @@
         android:orientation="vertical">
 
         <LinearLayout
+            android:id="@+id/greetingRow"
             android:layout_width="wrap_content"
             android:layout_height="20dp"
             android:gravity="center_vertical"
@@ -262,7 +264,6 @@
             android:textSize="12sp" />
     </LinearLayout>
 
-    <!-- 海报行 -->
     <androidx.leanback.widget.HorizontalGridView
         android:id="@+id/posters"
         android:layout_width="match_parent"
@@ -276,7 +277,6 @@
         app:focusOutEnd="false"
         app:focusOutFront="false" />
 
-    <!-- 加载中 -->
     <LinearLayout
         android:id="@+id/loading"
         android:layout_width="wrap_content"
@@ -288,11 +288,11 @@
 
         <ProgressBar
             android:id="@+id/loadingProgress"
+            style="?android:progressBarStyleSmall"
             android:layout_width="28dp"
             android:layout_height="28dp"
             android:layout_marginEnd="10dp"
-            android:indeterminate="true"
-            style="?android:progressBarStyleSmall" />
+            android:indeterminate="true" />
 
         <TextView
             android:id="@+id/empty"
@@ -302,26 +302,5 @@
             android:textColor="@color/white_70"
             android:textSize="16sp" />
     </LinearLayout>
-
-    <!-- 内容列表 -->
-    <com.fongmi.android.tv.ui.custom.ProgressLayout
-        android:id="@+id/progressLayout"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone">
-
-        <androidx.leanback.widget.VerticalGridView
-            android:id="@+id/recycler"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipChildren="false"
-            android:clipToPadding="false"
-            android:paddingStart="24dp"
-            android:paddingTop="8dp"
-            android:paddingEnd="24dp"
-            android:paddingBottom="24dp"
-            app:focusOutEnd="true"
-            app:focusOutFront="true" />
-    </com.fongmi.android.tv.ui.custom.ProgressLayout>
 
 </FrameLayout>

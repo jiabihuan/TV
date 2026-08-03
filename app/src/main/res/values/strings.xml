@@ -389,6 +389,14 @@
     <string name="nav_search">Search</string>
     <string name="nav_history">History</string>
     <string name="nav_setting">Settings</string>
+    <string name="home_empty">No recommendations yet</string>
+    <string name="cinema_greeting_morning">Good morning</string>
+    <string name="cinema_greeting_forenoon">Good morning</string>
+    <string name="cinema_greeting_noon">Good noon</string>
+    <string name="cinema_greeting_afternoon">Good afternoon</string>
+    <string name="cinema_greeting_evening">Good evening</string>
+    <string name="cinema_greeting_night">Good night</string>
+    <string name="cinema_welcome">Welcome to %1$s</string>
 
     <string name="setting_search">Search Layout</string>
     <string-array name="select_search">
