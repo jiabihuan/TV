@@ -17,6 +17,7 @@ public class CustomKeyDownVod extends GestureDetector.SimpleOnGestureListener {
     private final Listener listener;
     private boolean changeSpeed;
     private boolean full;
+    private boolean speedOnDown;
     private long holdTime;
 
     public static CustomKeyDownVod create(Activity activity) {
@@ -37,6 +38,10 @@ public class CustomKeyDownVod extends GestureDetector.SimpleOnGestureListener {
         this.full = full;
     }
 
+    public void setSpeedOnDown(boolean speedOnDown) {
+        this.speedOnDown = speedOnDown;
+    }
+
     public boolean hasEvent(KeyEvent event) {
         return KeyUtil.isEnterKey(event) || KeyUtil.isUpKey(event) || KeyUtil.isDownKey(event) || KeyUtil.isLeftKey(event) || KeyUtil.isRightKey(event);
     }
@@ -54,14 +59,25 @@ public class CustomKeyDownVod extends GestureDetector.SimpleOnGestureListener {
         } else if (KeyUtil.isActionUp(event) && (KeyUtil.isLeftKey(event) || KeyUtil.isRightKey(event))) {
             App.post(() -> listener.onSeekEnd(holdTime), 250);
         } else if (KeyUtil.isActionUp(event) && KeyUtil.isUpKey(event)) {
-            if (changeSpeed) listener.onSpeedEnd();
-            else listener.onKeyUp();
-            changeSpeed = false;
+            if (!speedOnDown && changeSpeed) {
+                listener.onSpeedEnd();
+            } else {
+                listener.onKeyUp();
+            }
+            if (!speedOnDown) changeSpeed = false;
         } else if (KeyUtil.isActionUp(event) && KeyUtil.isDownKey(event)) {
-            listener.onKeyDown();
+            if (speedOnDown && changeSpeed) {
+                listener.onSpeedEnd();
+            } else {
+                listener.onKeyDown();
+            }
+            if (speedOnDown) changeSpeed = false;
         } else if (KeyUtil.isActionUp(event) && KeyUtil.isEnterKey(event)) {
             listener.onKeyCenter();
-        } else if (event.isLongPress() && KeyUtil.isUpKey(event)) {
+        } else if (event.isLongPress() && KeyUtil.isDownKey(event) && speedOnDown) {
+            listener.onSpeedUp();
+            changeSpeed = true;
+        } else if (event.isLongPress() && KeyUtil.isUpKey(event) && !speedOnDown) {
             listener.onSpeedUp();
             changeSpeed = true;
         }

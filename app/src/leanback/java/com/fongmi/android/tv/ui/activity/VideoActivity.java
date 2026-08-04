@@ -277,6 +277,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mClock = Clock.create(mBinding.widget.clock);
         mKeyDown = CustomKeyDownVod.create(this);
         mKeyDown.setFull(true);
+        mKeyDown.setSpeedOnDown(true);
         setFullscreen(true);
         mObserveDetail = this::setDetail;
         mObservePlayer = this::setPlayer;
@@ -1515,6 +1516,19 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         return mFocus2 == null || mFocus2.getVisibility() != View.VISIBLE || mFocus2 == mBinding.control.action.opening || mFocus2 == mBinding.control.action.ending ? mBinding.control.action.next : mFocus2;
     }
 
+    private View getDownFocus() {
+        long position = player().getPosition();
+        long duration = player().getDuration();
+        long limit = Constant.getOpEdLimit(duration);
+        if (position > 0 && duration > 0 && position <= limit) {
+            return mBinding.control.action.opening;
+        } else if (position > 0 && duration > 0 && duration - position <= limit) {
+            return mBinding.control.action.ending;
+        } else {
+            return getFocus2();
+        }
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (isFullscreen() && KeyUtil.isMenuKey(event)) onToggle();
@@ -1560,12 +1574,18 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     @Override
     public void onKeyUp() {
+        mBinding.widget.center.setVisibility(View.VISIBLE);
         showControl(getFocus2());
     }
 
     @Override
     public void onKeyDown() {
-        showInfoLayout();
+        if (isFullscreen()) {
+            mBinding.widget.center.setVisibility(View.VISIBLE);
+            showControl(getDownFocus());
+        } else {
+            showInfoLayout();
+        }
     }
 
     @Override

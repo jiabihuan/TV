@@ -896,6 +896,85 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         }
     }
 
+    /** Banner 按 ↓ 时，找到 Banner 下方第一个可聚焦的行（跳过不可聚焦的 header）并 requestFocus */
+    private boolean requestFocusBelowBanner() {
+        try {
+            RecyclerView rv = mBinding.recycler;
+            if (rv == null || rv.getAdapter() == null) return false;
+            int count = rv.getAdapter().getItemCount();
+            // 从 position 1 开始（position 0 是 Banner），找第一个有可聚焦子项的行
+            for (int i = 1; i < count; i++) {
+                RecyclerView.ViewHolder vh = rv.findViewHolderForAdapterPosition(i);
+                if (vh == null || vh.itemView == null) continue;
+                View focusable = findFirstFocusable(vh.itemView);
+                if (focusable != null) {
+                    rv.scrollToPosition(i);
+                    return focusable.requestFocus();
+                }
+            }
+            // ViewHolder 还没创建（行还没布局），滚动到 position 1 再延迟聚焦
+            if (count > 1) {
+                rv.scrollToPosition(1);
+                App.post(() -> {
+                    for (int i = 1; i < rv.getAdapter().getItemCount(); i++) {
+                        RecyclerView.ViewHolder vh = rv.findViewHolderForAdapterPosition(i);
+                        if (vh == null || vh.itemView == null) continue;
+                        View focusable = findFirstFocusable(vh.itemView);
+                        if (focusable != null) {
+                            focusable.requestFocus();
+                            return;
+                        }
+                    }
+                }, 150);
+                return true;
+            }
+            return false;
+        } catch (Throwable e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /** 递归查找 View 树中第一个可聚焦且可见的 View */
+    private View findFirstFocusable(View view) {
+        if (view == null) return null;
+        if (view.getVisibility() != View.VISIBLE) return null;
+        if (view.isFocusable()) return view;
+        if (view instanceof ViewGroup) {
+            ViewGroup vg = (ViewGroup) view;
+            for (int i = 0; i < vg.getChildCount(); i++) {
+                View found = findFirstFocusable(vg.getChildAt(i));
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    /** 判断当前焦点是否在 recycler 中 Banner 正下方的内容行上（position 1 或 2） */
+    private boolean isFirstContentRowFocused() {
+        try {
+            View focus = getCurrentFocus();
+            if (focus == null) return false;
+            RecyclerView rv = mBinding.recycler;
+            if (rv == null) return false;
+            // 焦点不在 recycler 内则返回 false
+            View v = focus;
+            boolean inRecycler = false;
+            while (v != null) {
+                if (v == rv) { inRecycler = true; break; }
+                Object p = v.getParent();
+                v = (p instanceof View) ? (View) p : null;
+            }
+            if (!inRecycler) return false;
+            // 使用 Leanback VerticalGridView 的 getSelectedPosition 获取当前选中行
+            int position = mBinding.recycler.getSelectedPosition();
+            // position 1 = header("推荐"等，不可聚焦), position 2 = 第一行海报/ListRow
+            return position == 1 || position == 2;
+        } catch (Throwable e) {
+            return false;
+        }
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (KeyUtil.isMenuKey(event)) showDialog();
@@ -912,6 +991,17 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             }
             // 分类 recyclerType（横排那排「首页 综合配置 ...」）按 ↓ → 直接跳到 Banner 轮播
             else if (isRecyclerTypeFocused() && mBinding.recyclerType.getVisibility() == View.VISIBLE) {
+                if (requestFocusOnHomeBanner()) return true;
+            }
+            // Banner 轮播按 ↓ → 跳到下面的海报列表（头部 header 不可聚焦，
+            // 默认 focusSearch 跳不过去，必须手动找下一个可聚焦行）
+            else if (isBannerFocused()) {
+                if (requestFocusBelowBanner()) return true;
+            }
+        }
+        // 海报列表第一行按 ↑ → 回到 Banner 轮播
+        if (KeyUtil.isActionDown(event) && KeyUtil.isUpKey(event)) {
+            if (isFirstContentRowFocused()) {
                 if (requestFocusOnHomeBanner()) return true;
             }
         }
