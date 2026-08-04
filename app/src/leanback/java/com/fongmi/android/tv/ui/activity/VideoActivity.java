@@ -1607,7 +1607,11 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     @Override
     public void onKeyDown() {
-        showInfoLayout();
+        if (isFullscreen()) {
+            showControl(getFocus2());
+        } else {
+            showInfoLayout();
+        }
     }
 
     @Override
