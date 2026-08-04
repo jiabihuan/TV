@@ -124,7 +124,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private Clock mClock;
     private View mFocus1;
     private View mFocus2;
-    private long mLastBackTime = 0;
     private final Runnable mHideInfoRunnable = this::hideInfoLayout;
 
     public static void push(FragmentActivity activity, String text) {
@@ -275,6 +274,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mClock = Clock.create(mBinding.widget.clock);
         mKeyDown = CustomKeyDownVod.create(this);
         mKeyDown.setFull(false);
+        mKeyDown.setSpeedOnDown(true);
         setFullscreen(false);
         applySplitMode();
         mObserveDetail = this::setDetail;
@@ -467,15 +467,13 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private void setText(Vod item) {
         mBinding.content.setTag(item.getContent());
         mBinding.content.setText(item.getContent());
-        setText(mBinding.type, R.string.detail_type, item.getTypeName());
-        setText(mBinding.actor, R.string.detail_actor, item.getActor());
-        /*
         setText(mBinding.year, R.string.detail_year, item.getYear());
         setText(mBinding.area, R.string.detail_area, item.getArea());
+        setText(mBinding.type, R.string.detail_type, item.getTypeName());
         setText(mBinding.site, R.string.detail_site, getSite().getName());
         setText(mBinding.director, R.string.detail_director, item.getDirector());
+        setText(mBinding.actor, R.string.detail_actor, item.getActor());
         setText(mBinding.remark, 0, item.getRemarks());
-        */
     }
 
     private void setText(TextView view, int resId, String text) {
@@ -654,6 +652,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private void enterFullscreen() {
+        mFocus1 = getCurrentFocus();
         mKeyDown.setFull(true);
         setFullscreen(true);
         applySplitMode();
@@ -666,7 +665,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         setFullscreen(false);
         applySplitMode();
         hideControl();
-        showInfoLayout();
+        getFocus1().requestFocus();
     }
 
     private void applySplitMode() {
@@ -1543,16 +1542,25 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         return mFocus2 == null || mFocus2.getVisibility() != View.VISIBLE || mFocus2 == mBinding.control.action.opening || mFocus2 == mBinding.control.action.ending ? mBinding.control.action.next : mFocus2;
     }
 
+    private View getDownFocus() {
+        long position = player().getPosition();
+        long duration = player().getDuration();
+        long limit = Constant.getOpEdLimit(duration);
+        if (position > 0 && duration > 0 && position <= limit) {
+            return mBinding.control.action.opening;
+        } else if (position > 0 && duration > 0 && duration - position <= limit) {
+            return mBinding.control.action.ending;
+        } else {
+            return getFocus2();
+        }
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (isFullscreen() && KeyUtil.isMenuKey(event)) onToggle();
         if (isVisible(mBinding.control.getRoot())) setR1Callback();
         if (isVisible(mBinding.control.getRoot())) mFocus2 = getCurrentFocus();
-        if (isFullscreen() && isGone(mBinding.control.getRoot()) && isGone(mBinding.infoLayout) && KeyUtil.isActionUp(event) && KeyUtil.isDownKey(event) && service() != null) {
-            showControl(getFocus2());
-            return true;
-        }
-        if (isFullscreen() && isGone(mBinding.control.getRoot()) && isGone(mBinding.infoLayout) && mKeyDown.hasEvent(event) && service() != null) return mKeyDown.onKeyDown(event);
+        if (isFullscreen() && isGone(mBinding.control.getRoot()) && mKeyDown.hasEvent(event) && service() != null) return mKeyDown.onKeyDown(event);
         if (!isFullscreen() && KeyUtil.isActionUp(event) && KeyUtil.isEnterKey(event) && getCurrentFocus() == mBinding.video) {
             enterFullscreen();
             return true;
@@ -1591,18 +1599,20 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     public void onSpeedEnd() {
         mBinding.widget.speed.clearAnimation();
         mBinding.widget.speed.setVisibility(View.GONE);
-        mBinding.control.action.speed.setText(player().setSpeed(mHistory.getSpeed()));
+        if (mHistory != null) mBinding.control.action.speed.setText(player().setSpeed(mHistory.getSpeed()));
     }
 
     @Override
     public void onKeyUp() {
+        mBinding.widget.center.setVisibility(View.VISIBLE);
         showControl(getFocus2());
     }
 
     @Override
     public void onKeyDown() {
         if (isFullscreen()) {
-            showControl(getFocus2());
+            mBinding.widget.center.setVisibility(View.VISIBLE);
+            showControl(getDownFocus());
         } else {
             showInfoLayout();
         }
@@ -1624,35 +1634,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     @Override
     public void onDoubleTap() {
         if (isFullscreen()) onKeyCenter();
-    }
-
-    @Override
-    public void onDoubleTapUp() {
-        if (!isFullscreen()) return;
-        long opening = mHistory.getOpening();
-        if (opening > 0 && player().getPosition() < opening) {
-            seekTo(opening);
-            Notify.show(R.string.play_skip_opening);
-            syncHistory(true);
-        } else if (opening > 0) {
-            Notify.show(R.string.play_skip_opening_passed);
-        } else {
-            Notify.show(R.string.play_skip_not_set);
-        }
-    }
-
-    @Override
-    public void onDoubleTapDown() {
-        if (!isFullscreen()) return;
-        long ending = mHistory.getEnding();
-        long duration = player().getDuration();
-        if (ending > 0 && duration > 0) {
-            seekTo(Math.max(0, duration - ending));
-            Notify.show(R.string.play_skip_ending);
-            syncHistory(true);
-        } else {
-            Notify.show(R.string.play_skip_not_set);
-        }
     }
 
     @Override
@@ -1678,20 +1659,12 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     protected void onBackInvoked() {
         if (isVisible(mBinding.control.getRoot())) {
             hideControl();
-        } else if (isFullscreen()) {
-            exitFullscreen();
         } else if (isVisible(mBinding.widget.center)) {
             hideCenter();
+        } else if (isFullscreen()) {
+            exitFullscreen();
         } else {
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - mLastBackTime < 2000) {
-                mViewModel.stopSearch();
-                if (isTaskRoot()) startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
-                super.onBackInvoked();
-            } else {
-                mLastBackTime = currentTime;
-                Notify.show(R.string.play_exit_hint);
-            }
+            super.onBackInvoked();
         }
     }
 
