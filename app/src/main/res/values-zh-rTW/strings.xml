@@ -146,8 +146,8 @@
     <string name="nav_download">下載</string>
     <string name="setting_home_style">導航欄樣式</string>
     <string-array name="select_home_style">
-        <item>固定型</item>
-        <item>膠囊型</item>
+        <item>普通UI</item>
+        <item>大屏UI</item>
     </string-array>
     <string name="setting_auto">自動</string>
     <string name="setting_custom">自訂</string>

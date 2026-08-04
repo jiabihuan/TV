@@ -674,19 +674,22 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private void applySplitMode() {
         if (mBinding.video == null) return;
         ViewGroup.LayoutParams params = mBinding.video.getLayoutParams();
-        if (params instanceof android.widget.LinearLayout.LayoutParams) {
-            android.widget.LinearLayout.LayoutParams lp = (android.widget.LinearLayout.LayoutParams) params;
+        if (params instanceof RelativeLayout.LayoutParams) {
+            RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) params;
             if (isFullscreen()) {
-                lp.width = 0;
-                lp.weight = 1;
+                lp.width = RelativeLayout.LayoutParams.MATCH_PARENT;
+                lp.height = RelativeLayout.LayoutParams.MATCH_PARENT;
+                lp.setMargins(0, 0, 0, 0);
+                mBinding.video.setElevation(0f);
+                mBinding.infoLayout.setVisibility(View.GONE);
             } else {
-                lp.width = 0;
-                lp.weight = 0.42f;
+                lp.width = ResUtil.dp2px(480);
+                lp.height = ResUtil.dp2px(270);
+                lp.setMargins(ResUtil.dp2px(24), ResUtil.dp2px(24), 0, 0);
+                mBinding.video.setElevation(8f);
+                mBinding.infoLayout.setVisibility(View.VISIBLE);
             }
             mBinding.video.setLayoutParams(lp);
-        }
-        if (isFullscreen()) {
-            mBinding.infoLayout.setVisibility(View.GONE);
         }
     }
 
