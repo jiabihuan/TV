@@ -466,7 +466,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     private void setText(Vod item) {
         mBinding.content.setTag(item.getContent());
-        mBinding.content.setText(item.getContent());
+        setText(mBinding.content, R.string.detail_content, item.getContent());
         setText(mBinding.year, R.string.detail_year, item.getYear());
         setText(mBinding.area, R.string.detail_area, item.getArea());
         setText(mBinding.type, R.string.detail_type, item.getTypeName());
@@ -482,7 +482,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         view.setVisibility(text.isEmpty() ? View.GONE : View.VISIBLE);
         if (view.getParent() instanceof View) {
             View parent = (View) view.getParent();
-            if (parent.getId() == R.id.typeLayout || parent.getId() == R.id.actorLayout) {
+            if (parent.getId() == R.id.typeLayout || parent.getId() == R.id.actorLayout || parent.getId() == R.id.row1 || parent.getId() == R.id.descLayout) {
                 parent.setVisibility(text.isEmpty() ? View.GONE : View.VISIBLE);
             }
         }
@@ -657,7 +657,9 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         setFullscreen(true);
         applySplitMode();
         hideInfoLayout();
+        mBinding.video.setForeground(null);
         mBinding.video.requestFocus();
+        mFocus2 = null;
     }
 
     private void exitFullscreen() {
@@ -665,6 +667,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         setFullscreen(false);
         applySplitMode();
         hideControl();
+        mFocus2 = null;
         getFocus1().requestFocus();
     }
 
