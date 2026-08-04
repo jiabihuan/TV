@@ -11,7 +11,6 @@ import android.text.style.ClickableSpan;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -658,9 +657,8 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private void enterFullscreen() {
         mKeyDown.setFull(true);
         setFullscreen(true);
-        hideControl();
         applySplitMode();
-        mBinding.infoLayout.setVisibility(View.GONE);
+        hideInfoLayout();
         mBinding.video.requestFocus();
     }
 
@@ -675,27 +673,15 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private void applySplitMode() {
         if (mBinding.video == null) return;
         ViewGroup.LayoutParams params = mBinding.video.getLayoutParams();
-        if (params instanceof RelativeLayout.LayoutParams) {
-            RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) params;
+        if (params instanceof android.widget.LinearLayout.LayoutParams) {
+            android.widget.LinearLayout.LayoutParams lp = (android.widget.LinearLayout.LayoutParams) params;
             if (isFullscreen()) {
-                lp.width = RelativeLayout.LayoutParams.MATCH_PARENT;
-                lp.height = RelativeLayout.LayoutParams.MATCH_PARENT;
-                lp.setMargins(0, 0, 0, 0);
-                lp.addRule(RelativeLayout.ALIGN_PARENT_START);
-                lp.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-                lp.addRule(RelativeLayout.ALIGN_PARENT_END);
-                lp.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-                mBinding.video.setElevation(0f);
+                lp.width = 0;
+                lp.weight = 1;
                 mBinding.infoLayout.setVisibility(View.GONE);
             } else {
-                lp.width = ResUtil.dp2px(480);
-                lp.height = ResUtil.dp2px(270);
-                lp.setMargins(ResUtil.dp2px(24), ResUtil.dp2px(24), 0, 0);
-                lp.addRule(RelativeLayout.ALIGN_PARENT_START);
-                lp.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-                lp.removeRule(RelativeLayout.ALIGN_PARENT_END);
-                lp.removeRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-                mBinding.video.setElevation(8f);
+                lp.width = 0;
+                lp.weight = 0.42f;
                 mBinding.infoLayout.setVisibility(View.VISIBLE);
             }
             mBinding.video.setLayoutParams(lp);
@@ -703,9 +689,13 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private void showInfoLayout() {
-        if (isFullscreen()) return;
         mBinding.infoLayout.setVisibility(View.VISIBLE);
-        mBinding.video.requestFocus();
+        if (!isFullscreen()) {
+            mBinding.video.requestFocus();
+        } else {
+            getFocus1().requestFocus();
+            resetInfoTimer();
+        }
     }
 
     private void hideInfoLayout() {
