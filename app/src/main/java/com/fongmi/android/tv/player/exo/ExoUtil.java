@@ -249,11 +249,12 @@ public class ExoUtil {
             android.media.MediaCodecInfo[] codecInfos = android.media.MediaCodecList.getCodecList().getCodecInfos();
             for (android.media.MediaCodecInfo codecInfo : codecInfos) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && codecInfo.isEncoder()) continue;
-                android.media.MediaCodecInfo.CodecProfileLevel[] profiles = codecInfo.getSupportedProfiles();
-                if (profiles == null) continue;
-                for (android.media.MediaCodecInfo.CodecProfileLevel level : profiles) {
-                    // DolbyVisionProfileDvheDtbh == 7 (DV Profile 7)
-                    if (level.profile == 7) return true;
+                for (String type : codecInfo.getSupportedTypes()) {
+                    android.media.MediaCodecInfo.CodecCapabilities caps = codecInfo.getCapabilitiesForType(type);
+                    if (caps == null || caps.profileLevels == null) continue;
+                    for (android.media.MediaCodecInfo.CodecProfileLevel level : caps.profileLevels) {
+                        if (level.profile == 7) return true;
+                    }
                 }
             }
         } catch (Exception e) {
