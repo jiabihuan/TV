@@ -22,9 +22,16 @@ import java.util.Map;
 public class TmdbUtil {
 
     private static final String TAG = "TmdbUtil";
-    private static final String BASE_URL = "https://api.themoviedb.org/3";
+    private static final String DEFAULT_BASE_URL = "https://api.themoviedb.org/3";
     private static final String IMAGE_BASE = "https://image.tmdb.org/t/p/original";
     private static final String IMAGE_BASE_W780 = "https://image.tmdb.org/t/p/w780";
+
+    private static String getBaseUrl() {
+        String url = Setting.getTmdbApiUrl();
+        if (url == null || url.isEmpty()) return DEFAULT_BASE_URL;
+        while (url.endsWith("/")) url = url.substring(0, url.length() - 1);
+        return url;
+    }
 
     /**
      * 搜索影视内容并返回横屏背景图URL。
@@ -38,7 +45,7 @@ public class TmdbUtil {
         try {
             String encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.name());
             String apiKey = Setting.getTmdbApiKey();
-            String url = BASE_URL + "/search/multi?api_key=" + apiKey + "&query=" + encodedName + "&language=zh-CN&page=1";
+            String url = getBaseUrl() + "/search/multi?api_key=" + apiKey + "&query=" + encodedName + "&language=zh-CN&page=1";
             String json = OkHttp.string(url, Map.of("Accept", "application/json"));
             if (TextUtils.isEmpty(json)) return "";
             JsonObject root = JsonParser.parseString(json).getAsJsonObject();

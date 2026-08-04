@@ -22,7 +22,7 @@ import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.impl.ConfigListener;
 import com.fongmi.android.tv.impl.LiveListener;
-import com.fongmi.android.tv.impl.PassListener;
+import com.fongmi.android.tv.impl.TmdbListener;
 import com.fongmi.android.tv.impl.SiteListener;
 import com.fongmi.android.tv.setting.LiveSetting;
 import com.fongmi.android.tv.setting.PlayerSetting;
@@ -33,8 +33,8 @@ import com.fongmi.android.tv.ui.dialog.DohDialog;
 import com.fongmi.android.tv.ui.dialog.HistoryDialog;
 import com.fongmi.android.tv.ui.dialog.LiveDialog;
 import com.fongmi.android.tv.ui.dialog.ProxySubscriptionDialog;
-import com.fongmi.android.tv.ui.dialog.PassDialog;
 import com.fongmi.android.tv.ui.dialog.RestoreDialog;
+import com.fongmi.android.tv.ui.dialog.TmdbDialog;
 import com.fongmi.android.tv.ui.dialog.WebDavDialog;
 import com.fongmi.android.tv.ui.dialog.SiteDialog;
 import com.fongmi.android.tv.utils.FileUtil;
@@ -50,7 +50,7 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SettingActivity extends BaseActivity implements ConfigListener, SiteListener, LiveListener, DohDialog.Listener, PassListener {
+public class SettingActivity extends BaseActivity implements ConfigListener, SiteListener, LiveListener, DohDialog.Listener, TmdbListener {
 
     private ActivitySettingBinding mBinding;
     private String[] size;
@@ -312,12 +312,13 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
     }
 
     private void setTmdbApi(View view) {
-        PassDialog.create().hint(getString(R.string.setting_tmdb_api_hint)).show(this);
+        TmdbDialog.show(this);
     }
 
     @Override
-    public void setPass(String pass) {
-        Setting.putTmdbApiKey(pass.trim());
+    public void setTmdbConfig(String apiUrl, String apiKey) {
+        Setting.putTmdbApiUrl(apiUrl);
+        Setting.putTmdbApiKey(apiKey);
         setTmdbText();
         Notify.show(R.string.setting_tmdb_api_set);
     }

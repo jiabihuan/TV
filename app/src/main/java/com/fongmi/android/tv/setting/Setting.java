@@ -353,6 +353,15 @@ public class Setting {
         Prefers.put("home_recommend_" + key, value);
     }
 
+    public static String getTmdbApiUrl() {
+        String url = Prefers.getString("tmdb_api_url", "");
+        return url.isEmpty() ? "https://api.themoviedb.org/3" : url;
+    }
+
+    public static void putTmdbApiUrl(String url) {
+        Prefers.put("tmdb_api_url", url);
+    }
+
     public static String getTmdbApiKey() {
         return Prefers.getString("tmdb_api_key", "");
     }
