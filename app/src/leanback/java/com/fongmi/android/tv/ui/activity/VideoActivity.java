@@ -689,13 +689,9 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private void showInfoLayout() {
+        if (isFullscreen()) return;
         mBinding.infoLayout.setVisibility(View.VISIBLE);
-        if (!isFullscreen()) {
-            mBinding.video.requestFocus();
-        } else {
-            getFocus1().requestFocus();
-            resetInfoTimer();
-        }
+        mBinding.video.requestFocus();
     }
 
     private void hideInfoLayout() {
@@ -1553,6 +1549,10 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         if (isFullscreen() && KeyUtil.isMenuKey(event)) onToggle();
         if (isVisible(mBinding.control.getRoot())) setR1Callback();
         if (isVisible(mBinding.control.getRoot())) mFocus2 = getCurrentFocus();
+        if (isFullscreen() && isGone(mBinding.control.getRoot()) && isGone(mBinding.infoLayout) && KeyUtil.isActionUp(event) && KeyUtil.isDownKey(event) && service() != null) {
+            showControl(getFocus2());
+            return true;
+        }
         if (isFullscreen() && isGone(mBinding.control.getRoot()) && isGone(mBinding.infoLayout) && mKeyDown.hasEvent(event) && service() != null) return mKeyDown.onKeyDown(event);
         if (!isFullscreen() && KeyUtil.isActionUp(event) && KeyUtil.isEnterKey(event) && getCurrentFocus() == mBinding.video) {
             enterFullscreen();
