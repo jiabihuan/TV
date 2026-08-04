@@ -381,6 +381,7 @@ public class CinemaHomeActivity extends BaseActivity implements
             }
         });
         mBinding.search.setOnClickListener(view -> SearchActivity.start(this));
+        mBinding.live.setOnClickListener(view -> LiveActivity.start(this));
         mBinding.keep.setOnClickListener(view -> KeepActivity.start(this));
         mBinding.history.setOnClickListener(view -> HistoryActivity.start(this));
         mBinding.push.setOnClickListener(view -> PushActivity.start(this));
@@ -502,7 +503,7 @@ public class CinemaHomeActivity extends BaseActivity implements
 
     private boolean isNavFocused() {
         View focus = getCurrentFocus();
-        return focus == mBinding.search || focus == mBinding.keep || focus == mBinding.history
+        return focus == mBinding.search || focus == mBinding.live || focus == mBinding.keep || focus == mBinding.history
                 || focus == mBinding.push || focus == mBinding.setting || focus == mBinding.net
                 || focus == mBinding.logo || focus == mBinding.siteName;
     }

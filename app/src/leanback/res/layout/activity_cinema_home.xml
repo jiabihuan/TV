@@ -92,6 +92,22 @@
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/live"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/bg_tv_cinema_nav_focused"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="&#x76F4;&#x64AD;"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
             android:id="@+id/keep"
             android:layout_width="wrap_content"
             android:layout_height="36dp"
@@ -102,7 +118,7 @@
             android:gravity="center"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:text="@string/home_keep"
+            android:text="&#x6536;&#x85CF;"
             android:textColor="@color/white"
             android:textSize="14sp"
             android:textStyle="bold" />
