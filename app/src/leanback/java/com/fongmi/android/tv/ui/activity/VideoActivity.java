@@ -11,6 +11,7 @@ import android.text.style.ClickableSpan;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -124,6 +125,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private Clock mClock;
     private View mFocus1;
     private View mFocus2;
+    private long mLastBackTime = 0;
     private final Runnable mHideInfoRunnable = this::hideInfoLayout;
 
     public static void push(FragmentActivity activity, String text) {
@@ -270,13 +272,12 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     protected void initView(Bundle savedInstanceState) {
         super.initView(savedInstanceState);
         PlayerSetting.applyControllerTransparency(mBinding.control.getRoot());
+        mBinding.video.setForeground(null);
         mFrameParams = mBinding.video.getLayoutParams();
         mClock = Clock.create(mBinding.widget.clock);
         mKeyDown = CustomKeyDownVod.create(this);
-        mKeyDown.setFull(false);
-        mKeyDown.setSpeedOnDown(true);
-        setFullscreen(false);
-        applySplitMode();
+        mKeyDown.setFull(true);
+        setFullscreen(true);
         mObserveDetail = this::setDetail;
         mObservePlayer = this::setPlayer;
         mObserveSearch = this::setSearch;
@@ -298,7 +299,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.video.setOnClickListener(view -> onVideo());
         mBinding.change1.setOnClickListener(view -> onChange());
         mBinding.content.setOnClickListener(view -> onContent());
-        mBinding.contentBtn.setOnClickListener(view -> onContent());
         mBinding.control.action.text.setOnClickListener(this::onTrack);
         mBinding.control.action.audio.setOnClickListener(this::onTrack);
         mBinding.control.action.video.setOnClickListener(this::onTrack);
@@ -467,14 +467,16 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     private void setText(Vod item) {
         mBinding.content.setTag(item.getContent());
-        setText(mBinding.content, R.string.detail_content, item.getContent());
+        mBinding.content.setText(item.getContent());
+        setText(mBinding.type, R.string.detail_type, item.getTypeName());
+        setText(mBinding.actor, R.string.detail_actor, item.getActor());
+        /*
         setText(mBinding.year, R.string.detail_year, item.getYear());
         setText(mBinding.area, R.string.detail_area, item.getArea());
-        setText(mBinding.type, R.string.detail_type, item.getTypeName());
         setText(mBinding.site, R.string.detail_site, getSite().getName());
         setText(mBinding.director, R.string.detail_director, item.getDirector());
-        setText(mBinding.actor, R.string.detail_actor, item.getActor());
         setText(mBinding.remark, 0, item.getRemarks());
+        */
     }
 
     private void setText(TextView view, int resId, String text) {
@@ -483,7 +485,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         view.setVisibility(text.isEmpty() ? View.GONE : View.VISIBLE);
         if (view.getParent() instanceof View) {
             View parent = (View) view.getParent();
-            if (parent.getId() == R.id.typeLayout || parent.getId() == R.id.actorLayout || parent.getId() == R.id.row1 || parent.getId() == R.id.descLayout) {
+            if (parent.getId() == R.id.typeLayout || parent.getId() == R.id.actorLayout) {
                 parent.setVisibility(text.isEmpty() ? View.GONE : View.VISIBLE);
             }
         }
@@ -653,68 +655,28 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private void enterFullscreen() {
-        mFocus1 = getCurrentFocus();
         mKeyDown.setFull(true);
         setFullscreen(true);
-        applySplitMode();
-        hideInfoLayout();
-        mBinding.video.setForeground(null);
-        mBinding.video.requestFocus();
-        mFocus2 = null;
     }
 
     private void exitFullscreen() {
-        mKeyDown.setFull(false);
-        setFullscreen(false);
-        applySplitMode();
-        mBinding.video.setForeground(ResUtil.getDrawable(R.drawable.selector_video));
-        hideControl();
-        mFocus2 = null;
-        getFocus1().requestFocus();
-    }
-
-    private void applySplitMode() {
-        if (mBinding.video == null) return;
-        ViewGroup.LayoutParams params = mBinding.video.getLayoutParams();
-        if (params instanceof android.widget.LinearLayout.LayoutParams) {
-            android.widget.LinearLayout.LayoutParams lp = (android.widget.LinearLayout.LayoutParams) params;
-            if (isFullscreen()) {
-                lp.width = android.widget.LinearLayout.LayoutParams.MATCH_PARENT;
-                lp.height = android.widget.LinearLayout.LayoutParams.MATCH_PARENT;
-                lp.weight = 0;
-                lp.setMargins(0, 0, 0, 0);
-                mBinding.infoLayout.setVisibility(View.GONE);
-                mBinding.scroll.setVisibility(View.GONE);
-            } else {
-                int density = (int) getResources().getDisplayMetrics().density;
-                lp.width = 320 * density;
-                lp.height = 180 * density;
-                lp.weight = 0;
-                lp.setMargins(24 * density, 24 * density, 0, 12 * density);
-                mBinding.infoLayout.setVisibility(View.VISIBLE);
-                mBinding.scroll.setVisibility(View.VISIBLE);
-            }
-            mBinding.video.setLayoutParams(lp);
-        }
     }
 
     private void showInfoLayout() {
-        if (isFullscreen()) return;
         mBinding.infoLayout.setVisibility(View.VISIBLE);
-        mBinding.video.requestFocus();
+        getFocus1().requestFocus();
+        resetInfoTimer();
     }
 
     private void hideInfoLayout() {
-        if (isFullscreen()) {
-            mBinding.infoLayout.setVisibility(View.GONE);
-            mBinding.video.requestFocus();
-        }
+        mBinding.infoLayout.setVisibility(View.GONE);
+        mBinding.video.requestFocus();
         cancelInfoTimer();
     }
 
     private void resetInfoTimer() {
         App.removeCallbacks(mHideInfoRunnable);
-        if (isFullscreen() && mBinding.infoLayout.getVisibility() == View.VISIBLE) {
+        if (mBinding.infoLayout.getVisibility() == View.VISIBLE) {
             App.post(mHideInfoRunnable, 5000);
         }
     }
@@ -745,7 +707,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     private void onVideo() {
         if (!isFullscreen()) enterFullscreen();
-        else onToggle();
     }
 
     private void onChange() {
@@ -1554,29 +1515,12 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         return mFocus2 == null || mFocus2.getVisibility() != View.VISIBLE || mFocus2 == mBinding.control.action.opening || mFocus2 == mBinding.control.action.ending ? mBinding.control.action.next : mFocus2;
     }
 
-    private View getDownFocus() {
-        long position = player().getPosition();
-        long duration = player().getDuration();
-        long limit = Constant.getOpEdLimit(duration);
-        if (position > 0 && duration > 0 && position <= limit) {
-            return mBinding.control.action.opening;
-        } else if (position > 0 && duration > 0 && duration - position <= limit) {
-            return mBinding.control.action.ending;
-        } else {
-            return getFocus2();
-        }
-    }
-
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (isFullscreen() && KeyUtil.isMenuKey(event)) onToggle();
         if (isVisible(mBinding.control.getRoot())) setR1Callback();
         if (isVisible(mBinding.control.getRoot())) mFocus2 = getCurrentFocus();
-        if (isFullscreen() && isGone(mBinding.control.getRoot()) && mKeyDown.hasEvent(event) && service() != null) return mKeyDown.onKeyDown(event);
-        if (!isFullscreen() && KeyUtil.isActionUp(event) && KeyUtil.isEnterKey(event) && getCurrentFocus() == mBinding.video) {
-            enterFullscreen();
-            return true;
-        }
+        if (isFullscreen() && isGone(mBinding.control.getRoot()) && isGone(mBinding.infoLayout) && mKeyDown.hasEvent(event) && service() != null) return mKeyDown.onKeyDown(event);
         if (KeyUtil.isMediaFastForward(event)) return onSeekForward();
         if (KeyUtil.isMediaRewind(event)) return onSeekBack();
         return super.dispatchKeyEvent(event);
@@ -1611,23 +1555,17 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     public void onSpeedEnd() {
         mBinding.widget.speed.clearAnimation();
         mBinding.widget.speed.setVisibility(View.GONE);
-        if (mHistory != null) mBinding.control.action.speed.setText(player().setSpeed(mHistory.getSpeed()));
+        mBinding.control.action.speed.setText(player().setSpeed(mHistory.getSpeed()));
     }
 
     @Override
     public void onKeyUp() {
-        mBinding.widget.center.setVisibility(View.VISIBLE);
         showControl(getFocus2());
     }
 
     @Override
     public void onKeyDown() {
-        if (isFullscreen()) {
-            mBinding.widget.center.setVisibility(View.VISIBLE);
-            showControl(getDownFocus());
-        } else {
-            showInfoLayout();
-        }
+        showInfoLayout();
     }
 
     @Override
@@ -1671,12 +1609,20 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     protected void onBackInvoked() {
         if (isVisible(mBinding.control.getRoot())) {
             hideControl();
+        } else if (isVisible(mBinding.infoLayout)) {
+            hideInfoLayout();
         } else if (isVisible(mBinding.widget.center)) {
             hideCenter();
-        } else if (isFullscreen()) {
-            exitFullscreen();
         } else {
-            super.onBackInvoked();
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - mLastBackTime < 2000) {
+                mViewModel.stopSearch();
+                if (isTaskRoot()) startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+                super.onBackInvoked();
+            } else {
+                mLastBackTime = currentTime;
+                Notify.show(R.string.play_exit_hint);
+            }
         }
     }
 

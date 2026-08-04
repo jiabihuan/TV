@@ -110,7 +110,6 @@ public class CastActivity extends PlaybackActivity implements CustomKeyDownVod.L
         mClock = Clock.create(mBinding.widget.clock);
         mKeyDown = CustomKeyDownVod.create(this);
         mKeyDown.setFull(true);
-        mKeyDown.setSpeedOnDown(false);
         mR1 = this::hideControl;
         mR2 = this::setTraffic;
         setVideoView();
