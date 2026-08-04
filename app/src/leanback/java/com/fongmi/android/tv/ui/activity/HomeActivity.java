@@ -976,6 +976,52 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         }
     }
 
+    /** 从分类栏按 ↓ 时，聚焦 ViewPager 里当前 FolderFragment 的第一个海报 */
+    private boolean requestFocusOnPager() {
+        try {
+            if (mBinding.pager.getVisibility() != View.VISIBLE) return false;
+            FolderFragment fragment = getFragment();
+            if (fragment == null) return false;
+            View view = fragment.getView();
+            if (view == null) return false;
+            // 递归查找第一个可聚焦的海报
+            View focusable = findFirstFocusable(view);
+            if (focusable != null) return focusable.requestFocus();
+            // 内容还没加载，延迟再试
+            App.post(() -> {
+                FolderFragment f = getFragment();
+                if (f == null) return;
+                View v = f.getView();
+                if (v == null) return;
+                View target = findFirstFocusable(v);
+                if (target != null) target.requestFocus();
+            }, 200);
+            return true;
+        } catch (Throwable e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /** 判断当前焦点是否在 ViewPager（非首页分类的内容区）内 */
+    private boolean isPagerContentFocused() {
+        try {
+            View focus = getCurrentFocus();
+            if (focus == null) return false;
+            if (mBinding.pager.getVisibility() != View.VISIBLE) return false;
+            // 焦点在 pager 内部
+            View v = focus;
+            while (v != null) {
+                if (v == mBinding.pager) return true;
+                Object p = v.getParent();
+                v = (p instanceof View) ? (View) p : null;
+            }
+            return false;
+        } catch (Throwable e) {
+            return false;
+        }
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (KeyUtil.isMenuKey(event)) showDialog();
@@ -990,9 +1036,16 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                     return mBinding.recycler.getChildAt(0).requestFocus();
                 }
             }
-            // 分类 recyclerType（横排那排「首页 综合配置 ...」）按 ↓ → 直接跳到 Banner 轮播
+            // 分类 recyclerType（横排那排「首页 综合配置 ...」）按 ↓
             else if (isRecyclerTypeFocused() && mBinding.recyclerType.getVisibility() == View.VISIBLE) {
-                if (requestFocusOnHomeBanner()) return true;
+                int catPos = mBinding.recyclerType.getSelectedPosition();
+                if (catPos == 0) {
+                    // 首页 → 聚焦 Banner 轮播
+                    if (requestFocusOnHomeBanner()) return true;
+                } else {
+                    // 非首页分类 → 聚焦 ViewPager 里的海报列表
+                    if (requestFocusOnPager()) return true;
+                }
             }
             // Banner 轮播按 ↓ → 跳到下面的海报列表（头部 header 不可聚焦，
             // 默认 focusSearch 跳不过去，必须手动找下一个可聚焦行）
@@ -1000,10 +1053,14 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                 if (requestFocusBelowBanner()) return true;
             }
         }
-        // 海报列表第一行按 ↑ → 回到 Banner 轮播
+        // 海报列表第一行按 ↑ → 回到上方（Banner 或分类栏）
         if (KeyUtil.isActionDown(event) && KeyUtil.isUpKey(event)) {
             if (isFirstContentRowFocused()) {
                 if (requestFocusOnHomeBanner()) return true;
+            }
+            // ViewPager 里的海报按 ↑ → 回到分类栏
+            if (isPagerContentFocused()) {
+                return mBinding.recyclerType.requestFocus();
             }
         }
         return super.dispatchKeyEvent(event);
@@ -1038,6 +1095,9 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             setHistoryDelete(false);
         } else if (mBinding.pager.getVisibility() == View.VISIBLE && folder != null && folder.canBack()) {
             folder.goBack();
+        } else if (isPagerContentFocused()) {
+            // 焦点在 ViewPager 海报上 → 先回到分类栏
+            mBinding.recyclerType.requestFocus();
         } else if (isBannerFocused()) {
             // 如果焦点在轮播海报上，先把焦点跳到下面的分类或列表（不要直接退出 App）
             if (mBinding.recyclerType.getVisibility() == View.VISIBLE) {
