@@ -271,7 +271,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     protected void initView(Bundle savedInstanceState) {
         super.initView(savedInstanceState);
         PlayerSetting.applyControllerTransparency(mBinding.control.getRoot());
-        mBinding.video.setForeground(null);
         mFrameParams = mBinding.video.getLayoutParams();
         mClock = Clock.create(mBinding.widget.clock);
         mKeyDown = CustomKeyDownVod.create(this);
@@ -673,15 +672,21 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private void applySplitMode() {
         if (mBinding.video == null) return;
         ViewGroup.LayoutParams params = mBinding.video.getLayoutParams();
-        if (params instanceof android.widget.LinearLayout.LayoutParams) {
-            android.widget.LinearLayout.LayoutParams lp = (android.widget.LinearLayout.LayoutParams) params;
+        if (params instanceof android.widget.RelativeLayout.LayoutParams) {
+            android.widget.RelativeLayout.LayoutParams lp = (android.widget.RelativeLayout.LayoutParams) params;
             if (isFullscreen()) {
-                lp.width = 0;
-                lp.weight = 1;
+                lp.width = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
+                lp.height = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
+                lp.setMargins(0, 0, 0, 0);
+                lp.removeRule(android.widget.RelativeLayout.ALIGN_PARENT_START);
+                lp.removeRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
                 mBinding.infoLayout.setVisibility(View.GONE);
             } else {
-                lp.width = 0;
-                lp.weight = 0.42f;
+                lp.width = ResUtil.dp2px(480);
+                lp.height = ResUtil.dp2px(270);
+                lp.setMargins(ResUtil.dp2px(24), ResUtil.dp2px(24), 0, 0);
+                lp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_START);
+                lp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
                 mBinding.infoLayout.setVisibility(View.VISIBLE);
             }
             mBinding.video.setLayoutParams(lp);
