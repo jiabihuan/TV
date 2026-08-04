@@ -246,7 +246,7 @@ public class ExoUtil {
      */
     public static boolean hasDolbyVisionProfile7Support() {
         try {
-            android.media.MediaCodecInfo[] codecInfos = android.media.MediaCodecList.getCodecList().getCodecInfos();
+            android.media.MediaCodecInfo[] codecInfos = android.media.MediaCodecList.getCodecList();
             for (android.media.MediaCodecInfo codecInfo : codecInfos) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && codecInfo.isEncoder()) continue;
                 for (String type : codecInfo.getSupportedTypes()) {
