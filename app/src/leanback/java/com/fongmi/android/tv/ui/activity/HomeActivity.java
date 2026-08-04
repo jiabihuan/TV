@@ -912,9 +912,9 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                     return focusable.requestFocus();
                 }
             }
-            // ViewHolder 还没创建（行还没布局），滚动到 position 1 再延迟聚焦
-            if (count > 1) {
-                rv.scrollToPosition(1);
+            // ViewHolder 还没创建（行还没布局），滚动到第一个内容行再延迟聚焦
+            if (count > 2) {
+                rv.scrollToPosition(2);
                 App.post(() -> {
                     for (int i = 1; i < rv.getAdapter().getItemCount(); i++) {
                         RecyclerView.ViewHolder vh = rv.findViewHolderForAdapterPosition(i);
@@ -928,6 +928,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                 }, 150);
                 return true;
             }
+            // count <= 2 说明只有 Banner + header，没有内容行，不消费事件让默认 focusSearch 处理
             return false;
         } catch (Throwable e) {
             e.printStackTrace();
