@@ -298,6 +298,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.video.setOnClickListener(view -> onVideo());
         mBinding.change1.setOnClickListener(view -> onChange());
         mBinding.content.setOnClickListener(view -> onContent());
+        mBinding.contentBtn.setOnClickListener(view -> onContent());
         mBinding.control.action.text.setOnClickListener(this::onTrack);
         mBinding.control.action.audio.setOnClickListener(this::onTrack);
         mBinding.control.action.video.setOnClickListener(this::onTrack);
@@ -680,10 +681,12 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
                 lp.width = 0;
                 lp.weight = 1;
                 mBinding.infoLayout.setVisibility(View.GONE);
+                mBinding.scroll.setVisibility(View.GONE);
             } else {
                 lp.width = 0;
                 lp.weight = 0.42f;
                 mBinding.infoLayout.setVisibility(View.VISIBLE);
+                mBinding.scroll.setVisibility(View.VISIBLE);
             }
             mBinding.video.setLayoutParams(lp);
         }
