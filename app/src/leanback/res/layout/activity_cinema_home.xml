@@ -290,11 +290,11 @@
         <TextView
             android:id="@+id/tip"
             android:layout_width="560dp"
-            android:layout_height="72dp"
+            android:layout_height="96dp"
             android:layout_marginTop="4dp"
             android:ellipsize="end"
             android:lineSpacingExtra="3dp"
-            android:maxLines="3"
+            android:maxLines="4"
             android:shadowColor="#99000000"
             android:shadowDx="0"
             android:shadowDy="1"

@@ -390,4 +390,12 @@ public class Setting {
     public static void putTmdbBackdrop(String name, String url) {
         Prefers.put("tmdb_backdrop_" + name, url);
     }
+
+    public static String getTmdbOverview(String name) {
+        return Prefers.getString("tmdb_overview_" + name, "");
+    }
+
+    public static void putTmdbOverview(String name, String overview) {
+        Prefers.put("tmdb_overview_" + name, overview);
+    }
 }
