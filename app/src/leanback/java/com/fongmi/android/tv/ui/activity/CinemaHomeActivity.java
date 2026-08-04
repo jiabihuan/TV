@@ -181,6 +181,7 @@ public class CinemaHomeActivity extends BaseActivity implements
         mBinding.timeReminder.setText(getString(R.string.cinema_welcome, getString(R.string.app_name)));
         if (!mHasMovieSelected) {
             mBinding.appTitle.setText(getString(R.string.app_name));
+            mBinding.tagRow.setVisibility(View.GONE);
         }
     }
 
@@ -203,7 +204,37 @@ public class CinemaHomeActivity extends BaseActivity implements
         } else {
             mBinding.tip.setText(R.string.home_tip);
         }
+        updateTagRow(item);
         updateCoverBg(item);
+    }
+
+    private void updateTagRow(Vod item) {
+        boolean hasTag = false;
+        String year = item.getYear();
+        String area = item.getArea();
+        String type = item.getTypeName();
+        if (!TextUtils.isEmpty(year)) {
+            mBinding.tagYear.setText(year);
+            mBinding.tagYear.setVisibility(View.VISIBLE);
+            hasTag = true;
+        } else {
+            mBinding.tagYear.setVisibility(View.GONE);
+        }
+        if (!TextUtils.isEmpty(area)) {
+            mBinding.tagArea.setText(area);
+            mBinding.tagArea.setVisibility(View.VISIBLE);
+            hasTag = true;
+        } else {
+            mBinding.tagArea.setVisibility(View.GONE);
+        }
+        if (!TextUtils.isEmpty(type)) {
+            mBinding.tagType.setText(type);
+            mBinding.tagType.setVisibility(View.VISIBLE);
+            hasTag = true;
+        } else {
+            mBinding.tagType.setVisibility(View.GONE);
+        }
+        mBinding.tagRow.setVisibility(hasTag ? View.VISIBLE : View.GONE);
     }
 
     private void updateCoverBg(Vod item) {
@@ -224,31 +255,22 @@ public class CinemaHomeActivity extends BaseActivity implements
         }
         if (TextUtils.equals(mLastCoverUrl, coverUrl)) return;
         mLastCoverUrl = coverUrl;
-        boolean hasBackdrop = !TextUtils.isEmpty(backdrop);
-        android.widget.FrameLayout.LayoutParams lp = (android.widget.FrameLayout.LayoutParams) mBinding.coverBg.getLayoutParams();
-        if (hasBackdrop) {
-            lp.width = getResources().getDimensionPixelSize(R.dimen.tv_cinema_cover_width);
-        } else {
-            lp.width = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
-        }
-        lp.height = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
-        if (hasBackdrop) {
-            lp.gravity = android.view.Gravity.END | android.view.Gravity.CENTER_VERTICAL;
-        } else {
-            lp.gravity = android.view.Gravity.CENTER;
-        }
-        mBinding.coverBg.setAlpha(hasBackdrop ? 0.7f : 1.0f);
-        mBinding.homeMask.setAlpha(1.0f);
-        if (hasBackdrop) {
-            mBinding.coverTint.setBackgroundResource(R.drawable.bg_tv_cinema_cover_tint);
-        } else {
-            mBinding.coverTint.setBackgroundResource(R.drawable.bg_tv_cinema_backdrop_tint);
-        }
+        boolean isFirstLoad = mBinding.coverBg.getVisibility() != View.VISIBLE;
+        mBinding.coverTint.setBackgroundResource(R.drawable.bg_tv_cinema_cover_tint);
         mBinding.coverTint.setAlpha(1.0f);
-        mBinding.coverBg.setLayoutParams(lp);
-        mBinding.coverBg.setVisibility(View.VISIBLE);
-        mBinding.coverBg.setScaleType(hasBackdrop ? android.widget.ImageView.ScaleType.CENTER_CROP : android.widget.ImageView.ScaleType.FIT_START);
-        ImgUtil.load(item.getName(), coverUrl, mBinding.coverBg);
+        mBinding.homeMask.setAlpha(1.0f);
+        mBinding.coverBg.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        if (isFirstLoad) {
+            mBinding.coverBg.setVisibility(View.VISIBLE);
+            mBinding.coverBg.setAlpha(0f);
+            ImgUtil.load(item.getName(), coverUrl, mBinding.coverBg);
+            mBinding.coverBg.animate().alpha(0.82f).setDuration(400).start();
+        } else {
+            mBinding.coverBg.animate().alpha(0f).setDuration(200).withEndAction(() -> {
+                ImgUtil.load(item.getName(), coverUrl, mBinding.coverBg);
+                mBinding.coverBg.animate().alpha(0.82f).setDuration(400).start();
+            }).start();
+        }
     }
 
     private void setCategories(List<Class> types) {
@@ -303,6 +325,7 @@ public class CinemaHomeActivity extends BaseActivity implements
         }
         mHasMovieSelected = false;
         mLastCoverUrl = "";
+        mBinding.tagRow.setVisibility(View.GONE);
         mBinding.loading.setVisibility(View.VISIBLE);
         mBinding.loadingProgress.setVisibility(View.VISIBLE);
         mBinding.empty.setText(R.string.home_loading);

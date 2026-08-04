@@ -19,6 +19,12 @@ public class PlayerSetting {
     public static final int ENGINE_EXO = 0;
     public static final int ENGINE_MPV = 1;
 
+    // DV7 处理模式常量
+    public static final int DV7_AUTO = 0;        // 自动检测
+    public static final int DV7_CONVERT = 1;     // 转为DV8.1
+    public static final int DV7_STRIP = 2;       // 剥离为HDR10
+    public static final int DV7_OFF = 3;         // 不干预
+
     public static int getEngine() {
         return Math.min(Math.max(Prefers.getInt("player_engine", ENGINE_EXO), ENGINE_EXO), ENGINE_MPV);
     }
@@ -30,6 +36,18 @@ public class PlayerSetting {
     public static boolean isMpv() {
         return getEngine() == ENGINE_MPV;
     }
+
+    public static int getDv7HandlingMode() {
+        return Math.min(Math.max(Prefers.getInt("dv7_mode", DV7_AUTO), DV7_AUTO), DV7_OFF);
+    }
+
+    public static void putDv7HandlingMode(int mode) {
+        Prefers.put("dv7_mode", mode);
+    }
+
+    public static boolean isDv7Auto() { return getDv7HandlingMode() == DV7_AUTO; }
+    public static boolean isDv7Convert() { return getDv7HandlingMode() == DV7_CONVERT; }
+    public static boolean isDv7Strip() { return getDv7HandlingMode() == DV7_STRIP; }
 
     public static boolean isPreload() {
         return Prefers.getBoolean("preload", false);

@@ -72,7 +72,25 @@ public class ExoUtil {
     }
 
     public static void applyDolbyVisionPolicy(Player player) {
-        if (allowDolbyVision()) return;
+        // DV7 specific handling: detect selected DV7 track and apply fallback policy.
+        // When a DV7 track is selected and the handling mode requires stripping
+        // (DV7_STRIP always, or DV7_AUTO when device lacks native DV7 support),
+        // we force fallback to a non-DV video track (HEVC/HDR10).
+        boolean dv7Fallback = false;
+        if (getDv7HandlingMode() != PlayerSetting.DV7_OFF) {
+            for (Tracks.Group group : player.getCurrentTracks().getGroups()) {
+                if (group.getType() != C.TRACK_TYPE_VIDEO) continue;
+                for (int i = 0; i < group.length; i++) {
+                    if (group.isTrackSelected(i) && isDolbyVisionProfile7(group.getTrackFormat(i))) {
+                        dv7Fallback = shouldStripDv7();
+                        break;
+                    }
+                }
+                if (dv7Fallback) break;
+            }
+        }
+        // If no DV7 fallback is needed and DV passthrough is allowed, do nothing.
+        if (!dv7Fallback && allowDolbyVision()) return;
         Tracks tracks = player.getCurrentTracks();
         TrackGroup bestGroup = null;
         int bestIndex = -1;
@@ -153,10 +171,13 @@ public class ExoUtil {
         DefaultTrackSelector trackSelector = new DefaultTrackSelector(App.get());
         DefaultTrackSelector.Parameters.Builder builder = trackSelector.buildUponParameters();
         if (PlayerSetting.isPreferAAC()) builder.setPreferredAudioMimeType(MimeTypes.AUDIO_AAC);
-        if (!allowDolbyVision()) builder.setPreferredVideoMimeTypes(MimeTypes.VIDEO_H265, MimeTypes.VIDEO_H264, MimeTypes.VIDEO_AV1, MimeTypes.VIDEO_VP9, MimeTypes.VIDEO_VP8);
+        // DV7 handling: when stripping DV7 (STRIP mode or AUTO without device support),
+        // prefer non-DV video mime types to avoid selecting DV7 tracks.
+        boolean dv7Strip = shouldStripDv7();
+        if (!allowDolbyVision() || dv7Strip) builder.setPreferredVideoMimeTypes(MimeTypes.VIDEO_H265, MimeTypes.VIDEO_H264, MimeTypes.VIDEO_AV1, MimeTypes.VIDEO_VP9, MimeTypes.VIDEO_VP8);
         builder.setPreferredTextLanguage(Locale.getDefault().getISO3Language());
         builder.setTunnelingEnabled(PlayerSetting.isTunnel());
-        builder.setForceHighestSupportedBitrate(allowDolbyVision());
+        builder.setForceHighestSupportedBitrate(allowDolbyVision() && !dv7Strip);
         trackSelector.setParameters(builder.build());
         return trackSelector;
     }
@@ -197,6 +218,68 @@ public class ExoUtil {
         if (MimeTypes.VIDEO_DOLBY_VISION.equals(format.sampleMimeType)) return true;
         String codecs = format.codecs == null ? "" : format.codecs.toLowerCase(Locale.US);
         return codecs.contains("dvhe") || codecs.contains("dvh1") || codecs.contains("dva1") || codecs.contains("dvav");
+    }
+
+    /**
+     * 检测 Format 是否为 Dolby Vision Profile 7 (DV7)。
+     * DV7 codec string 包含 dvhe.07 / dvh1.07 / dva1.07 / dvav.07。
+     */
+    public static boolean isDolbyVisionProfile7(Format format) {
+        if (format == null) return false;
+        String codecs = format.codecs == null ? "" : format.codecs.toLowerCase(Locale.US);
+        return codecs.contains("dvhe.07") || codecs.contains("dvh1.07") || codecs.contains("dva1.07") || codecs.contains("dvav.07");
+    }
+
+    /**
+     * 将 DV7 codec string 重写为 DV8.1 (Profile 8)。
+     * 例如 dvhe.07.06 -> dvhe.08.06
+     * DV8.1 是 HDR10 兼容的 DV profile，大多数支持 DV 的设备都能解码。
+     */
+    public static String rewriteDv7ToDv81(String codecs) {
+        if (codecs == null) return null;
+        return codecs.replaceAll("(?i)(dvhe|dvav|dvh1|dva1)\\.0[57]\\.", "$1.08.");
+    }
+
+    /**
+     * 检测设备是否支持 DV Profile 7 原生解码。
+     * 通过遍历所有硬件解码器，检查是否有支持 DolbyVisionProfileDvheDtbh (profile 7) 的解码器。
+     */
+    public static boolean hasDolbyVisionProfile7Support() {
+        try {
+            android.media.MediaCodecInfo[] codecInfos = android.media.MediaCodecList.getCodecList().getCodecInfos();
+            for (android.media.MediaCodecInfo codecInfo : codecInfos) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && codecInfo.isEncoder()) continue;
+                android.media.MediaCodecInfo.CodecProfileLevel[] profiles = codecInfo.getSupportedProfiles();
+                if (profiles == null) continue;
+                for (android.media.MediaCodecInfo.CodecProfileLevel level : profiles) {
+                    // DolbyVisionProfileDvheDtbh == 7 (DV Profile 7)
+                    if (level.profile == 7) return true;
+                }
+            }
+        } catch (Exception e) {
+            return false;
+        }
+        return false;
+    }
+
+    /**
+     * 获取 DV7 处理模式，委托给 PlayerSetting。
+     */
+    public static int getDv7HandlingMode() {
+        return PlayerSetting.getDv7HandlingMode();
+    }
+
+    /**
+     * 判断当前 DV7 处理策略是否需要将 DV7 回退为非 DV 轨道（HEVC/HDR10）。
+     * DV7_STRIP：始终回退。
+     * DV7_AUTO：设备不支持 DV7 原生解码时回退。
+     * DV7_CONVERT / DV7_OFF：不回退（CONVERT 在 MediaSource 层重写 codec string）。
+     */
+    private static boolean shouldStripDv7() {
+        int mode = getDv7HandlingMode();
+        if (mode == PlayerSetting.DV7_STRIP) return true;
+        if (mode == PlayerSetting.DV7_AUTO) return !hasDolbyVisionProfile7Support();
+        return false;
     }
 
     private static long videoScore(Format format) {

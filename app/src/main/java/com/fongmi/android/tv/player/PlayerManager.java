@@ -28,15 +28,12 @@ import com.fongmi.android.tv.bean.Sub;
 import com.fongmi.android.tv.bean.Track;
 import com.fongmi.android.tv.impl.ParseCallback;
 import com.fongmi.android.tv.player.engine.ExoPlayerEngine;
-import com.fongmi.android.tv.player.engine.MpvPlayerEngine;
 import com.fongmi.android.tv.player.engine.PlaySpec;
 import com.fongmi.android.tv.player.engine.PlayerEngine;
-import com.fongmi.android.tv.player.mpv.MpvMedia;
 import com.fongmi.android.tv.setting.DanmakuSetting;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
-import com.fongmi.android.tv.utils.UrlUtil;
 import com.fongmi.android.tv.utils.Util;
 import com.github.catvod.net.OkHttp;
 import com.google.common.net.HttpHeaders;
@@ -203,7 +200,7 @@ public class PlayerManager implements ParseCallback {
     }
 
     public String getEngineText() {
-        return ResUtil.getString(isMpvEngine() ? R.string.play_mpv : R.string.play_exo);
+        return ResUtil.getString(R.string.play_exo);
     }
 
     public String getPositionTime(long delta) {
@@ -399,21 +396,11 @@ public class PlayerManager implements ParseCallback {
     }
 
     public void toggleEngine() {
-        setEngine(isMpvEngine() ? PlayerSetting.ENGINE_EXO : PlayerSetting.ENGINE_MPV);
+        // Only ExoPlayer engine is available; no-op.
     }
 
     public void setEngine(int target) {
-        String reason = target == PlayerSetting.ENGINE_MPV ? getMpvUnsupportedReason(spec) : "";
-        if (!TextUtils.isEmpty(reason)) {
-            Log.e(TAG, "MPV unsupported: " + reason + ", url=" + (spec == null ? "null" : spec.getUrl()));
-            Notify.show("MPV 不可用：" + reason);
-            PlayerSetting.putEngine(PlayerSetting.ENGINE_EXO);
-            return;
-        }
-        int old = isMpvEngine() ? PlayerSetting.ENGINE_MPV : PlayerSetting.ENGINE_EXO;
-        PlayerSetting.putEngine(target);
-        if (old == target) return;
-        switchEngine();
+        PlayerSetting.putEngine(PlayerSetting.ENGINE_EXO);
     }
 
     private void rebuildPlayer() {
@@ -449,40 +436,6 @@ public class PlayerManager implements ParseCallback {
         }
     }
 
-    private void switchEngine() {
-        long position = getSwitchPosition();
-        switchEngineOnly();
-        if (spec != null && spec.getUrl() != null) setMediaItem(Constant.TIMEOUT_PLAY, position);
-    }
-
-    private void switchEngineOnly() {
-        PlayerEngine old = engine;
-        Player oldPlayer = player;
-        // 1. 先把旧 player 暂停、stop 并移除 listener（防止旧引擎在 release 时还回调到 listener
-        //    或内部 MediaCodec 状态和新引擎并发导致闪退）
-        if (oldPlayer != null) {
-            try { oldPlayer.stop(); } catch (Throwable e) { e.printStackTrace(); }
-            try { oldPlayer.removeListener(listener); } catch (Throwable e) { e.printStackTrace(); }
-        }
-        try {
-            engine = createEngine(old == null ? PlayerEngine.HARD : old.getDecode());
-            player = engine.getPlayer();
-            if (player != null) try { player.addListener(listener); } catch (Throwable e) { e.printStackTrace(); }
-            callback.onPlayerRebuild(player);
-        } catch (Throwable e) {
-            e.printStackTrace();
-            if (callback != null) callback.onError(e.getMessage());
-        }
-        // 2. 延迟 release 旧 engine（避免新 engine 刚创建就和旧 engine 同时在 CCodec/MediaCodec
-        //    层争夺同一路解码实例，导致 IllegalStateException/Native crash）
-        if (old != null) {
-            final PlayerEngine oldEngineForRelease = old;
-            com.fongmi.android.tv.App.post(() -> {
-                try { oldEngineForRelease.release(); } catch (Throwable e) { e.printStackTrace(); }
-            }, 400);
-        }
-    }
-
     private long getSwitchPosition() {
         if (player == null) return C.TIME_UNSET;
         long position = player.getCurrentPosition();
@@ -490,34 +443,15 @@ public class PlayerManager implements ParseCallback {
     }
 
     private PlayerEngine createEngine(int decode) {
-        return canUseMpv(spec) ? new MpvPlayerEngine(decode, listener) : new ExoPlayerEngine(decode, listener);
+        return new ExoPlayerEngine(decode, listener);
     }
 
     private boolean isMpvEngine() {
-        return engine instanceof MpvPlayerEngine;
+        return false;
     }
 
     public boolean isMpv() {
-        return isMpvEngine();
-    }
-
-    private boolean canUseMpv(PlaySpec spec) {
-        return (PlayerSetting.isMpv() || MpvMedia.shouldPreferMpv(spec == null ? null : spec.getUrl())) && isMpvSupported(spec);
-    }
-
-    private boolean isMpvSupported(PlaySpec spec) {
-        return TextUtils.isEmpty(getMpvUnsupportedReason(spec));
-    }
-
-    private String getMpvUnsupportedReason(PlaySpec spec) {
-        if (!MpvPlayerEngine.isAvailable()) {
-            String error = MpvPlayerEngine.getAvailabilityError();
-            return TextUtils.isEmpty(error) ? "native 库加载失败" : error;
-        }
-        if (spec == null) return "";
-        if (spec.getDrm() != null) return "暂不支持 DRM 源";
-        if ("smb".equals(UrlUtil.scheme(spec.getUrl()))) return "暂不支持 SMB 源";
-        return "";
+        return false;
     }
 
     public void browse(PlaySpec spec) {
@@ -577,8 +511,7 @@ public class PlayerManager implements ParseCallback {
     }
 
     private void ensureEngineForSpec() {
-        boolean useMpv = canUseMpv(spec);
-        if (useMpv != isMpvEngine()) switchEngineOnly();
+        // Only ExoPlayer engine is available; no engine switching needed.
     }
 
     private void setDanmakus(List<Danmaku> items) {

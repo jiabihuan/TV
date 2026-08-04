@@ -58,6 +58,13 @@ public class CinemaPosterAdapter extends RecyclerView.Adapter<CinemaPosterAdapte
         Vod item = items.get(position);
         holder.binding.name.setText(item.getName());
         ImgUtil.load(item.getName(), item.getPic(), holder.binding.image);
+        String remarks = item.getRemarks();
+        if (!TextUtils.isEmpty(remarks)) {
+            holder.binding.remarks.setText(remarks);
+            holder.binding.remarks.setVisibility(View.VISIBLE);
+        } else {
+            holder.binding.remarks.setVisibility(View.GONE);
+        }
     }
 
     @Override
@@ -73,9 +80,9 @@ public class CinemaPosterAdapter extends RecyclerView.Adapter<CinemaPosterAdapte
             this.binding = binding;
             itemView.setOnClickListener(this);
             itemView.setOnFocusChangeListener((v, hasFocus) -> {
-                float scale = hasFocus ? 1.05f : 1.0f;
+                float scale = hasFocus ? 1.08f : 1.0f;
                 itemView.animate().scaleX(scale).scaleY(scale).setDuration(160).start();
-                itemView.setZ(hasFocus ? 8f : 0f);
+                itemView.setZ(hasFocus ? 12f : 0f);
             });
         }
 

@@ -9,9 +9,8 @@
 
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/coverBg"
-        android:layout_width="300dp"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_gravity="end|center"
         android:alpha="0.82"
         android:scaleType="centerCrop"
         android:visibility="invisible" />
@@ -21,13 +20,20 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="fitXY"
-        android:src="@drawable/home_vod_bg" />
+        android:src="@drawable/bg_tv_cinema_mask" />
 
     <View
         android:id="@+id/coverTint"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@drawable/bg_tv_cinema_cover_tint" />
+
+    <View
+        android:id="@+id/bottomGradient"
+        android:layout_width="match_parent"
+        android:layout_height="320dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_tv_cinema_bottom_gradient" />
 
     <View
         android:layout_width="match_parent"
@@ -199,7 +205,7 @@
 
         <TextView
             android:id="@+id/timeReminder"
-            android:layout_width="520dp"
+            android:layout_width="600dp"
             android:layout_height="24dp"
             android:ellipsize="end"
             android:gravity="center_vertical"
@@ -224,7 +230,7 @@
 
             <TextView
                 android:id="@+id/appTitle"
-                android:layout_width="520dp"
+                android:layout_width="600dp"
                 android:layout_height="match_parent"
                 android:ellipsize="end"
                 android:gravity="center_vertical"
@@ -234,11 +240,11 @@
                 android:shadowRadius="8"
                 android:singleLine="true"
                 android:textColor="@color/white"
-                android:textSize="28sp" />
+                android:textSize="32sp" />
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/appTitleLogo"
-                android:layout_width="520dp"
+                android:layout_width="600dp"
                 android:layout_height="match_parent"
                 android:adjustViewBounds="true"
                 android:scaleType="fitStart"
@@ -247,7 +253,7 @@
 
         <TextView
             android:id="@+id/actor"
-            android:layout_width="520dp"
+            android:layout_width="600dp"
             android:layout_height="28dp"
             android:ellipsize="end"
             android:gravity="center_vertical"
@@ -258,7 +264,7 @@
 
         <TextView
             android:id="@+id/tip"
-            android:layout_width="520dp"
+            android:layout_width="600dp"
             android:layout_height="76dp"
             android:ellipsize="end"
             android:lineSpacingExtra="2dp"
@@ -266,12 +272,70 @@
             android:text="@string/home_tip"
             android:textColor="#ffd8e6ff"
             android:textSize="12sp" />
+
+        <LinearLayout
+            android:id="@+id/tagRow"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:layout_marginTop="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tagYear"
+                android:layout_width="wrap_content"
+                android:layout_height="22dp"
+                android:background="@drawable/bg_tv_cinema_tag"
+                android:gravity="center"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:singleLine="true"
+                android:textColor="@color/white_70"
+                android:textSize="11sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tagArea"
+                android:layout_width="wrap_content"
+                android:layout_height="22dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_tv_cinema_tag"
+                android:gravity="center"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:singleLine="true"
+                android:textColor="@color/white_70"
+                android:textSize="11sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tagType"
+                android:layout_width="wrap_content"
+                android:layout_height="22dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_tv_cinema_tag"
+                android:gravity="center"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:singleLine="true"
+                android:textColor="@color/white_70"
+                android:textSize="11sp"
+                android:visibility="gone" />
+        </LinearLayout>
     </LinearLayout>
+
+    <View
+        android:id="@+id/bottomGradient"
+        android:layout_width="match_parent"
+        android:layout_height="320dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_tv_cinema_bottom_gradient" />
 
     <androidx.leanback.widget.HorizontalGridView
         android:id="@+id/posters"
         android:layout_width="match_parent"
-        android:layout_height="252dp"
+        android:layout_height="280dp"
         android:layout_gravity="bottom"
         android:layout_marginBottom="-12dp"
         android:clipChildren="false"
