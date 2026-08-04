@@ -56,6 +56,26 @@
             android:src="@drawable/ic_logo" />
 
         <TextView
+            android:id="@+id/siteName"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_tv_cinema_nav_focused"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:singleLine="true"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:drawableEnd="@drawable/ic_arrow_drop_down"
+            android:drawablePadding="2dp"
+            android:maxWidth="160dp"
+            android:ellipsize="end" />
+
+        <TextView
             android:id="@+id/search"
             android:layout_width="wrap_content"
             android:layout_height="36dp"
@@ -308,9 +328,9 @@
     <androidx.leanback.widget.HorizontalGridView
         android:id="@+id/posters"
         android:layout_width="match_parent"
-        android:layout_height="260dp"
+        android:layout_height="200dp"
         android:layout_gravity="bottom"
-        android:layout_marginBottom="-8dp"
+        android:layout_marginBottom="-4dp"
         android:clipChildren="false"
         android:clipToPadding="false"
         android:paddingStart="32dp"

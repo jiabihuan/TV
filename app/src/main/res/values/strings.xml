@@ -48,6 +48,10 @@
     <string name="skip_hint">Drag the sliders to set intro/outro skip time. 00:00 means off.</string>
     <string name="skip_time_hint">00:00</string>
     <string name="skip_clear">Clear skip</string>
+    <string name="play_skip_opening">Skipped intro</string>
+    <string name="play_skip_opening_passed">Already past intro</string>
+    <string name="play_skip_ending">Skipped to outro</string>
+    <string name="play_skip_not_set">Skip point not set</string>
     <string name="play_exo">EXO</string>
     <string name="play_mpv">MPV</string>
     <string name="play_next">Next</string>

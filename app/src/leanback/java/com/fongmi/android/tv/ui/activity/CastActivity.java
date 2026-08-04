@@ -500,6 +500,14 @@ public class CastActivity extends PlaybackActivity implements CustomKeyDownVod.L
     }
 
     @Override
+    public void onDoubleTapUp() {
+    }
+
+    @Override
+    public void onDoubleTapDown() {
+    }
+
+    @Override
     protected void onStart() {
         super.onStart();
         mClock.stop().start();

@@ -40,6 +40,10 @@
     <string name="skip_hint">&#x62D6;&#x52D5;&#x6ED1;&#x584A;&#x8A2D;&#x7F6E;&#x7247;&#x982D;&#x7247;&#x5C3E;&#x8DF3;&#x904E;&#x6642;&#x9593;&#xFF0C;00&#58;00 &#x8868;&#x793A;&#x95DC;&#x9589;&#x3002;</string>
     <string name="skip_time_hint">00&#58;00</string>
     <string name="skip_clear">&#x6E05;&#x7A7A;&#x8DF3;&#x904E;&#x8A2D;&#x7F6E;</string>
+    <string name="play_skip_opening">&#x5DF2;&#x8DF3;&#x904E;&#x7247;&#x982D;</string>
+    <string name="play_skip_opening_passed">&#x5DF2;&#x904E;&#x7247;&#x982D;</string>
+    <string name="play_skip_ending">&#x5DF2;&#x8DF3;&#x5230;&#x7247;&#x5C3E;</string>
+    <string name="play_skip_not_set">&#x672A;&#x8A2D;&#x7F6E;&#x8DF3;&#x904E;&#x9EDE;</string>
     <string name="play_exo">EXO</string>
     <string name="play_mpv">MPV</string>
     <string name="play_next">下集</string>

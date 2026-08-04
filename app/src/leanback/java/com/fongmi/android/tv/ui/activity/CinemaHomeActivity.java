@@ -59,7 +59,8 @@ import java.util.Optional;
 
 public class CinemaHomeActivity extends BaseActivity implements
         CinemaPosterAdapter.OnClickListener,
-        CinemaCategoryAdapter.OnClickListener {
+        CinemaCategoryAdapter.OnClickListener,
+        com.fongmi.android.tv.impl.SiteListener {
 
     private ActivityCinemaHomeBinding mBinding;
     private CinemaPosterAdapter mPosterAdapter;
@@ -332,10 +333,21 @@ public class CinemaHomeActivity extends BaseActivity implements
 
     private void setTitle() {
         ImgUtil.logo(mBinding.logo);
+        updateSiteName();
         if (mHasMovieSelected) return;
         List<String> items = Arrays.asList(getHome() != null ? getHome().getName() : "", getConfig().getName(), getString(R.string.app_name));
         Optional<String> optional = items.stream().filter(s -> !TextUtils.isEmpty(s)).findFirst();
         optional.ifPresent(s -> mBinding.appTitle.setText(s));
+    }
+
+    private void updateSiteName() {
+        Site home = getHome();
+        if (home != null && !home.isEmpty()) {
+            mBinding.siteName.setText(home.getName());
+            mBinding.siteName.setVisibility(View.VISIBLE);
+        } else {
+            mBinding.siteName.setVisibility(View.GONE);
+        }
     }
 
     private void loadHomeContent() {
@@ -363,6 +375,11 @@ public class CinemaHomeActivity extends BaseActivity implements
 
     @Override
     protected void initEvent() {
+        mBinding.siteName.setOnClickListener(view -> {
+            if (getHome() != null) {
+                com.fongmi.android.tv.ui.dialog.SiteDialog.create().show(this);
+            }
+        });
         mBinding.search.setOnClickListener(view -> SearchActivity.start(this));
         mBinding.keep.setOnClickListener(view -> KeepActivity.start(this));
         mBinding.history.setOnClickListener(view -> HistoryActivity.start(this));
@@ -391,6 +408,11 @@ public class CinemaHomeActivity extends BaseActivity implements
         } else {
             VideoActivity.start(this, siteKey, vodId, item.getName(), item.getPic());
         }
+    }
+
+    @Override
+    public void setSite(Site item) {
+        VodConfig.get().setHome(item);
     }
 
     @Override
@@ -482,7 +504,7 @@ public class CinemaHomeActivity extends BaseActivity implements
         View focus = getCurrentFocus();
         return focus == mBinding.search || focus == mBinding.keep || focus == mBinding.history
                 || focus == mBinding.push || focus == mBinding.setting || focus == mBinding.net
-                || focus == mBinding.logo;
+                || focus == mBinding.logo || focus == mBinding.siteName;
     }
 
     @Override

@@ -276,8 +276,9 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mFrameParams = mBinding.video.getLayoutParams();
         mClock = Clock.create(mBinding.widget.clock);
         mKeyDown = CustomKeyDownVod.create(this);
-        mKeyDown.setFull(true);
-        setFullscreen(true);
+        mKeyDown.setFull(false);
+        setFullscreen(false);
+        applySplitMode();
         mObserveDetail = this::setDetail;
         mObservePlayer = this::setPlayer;
         mObserveSearch = this::setSearch;
@@ -657,26 +658,59 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private void enterFullscreen() {
         mKeyDown.setFull(true);
         setFullscreen(true);
+        applySplitMode();
+        hideInfoLayout();
+        mBinding.video.requestFocus();
     }
 
     private void exitFullscreen() {
+        mKeyDown.setFull(false);
+        setFullscreen(false);
+        applySplitMode();
+        hideControl();
+        showInfoLayout();
+    }
+
+    private void applySplitMode() {
+        if (mBinding.video == null) return;
+        ViewGroup.LayoutParams params = mBinding.video.getLayoutParams();
+        if (params instanceof android.widget.LinearLayout.LayoutParams) {
+            android.widget.LinearLayout.LayoutParams lp = (android.widget.LinearLayout.LayoutParams) params;
+            if (isFullscreen()) {
+                lp.width = 0;
+                lp.weight = 1;
+            } else {
+                lp.width = 0;
+                lp.weight = 0.42f;
+            }
+            mBinding.video.setLayoutParams(lp);
+        }
+        if (isFullscreen()) {
+            mBinding.infoLayout.setVisibility(View.GONE);
+        }
     }
 
     private void showInfoLayout() {
         mBinding.infoLayout.setVisibility(View.VISIBLE);
-        getFocus1().requestFocus();
-        resetInfoTimer();
+        if (!isFullscreen()) {
+            mBinding.video.requestFocus();
+        } else {
+            getFocus1().requestFocus();
+            resetInfoTimer();
+        }
     }
 
     private void hideInfoLayout() {
-        mBinding.infoLayout.setVisibility(View.GONE);
-        mBinding.video.requestFocus();
+        if (isFullscreen()) {
+            mBinding.infoLayout.setVisibility(View.GONE);
+            mBinding.video.requestFocus();
+        }
         cancelInfoTimer();
     }
 
     private void resetInfoTimer() {
         App.removeCallbacks(mHideInfoRunnable);
-        if (mBinding.infoLayout.getVisibility() == View.VISIBLE) {
+        if (isFullscreen() && mBinding.infoLayout.getVisibility() == View.VISIBLE) {
             App.post(mHideInfoRunnable, 5000);
         }
     }
@@ -707,6 +741,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     private void onVideo() {
         if (!isFullscreen()) enterFullscreen();
+        else onToggle();
     }
 
     private void onChange() {
@@ -1521,6 +1556,10 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         if (isVisible(mBinding.control.getRoot())) setR1Callback();
         if (isVisible(mBinding.control.getRoot())) mFocus2 = getCurrentFocus();
         if (isFullscreen() && isGone(mBinding.control.getRoot()) && isGone(mBinding.infoLayout) && mKeyDown.hasEvent(event) && service() != null) return mKeyDown.onKeyDown(event);
+        if (!isFullscreen() && KeyUtil.isActionUp(event) && KeyUtil.isEnterKey(event) && getCurrentFocus() == mBinding.video) {
+            enterFullscreen();
+            return true;
+        }
         if (KeyUtil.isMediaFastForward(event)) return onSeekForward();
         if (KeyUtil.isMediaRewind(event)) return onSeekBack();
         return super.dispatchKeyEvent(event);
@@ -1587,6 +1626,35 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     @Override
+    public void onDoubleTapUp() {
+        if (!isFullscreen()) return;
+        long opening = mHistory.getOpening();
+        if (opening > 0 && player().getPosition() < opening) {
+            seekTo(opening);
+            Notify.show(R.string.play_skip_opening);
+            syncHistory(true);
+        } else if (opening > 0) {
+            Notify.show(R.string.play_skip_opening_passed);
+        } else {
+            Notify.show(R.string.play_skip_not_set);
+        }
+    }
+
+    @Override
+    public void onDoubleTapDown() {
+        if (!isFullscreen()) return;
+        long ending = mHistory.getEnding();
+        long duration = player().getDuration();
+        if (ending > 0 && duration > 0) {
+            seekTo(Math.max(0, duration - ending));
+            Notify.show(R.string.play_skip_ending);
+            syncHistory(true);
+        } else {
+            Notify.show(R.string.play_skip_not_set);
+        }
+    }
+
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK && requestCode == 1001) PlayerHelper.onExternalResult(data, service()::dispatchNext, controller()::seekTo);
@@ -1609,8 +1677,8 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     protected void onBackInvoked() {
         if (isVisible(mBinding.control.getRoot())) {
             hideControl();
-        } else if (isVisible(mBinding.infoLayout)) {
-            hideInfoLayout();
+        } else if (isFullscreen()) {
+            exitFullscreen();
         } else if (isVisible(mBinding.widget.center)) {
             hideCenter();
         } else {
