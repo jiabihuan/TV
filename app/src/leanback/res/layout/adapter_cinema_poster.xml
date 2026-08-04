@@ -1,43 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="150dp"
-    android:layout_height="240dp"
+    android:layout_width="160dp"
+    android:layout_height="260dp"
     android:clipChildren="false"
     android:clipToPadding="false"
-    android:elevation="4dp"
     android:focusable="true"
-    android:focusableInTouchMode="true"
-    android:foreground="@drawable/selector_tv_cinema_poster"
-    android:orientation="vertical">
+    android:focusableInTouchMode="true">
 
-    <com.google.android.material.imageview.ShapeableImageView
-        android:id="@+id/image"
-        android:layout_width="140dp"
-        android:layout_height="200dp"
-        android:layout_gravity="center_horizontal"
-        android:background="@color/white_10"
-        android:scaleType="centerCrop"
-        app:shapeAppearanceOverlay="@style/Vod.Grid.Cinema" />
+    <LinearLayout
+        android:layout_width="150dp"
+        android:layout_height="250dp"
+        android:layout_gravity="center"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:elevation="4dp"
+        android:foreground="@drawable/selector_tv_cinema_poster"
+        android:orientation="vertical">
 
-    <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/name"
-        android:layout_width="match_parent"
-        android:layout_height="24dp"
-        android:ellipsize="end"
-        android:gravity="center"
-        android:singleLine="true"
-        android:textColor="@color/white"
-        android:textSize="13sp" />
+        <FrameLayout
+            android:layout_width="150dp"
+            android:layout_height="210dp">
 
-    <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/remarks"
-        android:layout_width="match_parent"
-        android:layout_height="16dp"
-        android:ellipsize="end"
-        android:gravity="center"
-        android:singleLine="true"
-        android:textColor="@color/white_70"
-        android:textSize="10sp"
-        android:visibility="gone" />
-</LinearLayout>
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/image"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/white_10"
+                android:scaleType="centerCrop"
+                app:shapeAppearanceOverlay="@style/Vod.Grid.Cinema" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:layout_gravity="bottom"
+                android:background="@drawable/bg_cinema_poster_gradient" />
+
+            <TextView
+                android:id="@+id/remarks"
+                android:layout_width="wrap_content"
+                android:layout_height="18dp"
+                android:layout_gravity="bottom|start"
+                android:layout_marginStart="6dp"
+                android:layout_marginBottom="6dp"
+                android:background="@drawable/bg_cinema_tag_chip"
+                android:gravity="center"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:singleLine="true"
+                android:textColor="@color/white"
+                android:textSize="9sp"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/name"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="2"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:paddingTop="4dp"
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</FrameLayout>

@@ -136,11 +136,26 @@ public class ExoUtil {
         builder.setRequestMetadata(buildRequestMetadata(spec));
         builder.setMediaMetadata(spec.getMetadata());
         builder.setAdblock(Setting.isAdblock());
-        builder.setMimeType(spec.getFormat());
+        builder.setMimeType(getDv7AwareMimeType(spec.getFormat()));
         builder.setImageDurationMs(15000);
         builder.setMediaId(spec.getKey());
         builder.setDecode(decode);
         return builder.build();
+    }
+
+    /**
+     * DV7 CONVERT 模式：将 DV7 内容的 MIME 类型重写为 HEVC。
+     * 这样 ExoPlayer 会使用 HEVC 解码器播放 DV7 内容的基础层，
+     * 实现 DV8.1 兼容播放效果（HDR10 兼容的 DV）。
+     */
+    private static String getDv7AwareMimeType(String format) {
+        if (PlayerSetting.isDv7Convert() && format != null) {
+            String fmt = format.toLowerCase(Locale.US);
+            if (fmt.contains("dolby-vision") || fmt.contains("dvhe") || fmt.contains("dvh1") || fmt.contains("dva1") || fmt.contains("dvav")) {
+                return MimeTypes.VIDEO_H265;
+            }
+        }
+        return format;
     }
 
     public static String getMimeType(int errorCode) {
@@ -246,7 +261,7 @@ public class ExoUtil {
      */
     public static boolean hasDolbyVisionProfile7Support() {
         try {
-            android.media.MediaCodecInfo[] codecInfos = android.media.MediaCodecList.getCodecList();
+            android.media.MediaCodecInfo[] codecInfos = new android.media.MediaCodecList(android.media.MediaCodecList.ALL_CODECS).getCodecInfos();
             for (android.media.MediaCodecInfo codecInfo : codecInfos) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && codecInfo.isEncoder()) continue;
                 for (String type : codecInfo.getSupportedTypes()) {
@@ -271,14 +286,16 @@ public class ExoUtil {
     }
 
     /**
-     * 判断当前 DV7 处理策略是否需要将 DV7 回退为非 DV 轨道（HEVC/HDR10）。
-     * DV7_STRIP：始终回退。
+     * 判断当前 DV7 处理策略是否需要将 DV7 回退为非 DV7 轨道。
+     * DV7_STRIP：始终回退到 HEVC/HDR10。
+     * DV7_CONVERT：回退到 HEVC 基础层（DV8.1 兼容），通过选择 HEVC 轨道实现。
      * DV7_AUTO：设备不支持 DV7 原生解码时回退。
-     * DV7_CONVERT / DV7_OFF：不回退（CONVERT 在 MediaSource 层重写 codec string）。
+     * DV7_OFF：不干预。
      */
     private static boolean shouldStripDv7() {
         int mode = getDv7HandlingMode();
         if (mode == PlayerSetting.DV7_STRIP) return true;
+        if (mode == PlayerSetting.DV7_CONVERT) return true;
         if (mode == PlayerSetting.DV7_AUTO) return !hasDolbyVisionProfile7Support();
         return false;
     }

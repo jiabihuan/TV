@@ -80,9 +80,9 @@ public class CinemaPosterAdapter extends RecyclerView.Adapter<CinemaPosterAdapte
             this.binding = binding;
             itemView.setOnClickListener(this);
             itemView.setOnFocusChangeListener((v, hasFocus) -> {
-                float scale = hasFocus ? 1.08f : 1.0f;
-                itemView.animate().scaleX(scale).scaleY(scale).setDuration(160).start();
-                itemView.setZ(hasFocus ? 12f : 0f);
+                float scale = hasFocus ? 1.1f : 1.0f;
+                itemView.animate().scaleX(scale).scaleY(scale).setDuration(200).start();
+                itemView.setZ(hasFocus ? 16f : 0f);
             });
         }
 

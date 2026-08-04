@@ -7,14 +7,29 @@
     android:clipChildren="false"
     android:clipToPadding="false">
 
+    <!-- Full-screen backdrop -->
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/coverBg"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:alpha="0.82"
+        android:alpha="0.88"
         android:scaleType="centerCrop"
         android:visibility="invisible" />
 
+    <!-- Hero overlay: left gradient + bottom gradient for text readability -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_cinema_hero_overlay" />
+
+    <!-- Cover tint for extra darkening -->
+    <View
+        android:id="@+id/coverTint"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_tv_cinema_cover_tint" />
+
+    <!-- Old mask (kept for compatibility, alpha controlled by code) -->
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/homeMask"
         android:layout_width="match_parent"
@@ -22,115 +37,116 @@
         android:scaleType="fitXY"
         android:src="@drawable/bg_tv_cinema_mask" />
 
+    <!-- Top nav gradient -->
     <View
-        android:id="@+id/coverTint"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/bg_tv_cinema_cover_tint" />
+        android:layout_height="120dp"
+        android:background="@drawable/bg_cinema_nav_gradient" />
 
+    <!-- Bottom gradient for poster area -->
     <View
         android:id="@+id/bottomGradient"
         android:layout_width="match_parent"
-        android:layout_height="320dp"
+        android:layout_height="300dp"
         android:layout_gravity="bottom"
         android:background="@drawable/bg_tv_cinema_bottom_gradient" />
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="74dp"
-        android:background="#12ffffff" />
-
+    <!-- Navigation bar -->
     <LinearLayout
         android:id="@+id/nav"
         android:layout_width="match_parent"
-        android:layout_height="72dp"
+        android:layout_height="56dp"
+        android:layout_marginTop="12dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="24dp"
-        android:paddingEnd="34dp">
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp">
 
         <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/logo"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_logo" />
 
         <TextView
             android:id="@+id/search"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_marginStart="2dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="8dp"
             android:background="@drawable/bg_tv_cinema_nav_focused"
             android:focusable="true"
             android:focusableInTouchMode="true"
             android:gravity="center"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:text="@string/home_search"
             android:textColor="@color/white"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/keep"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="4dp"
             android:background="@drawable/bg_tv_cinema_nav_focused"
             android:focusable="true"
             android:focusableInTouchMode="true"
             android:gravity="center"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:text="@string/home_keep"
             android:textColor="@color/white"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/history"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="4dp"
             android:background="@drawable/bg_tv_cinema_nav_focused"
             android:focusable="true"
             android:focusableInTouchMode="true"
             android:gravity="center"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:text="@string/nav_history"
             android:textColor="@color/white"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/push"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="4dp"
             android:background="@drawable/bg_tv_cinema_nav_focused"
             android:focusable="true"
             android:focusableInTouchMode="true"
             android:gravity="center"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:text="@string/home_push"
             android:textColor="@color/white"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/setting"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="4dp"
             android:background="@drawable/bg_tv_cinema_nav_focused"
             android:focusable="true"
             android:focusableInTouchMode="true"
             android:gravity="center"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:text="@string/nav_setting"
             android:textColor="@color/white"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
 
         <Space
@@ -141,17 +157,16 @@
         <TextView
             android:id="@+id/clock"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="36dp"
             android:gravity="center"
-            android:textColor="@color/white"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:textColor="@color/white_70"
+            android:textSize="13sp" />
 
         <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/net"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_marginStart="4dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="8dp"
             android:background="@drawable/bg_tv_cinema_nav_focused"
             android:clickable="true"
             android:focusable="true"
@@ -159,37 +174,40 @@
             android:src="@drawable/ic_net_wifi" />
     </LinearLayout>
 
+    <!-- Category tabs -->
     <androidx.leanback.widget.HorizontalGridView
         android:id="@+id/categories"
         android:layout_width="match_parent"
-        android:layout_height="46dp"
-        android:layout_marginTop="78dp"
+        android:layout_height="38dp"
+        android:layout_marginTop="72dp"
         android:clipChildren="false"
         android:clipToPadding="false"
-        android:paddingStart="24dp"
-        android:paddingEnd="28dp"
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp"
         android:visibility="gone"
         app:focusOutEnd="false"
         app:focusOutFront="false" />
 
+    <!-- Hero section -->
     <LinearLayout
         android:id="@+id/hero"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="24dp"
-        android:layout_marginTop="132dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginTop="118dp"
         android:orientation="vertical">
 
+        <!-- Greeting row with accent line -->
         <LinearLayout
             android:id="@+id/greetingRow"
             android:layout_width="wrap_content"
-            android:layout_height="24dp"
+            android:layout_height="22dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <View
                 android:layout_width="3dp"
-                android:layout_height="12dp"
+                android:layout_height="14dp"
                 android:background="@drawable/bg_tv_cinema_left_line" />
 
             <TextView
@@ -198,25 +216,26 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:singleLine="true"
-                android:textColor="#ffff7d9c"
+                android:textColor="#FFFF7A57"
                 android:textSize="13sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
+        <!-- Welcome subtitle -->
         <TextView
             android:id="@+id/timeReminder"
-            android:layout_width="600dp"
-            android:layout_height="24dp"
+            android:layout_width="560dp"
+            android:layout_height="22dp"
             android:ellipsize="end"
             android:gravity="center_vertical"
             android:singleLine="true"
-            android:textColor="#ffff7d9c"
-            android:textSize="13sp"
-            android:textStyle="bold" />
+            android:textColor="#FFB0B8D0"
+            android:textSize="13sp" />
 
+        <!-- Movie title row -->
         <LinearLayout
             android:layout_width="wrap_content"
-            android:layout_height="50dp"
+            android:layout_height="48dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -230,54 +249,46 @@
 
             <TextView
                 android:id="@+id/appTitle"
-                android:layout_width="600dp"
+                android:layout_width="560dp"
                 android:layout_height="match_parent"
                 android:ellipsize="end"
                 android:gravity="center_vertical"
-                android:shadowColor="#99ffffff"
+                android:shadowColor="#99000000"
                 android:shadowDx="0"
-                android:shadowDy="0"
-                android:shadowRadius="8"
+                android:shadowDy="2"
+                android:shadowRadius="12"
                 android:singleLine="true"
                 android:textColor="@color/white"
-                android:textSize="32sp" />
+                android:textSize="34sp"
+                android:textStyle="bold" />
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/appTitleLogo"
-                android:layout_width="600dp"
+                android:layout_width="560dp"
                 android:layout_height="match_parent"
                 android:adjustViewBounds="true"
                 android:scaleType="fitStart"
                 android:visibility="gone" />
         </LinearLayout>
 
+        <!-- Actor info -->
         <TextView
             android:id="@+id/actor"
-            android:layout_width="600dp"
-            android:layout_height="28dp"
+            android:layout_width="560dp"
+            android:layout_height="24dp"
             android:ellipsize="end"
             android:gravity="center_vertical"
             android:singleLine="true"
-            android:textColor="#ffd8e6ff"
+            android:textColor="#FFC8D0E8"
             android:textSize="13sp"
             android:visibility="gone" />
 
-        <TextView
-            android:id="@+id/tip"
-            android:layout_width="600dp"
-            android:layout_height="76dp"
-            android:ellipsize="end"
-            android:lineSpacingExtra="2dp"
-            android:maxLines="3"
-            android:text="@string/home_tip"
-            android:textColor="#ffd8e6ff"
-            android:textSize="12sp" />
-
+        <!-- Tag row: year, area, type -->
         <LinearLayout
             android:id="@+id/tagRow"
             android:layout_width="wrap_content"
-            android:layout_height="28dp"
-            android:layout_marginTop="4dp"
+            android:layout_height="26dp"
+            android:layout_marginTop="6dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:visibility="gone">
@@ -286,12 +297,12 @@
                 android:id="@+id/tagYear"
                 android:layout_width="wrap_content"
                 android:layout_height="22dp"
-                android:background="@drawable/bg_tv_cinema_tag"
+                android:background="@drawable/bg_cinema_tag_chip"
                 android:gravity="center"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
                 android:singleLine="true"
-                android:textColor="@color/white_70"
+                android:textColor="@color/white"
                 android:textSize="11sp"
                 android:visibility="gone" />
 
@@ -299,13 +310,13 @@
                 android:id="@+id/tagArea"
                 android:layout_width="wrap_content"
                 android:layout_height="22dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/bg_tv_cinema_tag"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_cinema_tag_chip"
                 android:gravity="center"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
                 android:singleLine="true"
-                android:textColor="@color/white_70"
+                android:textColor="@color/white"
                 android:textSize="11sp"
                 android:visibility="gone" />
 
@@ -313,37 +324,56 @@
                 android:id="@+id/tagType"
                 android:layout_width="wrap_content"
                 android:layout_height="22dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/bg_tv_cinema_tag"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_cinema_tag_chip"
                 android:gravity="center"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
                 android:singleLine="true"
-                android:textColor="@color/white_70"
+                android:textColor="@color/white"
                 android:textSize="11sp"
                 android:visibility="gone" />
         </LinearLayout>
+
+        <!-- Synopsis -->
+        <TextView
+            android:id="@+id/tip"
+            android:layout_width="560dp"
+            android:layout_height="72dp"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:lineSpacingExtra="3dp"
+            android:maxLines="3"
+            android:shadowColor="#99000000"
+            android:shadowDx="0"
+            android:shadowDy="1"
+            android:shadowRadius="6"
+            android:text="@string/home_tip"
+            android:textColor="#FFD0D8F0"
+            android:textSize="13sp" />
     </LinearLayout>
 
+    <!-- Bottom poster carousel -->
     <androidx.leanback.widget.HorizontalGridView
         android:id="@+id/posters"
         android:layout_width="match_parent"
-        android:layout_height="280dp"
+        android:layout_height="260dp"
         android:layout_gravity="bottom"
-        android:layout_marginBottom="-12dp"
+        android:layout_marginBottom="-8dp"
         android:clipChildren="false"
         android:clipToPadding="false"
-        android:paddingStart="24dp"
-        android:paddingEnd="28dp"
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp"
         app:focusOutEnd="false"
         app:focusOutFront="false" />
 
+    <!-- Loading indicator -->
     <LinearLayout
         android:id="@+id/loading"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center"
-        android:layout_marginBottom="140dp"
+        android:layout_marginBottom="120dp"
         android:gravity="center"
         android:orientation="horizontal">
 

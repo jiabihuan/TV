@@ -264,11 +264,11 @@ public class CinemaHomeActivity extends BaseActivity implements
             mBinding.coverBg.setVisibility(View.VISIBLE);
             mBinding.coverBg.setAlpha(0f);
             ImgUtil.load(item.getName(), coverUrl, mBinding.coverBg);
-            mBinding.coverBg.animate().alpha(0.82f).setDuration(400).start();
+            mBinding.coverBg.animate().alpha(0.88f).setDuration(400).start();
         } else {
             mBinding.coverBg.animate().alpha(0f).setDuration(200).withEndAction(() -> {
                 ImgUtil.load(item.getName(), coverUrl, mBinding.coverBg);
-                mBinding.coverBg.animate().alpha(0.82f).setDuration(400).start();
+                mBinding.coverBg.animate().alpha(0.88f).setDuration(400).start();
             }).start();
         }
     }

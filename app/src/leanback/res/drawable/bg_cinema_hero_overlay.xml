@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Left-to-right dark gradient for text readability -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="#F0060810"
+                android:centerColor="#A0060810"
+                android:endColor="#40060810"
+                android:type="linear"
+                android:angle="0" />
+        </shape>
+    </item>
+    <!-- Bottom-to-top gradient for poster area separation -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="#00060810"
+                android:centerColor="#00060810"
+                android:endColor="#E0060810"
+                android:type="linear"
+                android:angle="90" />
+        </shape>
+    </item>
+</layer-list>
