@@ -667,6 +667,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mKeyDown.setFull(false);
         setFullscreen(false);
         applySplitMode();
+        mBinding.video.setForeground(ResUtil.getDrawable(R.drawable.selector_video));
         hideControl();
         mFocus2 = null;
         getFocus1().requestFocus();
@@ -678,13 +679,18 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         if (params instanceof android.widget.LinearLayout.LayoutParams) {
             android.widget.LinearLayout.LayoutParams lp = (android.widget.LinearLayout.LayoutParams) params;
             if (isFullscreen()) {
-                lp.width = 0;
-                lp.weight = 1;
+                lp.width = android.widget.LinearLayout.LayoutParams.MATCH_PARENT;
+                lp.height = android.widget.LinearLayout.LayoutParams.MATCH_PARENT;
+                lp.weight = 0;
+                lp.setMargins(0, 0, 0, 0);
                 mBinding.infoLayout.setVisibility(View.GONE);
                 mBinding.scroll.setVisibility(View.GONE);
             } else {
-                lp.width = 0;
-                lp.weight = 0.42f;
+                int density = (int) getResources().getDisplayMetrics().density;
+                lp.width = 320 * density;
+                lp.height = 180 * density;
+                lp.weight = 0;
+                lp.setMargins(24 * density, 24 * density, 0, 12 * density);
                 mBinding.infoLayout.setVisibility(View.VISIBLE);
                 mBinding.scroll.setVisibility(View.VISIBLE);
             }
