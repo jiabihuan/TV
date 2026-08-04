@@ -150,6 +150,10 @@
     <string name="home_continue">继续观看</string>
     <string name="nav_download">下载</string>
     <string name="setting_home_style">导航栏样式</string>
+    <string name="setting_tmdb_api">TMDB API密钥</string>
+    <string name="setting_tmdb_api_hint">请输入TMDB API密钥</string>
+    <string name="setting_tmdb_api_set">TMDB API密钥已设置</string>
+    <string name="setting_tmdb_api_empty">未设置</string>
     <string-array name="select_home_style">
         <item>固定型</item>
         <item>胶囊型</item>

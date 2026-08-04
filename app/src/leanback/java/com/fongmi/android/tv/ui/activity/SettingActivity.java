@@ -319,7 +319,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
     public void setPass(String pass) {
         Setting.putTmdbApiKey(pass.trim());
         setTmdbText();
-        Notify.show("TMDB API Key已设置");
+        Notify.show(R.string.setting_tmdb_api_set);
     }
 
     private void setDoh(View view) {
