@@ -153,7 +153,9 @@
     <string name="setting_home_style">Navigation Style</string>
     <string name="setting_tmdb_api">TMDB API</string>
     <string name="setting_tmdb_api_url">API URL</string>
-    <string name="setting_tmdb_api_url_hint">Default: https://api.themoviedb.org/3</string>
+    <string name="setting_tmdb_api_url_hint">Default: https://api.tmdb.org/3</string>
+    <string name="setting_tmdb_image_url">Image URL</string>
+    <string name="setting_tmdb_image_url_hint">Default: https://image.tmdb.org/t/p</string>
     <string name="setting_tmdb_api_key_label">API Key</string>
     <string name="setting_tmdb_api_hint">Enter TMDB API Key</string>
     <string name="setting_tmdb_api_set">TMDB API configured</string>

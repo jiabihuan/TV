@@ -22,7 +22,29 @@
         android:imeOptions="actionNext"
         android:importantForAutofill="no"
         android:inputType="textUri"
-        android:nextFocusDown="@id/apiKey"
+        android:nextFocusDown="@+id/imageUrl"
+        android:singleLine="true"
+        android:textColor="@color/white"
+        android:textSize="16sp" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"
+        android:text="@string/setting_tmdb_image_url"
+        android:textColor="@color/white"
+        android:textSize="16sp" />
+
+    <com.fongmi.android.tv.ui.custom.CustomEditText
+        android:id="@+id/imageUrl"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/setting_tmdb_image_url_hint"
+        android:imeOptions="actionNext"
+        android:importantForAutofill="no"
+        android:inputType="textUri"
+        android:nextFocusDown="@+id/apiKey"
         android:singleLine="true"
         android:textColor="@color/white"
         android:textSize="16sp" />
@@ -44,7 +66,7 @@
         android:imeOptions="actionDone"
         android:importantForAutofill="no"
         android:inputType="textVisiblePassword"
-        android:nextFocusDown="@id/positive"
+        android:nextFocusDown="@+id/positive"
         android:singleLine="true"
         android:textColor="@color/white"
         android:textSize="16sp" />

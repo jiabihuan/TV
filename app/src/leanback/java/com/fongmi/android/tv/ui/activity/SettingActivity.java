@@ -316,8 +316,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
     }
 
     @Override
-    public void setTmdbConfig(String apiUrl, String apiKey) {
+    public void setTmdbConfig(String apiUrl, String imageUrl, String apiKey) {
         Setting.putTmdbApiUrl(apiUrl);
+        Setting.putTmdbImageUrl(imageUrl);
         Setting.putTmdbApiKey(apiKey);
         setTmdbText();
         Notify.show(R.string.setting_tmdb_api_set);

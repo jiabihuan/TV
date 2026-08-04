@@ -355,11 +355,20 @@ public class Setting {
 
     public static String getTmdbApiUrl() {
         String url = Prefers.getString("tmdb_api_url", "");
-        return url.isEmpty() ? "https://api.themoviedb.org/3" : url;
+        return url.isEmpty() ? "https://api.tmdb.org/3" : url;
     }
 
     public static void putTmdbApiUrl(String url) {
         Prefers.put("tmdb_api_url", url);
+    }
+
+    public static String getTmdbImageUrl() {
+        String url = Prefers.getString("tmdb_image_url", "");
+        return url.isEmpty() ? "https://image.tmdb.org/t/p" : url;
+    }
+
+    public static void putTmdbImageUrl(String url) {
+        Prefers.put("tmdb_image_url", url);
     }
 
     public static String getTmdbApiKey() {

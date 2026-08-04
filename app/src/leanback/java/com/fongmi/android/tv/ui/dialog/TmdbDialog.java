@@ -34,10 +34,15 @@ public class TmdbDialog extends BaseAlertDialog {
     @Override
     protected void initView() {
         String apiUrl = Setting.getTmdbApiUrl();
+        String imageUrl = Setting.getTmdbImageUrl();
         String apiKey = Setting.getTmdbApiKey();
         if (!TextUtils.isEmpty(apiUrl)) {
             binding.apiUrl.setText(apiUrl);
             binding.apiUrl.setSelection(apiUrl.length());
+        }
+        if (!TextUtils.isEmpty(imageUrl)) {
+            binding.imageUrl.setText(imageUrl);
+            binding.imageUrl.setSelection(imageUrl.length());
         }
         if (!TextUtils.isEmpty(apiKey)) {
             binding.apiKey.setText(apiKey);
@@ -57,8 +62,9 @@ public class TmdbDialog extends BaseAlertDialog {
 
     private void onPositive(View view) {
         String apiUrl = binding.apiUrl.getText().toString().trim();
+        String imageUrl = binding.imageUrl.getText().toString().trim();
         String apiKey = binding.apiKey.getText().toString().trim();
-        ((TmdbListener) requireActivity()).setTmdbConfig(apiUrl, apiKey);
+        ((TmdbListener) requireActivity()).setTmdbConfig(apiUrl, imageUrl, apiKey);
         dismiss();
     }
 
