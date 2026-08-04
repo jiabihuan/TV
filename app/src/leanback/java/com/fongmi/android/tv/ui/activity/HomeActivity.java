@@ -1053,10 +1053,17 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                 if (requestFocusBelowBanner()) return true;
             }
         }
-        // 海报列表第一行按 ↑ → 回到上方（Banner 或分类栏）
+        // 按 ↑ 键处理
         if (KeyUtil.isActionDown(event) && KeyUtil.isUpKey(event)) {
+            // 海报列表第一行按 ↑ → 回到 Banner 轮播
             if (isFirstContentRowFocused()) {
                 if (requestFocusOnHomeBanner()) return true;
+            }
+            // Banner 轮播按 ↑ → 回到分类栏（不是直接跳到顶部工具栏）
+            if (isBannerFocused()) {
+                if (mBinding.recyclerType.getVisibility() == View.VISIBLE) {
+                    return mBinding.recyclerType.requestFocus();
+                }
             }
             // ViewPager 里的海报按 ↑ → 回到分类栏
             if (isPagerContentFocused()) {
