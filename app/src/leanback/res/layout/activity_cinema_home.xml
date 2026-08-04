@@ -325,13 +325,6 @@
         </LinearLayout>
     </LinearLayout>
 
-    <View
-        android:id="@+id/bottomGradient"
-        android:layout_width="match_parent"
-        android:layout_height="320dp"
-        android:layout_gravity="bottom"
-        android:background="@drawable/bg_tv_cinema_bottom_gradient" />
-
     <androidx.leanback.widget.HorizontalGridView
         android:id="@+id/posters"
         android:layout_width="match_parent"
