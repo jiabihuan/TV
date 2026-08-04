@@ -53,7 +53,6 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -169,16 +168,6 @@ public class CinemaHomeActivity extends BaseActivity implements
     }
 
     private void setHero() {
-        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-        String greeting;
-        if (hour >= 5 && hour < 9) greeting = getString(R.string.cinema_greeting_morning);
-        else if (hour >= 9 && hour < 12) greeting = getString(R.string.cinema_greeting_forenoon);
-        else if (hour >= 12 && hour < 14) greeting = getString(R.string.cinema_greeting_noon);
-        else if (hour >= 14 && hour < 18) greeting = getString(R.string.cinema_greeting_afternoon);
-        else if (hour >= 18 && hour < 22) greeting = getString(R.string.cinema_greeting_evening);
-        else greeting = getString(R.string.cinema_greeting_night);
-        mBinding.greeting.setText(greeting);
-        mBinding.timeReminder.setText(getString(R.string.cinema_welcome, getString(R.string.app_name)));
         if (!mHasMovieSelected) {
             mBinding.appTitle.setText(getString(R.string.app_name));
             mBinding.tagRow.setVisibility(View.GONE);
@@ -238,21 +227,56 @@ public class CinemaHomeActivity extends BaseActivity implements
     }
 
     private void updateCoverBg(Vod item) {
-        String backdrop = item.getBackdrop();
-        String coverUrl;
-        if (!TextUtils.isEmpty(backdrop)) {
-            coverUrl = backdrop;
-        } else {
-            coverUrl = item.getPic();
-        }
-        if (TextUtils.isEmpty(coverUrl)) {
-            mLastCoverUrl = "";
-            mBinding.coverTint.setBackgroundResource(R.drawable.bg_tv_cinema_backdrop_tint);
-            mBinding.coverTint.setAlpha(1.0f);
-            mBinding.homeMask.setAlpha(1.0f);
-            mBinding.coverBg.setVisibility(View.INVISIBLE);
+        String itemName = item.getName();
+        // 优先使用 TMDB API 获取横屏背景图
+        if (Setting.hasTmdbApiKey()) {
+            String tmdbBackdrop = Setting.getTmdbBackdrop(itemName);
+            if (!TextUtils.isEmpty(tmdbBackdrop)) {
+                loadCoverBg(itemName, tmdbBackdrop);
+                return;
+            }
+            // 异步搜索 TMDB
+            final String fallbackUrl = getFallbackCoverUrl(item);
+            com.fongmi.android.tv.utils.TmdbUtil.searchBackdropAsync(itemName, backdropUrl -> {
+                runOnUiThread(() -> {
+                    if (TextUtils.isEmpty(backdropUrl)) {
+                        // TMDB 没有结果，使用站点提供的图片
+                        if (!TextUtils.isEmpty(fallbackUrl)) {
+                            loadCoverBg(itemName, fallbackUrl);
+                        } else {
+                            hideCoverBg();
+                        }
+                    } else {
+                        loadCoverBg(itemName, backdropUrl);
+                    }
+                });
+            });
             return;
         }
+        // 没有配置 TMDB API Key，使用站点提供的图片
+        String coverUrl = getFallbackCoverUrl(item);
+        if (TextUtils.isEmpty(coverUrl)) {
+            hideCoverBg();
+            return;
+        }
+        loadCoverBg(itemName, coverUrl);
+    }
+
+    private String getFallbackCoverUrl(Vod item) {
+        String backdrop = item.getBackdrop();
+        if (!TextUtils.isEmpty(backdrop)) return backdrop;
+        return item.getPic();
+    }
+
+    private void hideCoverBg() {
+        mLastCoverUrl = "";
+        mBinding.coverTint.setBackgroundResource(R.drawable.bg_tv_cinema_backdrop_tint);
+        mBinding.coverTint.setAlpha(1.0f);
+        mBinding.homeMask.setAlpha(1.0f);
+        mBinding.coverBg.setVisibility(View.INVISIBLE);
+    }
+
+    private void loadCoverBg(String name, String coverUrl) {
         if (TextUtils.equals(mLastCoverUrl, coverUrl)) return;
         mLastCoverUrl = coverUrl;
         boolean isFirstLoad = mBinding.coverBg.getVisibility() != View.VISIBLE;
@@ -263,11 +287,11 @@ public class CinemaHomeActivity extends BaseActivity implements
         if (isFirstLoad) {
             mBinding.coverBg.setVisibility(View.VISIBLE);
             mBinding.coverBg.setAlpha(0f);
-            ImgUtil.load(item.getName(), coverUrl, mBinding.coverBg);
+            ImgUtil.load(name, coverUrl, mBinding.coverBg);
             mBinding.coverBg.animate().alpha(0.88f).setDuration(400).start();
         } else {
             mBinding.coverBg.animate().alpha(0f).setDuration(200).withEndAction(() -> {
-                ImgUtil.load(item.getName(), coverUrl, mBinding.coverBg);
+                ImgUtil.load(name, coverUrl, mBinding.coverBg);
                 mBinding.coverBg.animate().alpha(0.88f).setDuration(400).start();
             }).start();
         }

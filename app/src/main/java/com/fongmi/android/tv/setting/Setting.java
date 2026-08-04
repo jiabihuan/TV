@@ -352,4 +352,24 @@ public class Setting {
     public static void putHomeRecommend(String key, String value) {
         Prefers.put("home_recommend_" + key, value);
     }
+
+    public static String getTmdbApiKey() {
+        return Prefers.getString("tmdb_api_key", "");
+    }
+
+    public static void putTmdbApiKey(String key) {
+        Prefers.put("tmdb_api_key", key);
+    }
+
+    public static boolean hasTmdbApiKey() {
+        return !getTmdbApiKey().isEmpty();
+    }
+
+    public static String getTmdbBackdrop(String name) {
+        return Prefers.getString("tmdb_backdrop_" + name, "");
+    }
+
+    public static void putTmdbBackdrop(String name, String url) {
+        Prefers.put("tmdb_backdrop_" + name, url);
+    }
 }

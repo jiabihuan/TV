@@ -22,6 +22,7 @@ import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.impl.ConfigListener;
 import com.fongmi.android.tv.impl.LiveListener;
+import com.fongmi.android.tv.impl.PassListener;
 import com.fongmi.android.tv.impl.SiteListener;
 import com.fongmi.android.tv.setting.LiveSetting;
 import com.fongmi.android.tv.setting.PlayerSetting;
@@ -32,6 +33,7 @@ import com.fongmi.android.tv.ui.dialog.DohDialog;
 import com.fongmi.android.tv.ui.dialog.HistoryDialog;
 import com.fongmi.android.tv.ui.dialog.LiveDialog;
 import com.fongmi.android.tv.ui.dialog.ProxySubscriptionDialog;
+import com.fongmi.android.tv.ui.dialog.PassDialog;
 import com.fongmi.android.tv.ui.dialog.RestoreDialog;
 import com.fongmi.android.tv.ui.dialog.WebDavDialog;
 import com.fongmi.android.tv.ui.dialog.SiteDialog;
@@ -48,7 +50,7 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SettingActivity extends BaseActivity implements ConfigListener, SiteListener, LiveListener, DohDialog.Listener {
+public class SettingActivity extends BaseActivity implements ConfigListener, SiteListener, LiveListener, DohDialog.Listener, PassListener {
 
     private ActivitySettingBinding mBinding;
     private String[] size;
@@ -97,6 +99,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.searchText.setText((search = ResUtil.getStringArray(R.array.select_search))[Setting.getSearchMode()]);
         mBinding.homeStyleText.setText((homeStyle = ResUtil.getStringArray(R.array.select_home_style))[Setting.getHomeStyle()]);
         mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary());
+        setTmdbText();
     }
 
     private void setCacheText() {
@@ -106,6 +109,15 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
                 mBinding.cacheText.setText(result);
             }
         });
+    }
+
+    private void setTmdbText() {
+        String key = Setting.getTmdbApiKey();
+        if (key.isEmpty()) {
+            mBinding.tmdbApiText.setText(R.string.setting_tmdb_api_empty);
+        } else {
+            mBinding.tmdbApiText.setText(key.substring(0, Math.min(8, key.length())) + "...");
+        }
     }
 
     @Override
@@ -132,6 +144,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.liveBoot.setOnClickListener(this::setLiveBoot);
         mBinding.search.setOnClickListener(this::setSearch);
         mBinding.homeStyle.setOnClickListener(this::setHomeStyle);
+        mBinding.tmdbApi.setOnClickListener(this::setTmdbApi);
         mBinding.vodHistory.setOnClickListener(this::onVodHistory);
         mBinding.liveHistory.setOnClickListener(this::onLiveHistory);
         mBinding.wallDefault.setOnClickListener(this::setWallDefault);
@@ -296,6 +309,17 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         Intent intent = new Intent(this, Setting.isHomeCapsule() ? CinemaHomeActivity.class : HomeActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
+    }
+
+    private void setTmdbApi(View view) {
+        PassDialog.create().hint(getString(R.string.setting_tmdb_api_hint)).show(this);
+    }
+
+    @Override
+    public void setPass(String pass) {
+        Setting.putTmdbApiKey(pass.trim());
+        setTmdbText();
+        Notify.show("TMDB API Key已设置");
     }
 
     private void setDoh(View view) {

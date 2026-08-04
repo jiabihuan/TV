@@ -37,20 +37,6 @@
         android:scaleType="fitXY"
         android:src="@drawable/bg_tv_cinema_mask" />
 
-    <!-- Top nav gradient -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="120dp"
-        android:background="@drawable/bg_cinema_nav_gradient" />
-
-    <!-- Bottom gradient for poster area -->
-    <View
-        android:id="@+id/bottomGradient"
-        android:layout_width="match_parent"
-        android:layout_height="300dp"
-        android:layout_gravity="bottom"
-        android:background="@drawable/bg_tv_cinema_bottom_gradient" />
-
     <!-- Navigation bar -->
     <LinearLayout
         android:id="@+id/nav"
@@ -196,41 +182,6 @@
         android:layout_marginStart="32dp"
         android:layout_marginTop="118dp"
         android:orientation="vertical">
-
-        <!-- Greeting row with accent line -->
-        <LinearLayout
-            android:id="@+id/greetingRow"
-            android:layout_width="wrap_content"
-            android:layout_height="22dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <View
-                android:layout_width="3dp"
-                android:layout_height="14dp"
-                android:background="@drawable/bg_tv_cinema_left_line" />
-
-            <TextView
-                android:id="@+id/greeting"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:singleLine="true"
-                android:textColor="#FFFF7A57"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <!-- Welcome subtitle -->
-        <TextView
-            android:id="@+id/timeReminder"
-            android:layout_width="560dp"
-            android:layout_height="22dp"
-            android:ellipsize="end"
-            android:gravity="center_vertical"
-            android:singleLine="true"
-            android:textColor="#FFB0B8D0"
-            android:textSize="13sp" />
 
         <!-- Movie title row -->
         <LinearLayout

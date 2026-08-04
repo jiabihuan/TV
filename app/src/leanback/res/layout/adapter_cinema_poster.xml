@@ -30,12 +30,6 @@
                 android:scaleType="centerCrop"
                 app:shapeAppearanceOverlay="@style/Vod.Grid.Cinema" />
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:layout_gravity="bottom"
-                android:background="@drawable/bg_cinema_poster_gradient" />
-
             <TextView
                 android:id="@+id/remarks"
                 android:layout_width="wrap_content"

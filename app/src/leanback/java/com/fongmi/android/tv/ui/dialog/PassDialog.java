@@ -20,9 +20,15 @@ import com.fongmi.android.tv.utils.ResUtil;
 public class PassDialog extends BaseBottomSheetDialog {
 
     private DialogPassBinding binding;
+    private String hint;
 
     public static PassDialog create() {
         return new PassDialog();
+    }
+
+    public PassDialog hint(String hint) {
+        this.hint = hint;
+        return this;
     }
 
     public void show(FragmentActivity activity) {
@@ -33,6 +39,14 @@ public class PassDialog extends BaseBottomSheetDialog {
     @Override
     protected ViewBinding getBinding(@NonNull LayoutInflater inflater, @Nullable ViewGroup container) {
         return binding = DialogPassBinding.inflate(inflater, container, false);
+    }
+
+    @Override
+    protected void initView() {
+        if (hint != null) {
+            binding.pass.setHint(hint);
+            binding.pass.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        }
     }
 
     @Override
