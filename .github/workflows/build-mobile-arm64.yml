@@ -3,6 +3,7 @@ name: Build Mobile Arm64 APK
 on:
   push:
     branches:
+      - main
       - mobile-v8a
   workflow_dispatch:
 
@@ -11,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 60
 
     steps:
@@ -49,9 +50,7 @@ jobs:
 
       - name: Build mobile arm64 release APK
         run: |
-          # 限制 Gradle 内存和并发，防止 1核4G 服务器卡死
-          export GRADLE_OPTS="-Xmx1024m -XX:MaxMetaspaceSize=256m -Dorg.gradle.parallel=false -Dorg.gradle.daemon=false"
-          ./gradlew :app:assembleMobileArm64_v8aRelease --no-daemon --max-workers=1 --no-build-cache --stacktrace 2>&1 | tee build.log
+          ./gradlew :app:assembleMobileArm64_v8aRelease --no-daemon --no-build-cache --stacktrace 2>&1 | tee build.log
           exit ${PIPESTATUS[0]}
 
       - name: Collect APK
