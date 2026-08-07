@@ -71,6 +71,8 @@ public class CinemaHomeActivity extends BaseActivity implements
     private Clock mClock;
     private boolean mConfigReady;
     private boolean mHasMovieSelected;
+    private boolean mHomeFallback;
+    private boolean mHomeLoading;
     private String mLastCoverUrl = "";
     private String mLastTitleUrl = "";
     private String mCurrentTypeId = "home";
@@ -154,11 +156,14 @@ public class CinemaHomeActivity extends BaseActivity implements
         mViewModel = new ViewModelProvider(this).get(SiteViewModel.class);
         mViewModel.getResult().observe(this, result -> {
             mBinding.loading.setVisibility(View.GONE);
+            mHomeLoading = false;
             if (result != null && result.getList() != null && !result.getList().isEmpty()) {
                 mResult = result;
                 mPosterAdapter.setItems(result.getList());
                 if ("home".equals(mCurrentTypeId)) {
                     setCategories(result.getTypes());
+                } else if (mHomeFallback && mPendingTypes != null) {
+                    setCategories(mPendingTypes);
                 }
                 updateHero(0);
                 mBinding.posters.requestFocus();
@@ -167,6 +172,7 @@ public class CinemaHomeActivity extends BaseActivity implements
                 if ("home".equals(mCurrentTypeId) && result != null && result.getTypes() != null && !result.getTypes().isEmpty()) {
                     setCategories(result.getTypes());
                     mPendingTypes = result.getTypes();
+                    mHomeFallback = true;
                     if (mCategoryAdapter != null && mCategoryAdapter.getItemCount() > 1) {
                         Class first = mCategoryAdapter.getItem(1);
                         if (first != null) {
@@ -174,6 +180,11 @@ public class CinemaHomeActivity extends BaseActivity implements
                             onItemClick(first, 1);
                         }
                     }
+                } else if (mHomeFallback && mPendingTypes != null && !mPendingTypes.isEmpty()) {
+                    setCategories(mPendingTypes);
+                    mBinding.loading.setVisibility(View.VISIBLE);
+                    mBinding.empty.setText(R.string.home_empty);
+                    mBinding.loadingProgress.setVisibility(View.GONE);
                 } else {
                     mBinding.loading.setVisibility(View.VISIBLE);
                     mBinding.empty.setText(R.string.home_empty);
@@ -334,7 +345,17 @@ public class CinemaHomeActivity extends BaseActivity implements
             public void success() {
                 mConfigReady = true;
                 setTitle();
-                loadHomeContent();
+                updateSiteName();
+                // 不在这里直接调用 loadHomeContent()，避免与 onRefreshEvent(HOME) 产生双重调用
+                // 双重调用会导致 SiteViewModel.execute() 中 cancel(true) 中断 spider 执行，
+                // QuickJS 引擎被中断后缓存的 spider 会损坏，导致后续调用返回空数据
+                // loadHomeContent() 由 onConfigEvent(VOD) -> RefreshEvent.home() -> onRefreshEvent(HOME) 触发
+                // 兜底：如果 2 秒后仍未加载，手动触发一次
+                App.post(() -> {
+                    if (mPosterAdapter.isEmpty() && !mHomeLoading) {
+                        loadHomeContent();
+                    }
+                }, 2000);
             }
 
             @Override
@@ -365,9 +386,10 @@ public class CinemaHomeActivity extends BaseActivity implements
     }
 
     private void loadHomeContent() {
-        if (getHome() == null || TextUtils.isEmpty(getHome().getKey())) {
-            return;
-        }
+        if (getHome() == null || TextUtils.isEmpty(getHome().getKey())) return;
+        if (mHomeLoading) return;
+        mHomeLoading = true;
+        mHomeFallback = false;
         mCurrentTypeId = "home";
         mHasMovieSelected = false;
         mLastCoverUrl = "";
@@ -380,6 +402,7 @@ public class CinemaHomeActivity extends BaseActivity implements
 
     private void loadCategoryContent(Class item) {
         if (getHome() == null || TextUtils.isEmpty(getHome().getKey())) return;
+        mHomeLoading = false;
         mCurrentTypeId = item.getTypeId();
         mHasMovieSelected = false;
         mLastCoverUrl = "";

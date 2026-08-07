@@ -4,7 +4,7 @@
     <item>
         <bitmap
             android:src="@drawable/ic_banner_fg"
-            android:gravity="center"
+            android:gravity="center_inside"
             android:tileMode="disabled" />
     </item>
 </layer-list>
