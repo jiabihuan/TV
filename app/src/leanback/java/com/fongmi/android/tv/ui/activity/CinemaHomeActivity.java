@@ -71,12 +71,10 @@ public class CinemaHomeActivity extends BaseActivity implements
     private Clock mClock;
     private boolean mConfigReady;
     private boolean mHasMovieSelected;
-    private boolean mHomeFallback;
-    private boolean mHomeLoading;
+    private boolean mLoading;
     private String mLastCoverUrl = "";
     private String mLastTitleUrl = "";
     private String mCurrentTypeId = "home";
-    private List<Class> mPendingTypes;
 
     private final BroadcastReceiver mNetworkReceiver = new BroadcastReceiver() {
         @Override
@@ -156,40 +154,29 @@ public class CinemaHomeActivity extends BaseActivity implements
         mViewModel = new ViewModelProvider(this).get(SiteViewModel.class);
         mViewModel.getResult().observe(this, result -> {
             mBinding.loading.setVisibility(View.GONE);
-            mHomeLoading = false;
+            mLoading = false;
             if (result != null && result.getList() != null && !result.getList().isEmpty()) {
                 mResult = result;
                 mPosterAdapter.setItems(result.getList());
-                if ("home".equals(mCurrentTypeId)) {
+                if ("home".equals(mCurrentTypeId) && result.getTypes() != null) {
                     setCategories(result.getTypes());
-                } else if (mHomeFallback && mPendingTypes != null) {
-                    setCategories(mPendingTypes);
                 }
                 updateHero(0);
                 mBinding.posters.requestFocus();
                 com.fongmi.android.tv.bean.Cache.clear().put(result);
-            } else {
-                if ("home".equals(mCurrentTypeId) && result != null && result.getTypes() != null && !result.getTypes().isEmpty()) {
-                    setCategories(result.getTypes());
-                    mPendingTypes = result.getTypes();
-                    mHomeFallback = true;
-                    if (mCategoryAdapter != null && mCategoryAdapter.getItemCount() > 1) {
-                        Class first = mCategoryAdapter.getItem(1);
-                        if (first != null) {
-                            mBinding.categories.setSelectedPosition(1);
-                            onItemClick(first, 1);
-                        }
+            } else if ("home".equals(mCurrentTypeId) && result != null && result.getTypes() != null && !result.getTypes().isEmpty()) {
+                setCategories(result.getTypes());
+                if (mCategoryAdapter != null && mCategoryAdapter.getItemCount() > 1) {
+                    Class first = mCategoryAdapter.getItem(1);
+                    if (first != null) {
+                        mBinding.categories.setSelectedPosition(1);
+                        onItemClick(first, 1);
                     }
-                } else if (mHomeFallback && mPendingTypes != null && !mPendingTypes.isEmpty()) {
-                    setCategories(mPendingTypes);
-                    mBinding.loading.setVisibility(View.VISIBLE);
-                    mBinding.empty.setText(R.string.home_empty);
-                    mBinding.loadingProgress.setVisibility(View.GONE);
-                } else {
-                    mBinding.loading.setVisibility(View.VISIBLE);
-                    mBinding.empty.setText(R.string.home_empty);
-                    mBinding.loadingProgress.setVisibility(View.GONE);
                 }
+            } else {
+                mBinding.loading.setVisibility(View.VISIBLE);
+                mBinding.empty.setText(R.string.home_empty);
+                mBinding.loadingProgress.setVisibility(View.GONE);
             }
         });
     }
@@ -346,16 +333,7 @@ public class CinemaHomeActivity extends BaseActivity implements
                 mConfigReady = true;
                 setTitle();
                 updateSiteName();
-                // 不在这里直接调用 loadHomeContent()，避免与 onRefreshEvent(HOME) 产生双重调用
-                // 双重调用会导致 SiteViewModel.execute() 中 cancel(true) 中断 spider 执行，
-                // QuickJS 引擎被中断后缓存的 spider 会损坏，导致后续调用返回空数据
-                // loadHomeContent() 由 onConfigEvent(VOD) -> RefreshEvent.home() -> onRefreshEvent(HOME) 触发
-                // 兜底：如果 2 秒后仍未加载，手动触发一次
-                App.post(() -> {
-                    if (mPosterAdapter.isEmpty() && !mHomeLoading) {
-                        loadHomeContent();
-                    }
-                }, 2000);
+                loadHomeContent();
             }
 
             @Override
@@ -387,9 +365,8 @@ public class CinemaHomeActivity extends BaseActivity implements
 
     private void loadHomeContent() {
         if (getHome() == null || TextUtils.isEmpty(getHome().getKey())) return;
-        if (mHomeLoading) return;
-        mHomeLoading = true;
-        mHomeFallback = false;
+        if (mLoading) return;
+        mLoading = true;
         mCurrentTypeId = "home";
         mHasMovieSelected = false;
         mLastCoverUrl = "";
@@ -402,7 +379,8 @@ public class CinemaHomeActivity extends BaseActivity implements
 
     private void loadCategoryContent(Class item) {
         if (getHome() == null || TextUtils.isEmpty(getHome().getKey())) return;
-        mHomeLoading = false;
+        if (mLoading) return;
+        mLoading = true;
         mCurrentTypeId = item.getTypeId();
         mHasMovieSelected = false;
         mLastCoverUrl = "";
