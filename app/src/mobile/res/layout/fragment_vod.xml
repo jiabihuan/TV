@@ -126,7 +126,7 @@
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             tools:listitem="@layout/adapter_type" />
 
-    </com.google.android.material.appbar.AppBarLayout>
+    </LinearLayout>
 
     <!-- Pager positioned below AppBarLayout -->
     <com.fongmi.android.tv.ui.custom.CustomViewPager
