@@ -54,6 +54,7 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
@@ -72,6 +73,8 @@ public class CinemaHomeActivity extends BaseActivity implements
     private boolean mHasMovieSelected;
     private String mLastCoverUrl = "";
     private String mLastTitleUrl = "";
+    private String mCurrentTypeId = "home";
+    private List<Class> mPendingTypes;
 
     private final BroadcastReceiver mNetworkReceiver = new BroadcastReceiver() {
         @Override
@@ -154,16 +157,28 @@ public class CinemaHomeActivity extends BaseActivity implements
             if (result != null && result.getList() != null && !result.getList().isEmpty()) {
                 mResult = result;
                 mPosterAdapter.setItems(result.getList());
-                setCategories(result.getTypes());
-                if (!result.getList().isEmpty()) {
-                    updateHero(0);
-                    mBinding.posters.requestFocus();
+                if ("home".equals(mCurrentTypeId)) {
+                    setCategories(result.getTypes());
                 }
+                updateHero(0);
+                mBinding.posters.requestFocus();
                 com.fongmi.android.tv.bean.Cache.clear().put(result);
             } else {
-                mBinding.loading.setVisibility(View.VISIBLE);
-                mBinding.empty.setText(R.string.home_empty);
-                mBinding.loadingProgress.setVisibility(View.GONE);
+                if ("home".equals(mCurrentTypeId) && result != null && result.getTypes() != null && !result.getTypes().isEmpty()) {
+                    setCategories(result.getTypes());
+                    mPendingTypes = result.getTypes();
+                    if (mCategoryAdapter != null && mCategoryAdapter.getItemCount() > 1) {
+                        Class first = mCategoryAdapter.getItem(1);
+                        if (first != null) {
+                            mBinding.categories.setSelectedPosition(1);
+                            onItemClick(first, 1);
+                        }
+                    }
+                } else {
+                    mBinding.loading.setVisibility(View.VISIBLE);
+                    mBinding.empty.setText(R.string.home_empty);
+                    mBinding.loadingProgress.setVisibility(View.GONE);
+                }
             }
         });
     }
@@ -353,6 +368,7 @@ public class CinemaHomeActivity extends BaseActivity implements
         if (getHome() == null || TextUtils.isEmpty(getHome().getKey())) {
             return;
         }
+        mCurrentTypeId = "home";
         mHasMovieSelected = false;
         mLastCoverUrl = "";
         mBinding.tagRow.setVisibility(View.GONE);
@@ -360,6 +376,18 @@ public class CinemaHomeActivity extends BaseActivity implements
         mBinding.loadingProgress.setVisibility(View.VISIBLE);
         mBinding.empty.setText(R.string.home_loading);
         mViewModel.homeContent();
+    }
+
+    private void loadCategoryContent(Class item) {
+        if (getHome() == null || TextUtils.isEmpty(getHome().getKey())) return;
+        mCurrentTypeId = item.getTypeId();
+        mHasMovieSelected = false;
+        mLastCoverUrl = "";
+        mBinding.tagRow.setVisibility(View.GONE);
+        mBinding.loading.setVisibility(View.VISIBLE);
+        mBinding.loadingProgress.setVisibility(View.VISIBLE);
+        mBinding.empty.setText(R.string.home_loading);
+        mViewModel.categoryContent(getHome().getKey(), item.getTypeId(), "1", true, new HashMap<>());
     }
 
     private void checkAction(Intent intent) {
@@ -420,9 +448,7 @@ public class CinemaHomeActivity extends BaseActivity implements
         if (position == 0) {
             loadHomeContent();
         } else {
-            if (mResult != null) {
-                VodActivity.start(this, getHome().getKey(), mResult);
-            }
+            loadCategoryContent(item);
         }
     }
 

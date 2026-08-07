@@ -90,7 +90,6 @@ import android.os.IBinder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -529,31 +528,27 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                 com.fongmi.android.tv.setting.Setting.putHomeRecommend(getHome().getKey(), cacheResult.toString());
             } else if (!hasValidSavedData) {
                 if (mHomeFallback) {
-                    // 回退的分类也没有内容，重置回退状态，设置分类并自动切到第一个分类
                     mHomeFallback = false;
                     List<Class> types = mPendingTypes;
                     mPendingTypes = null;
                     if (types != null && !types.isEmpty()) {
                         setTypes(types);
-                        // 自动切换到第一个分类（跳过"首页"标签）
                         if (mBinding.recyclerType != null && mTypeAdapter != null && mTypeAdapter.getItemCount() > 1) {
                             mBinding.recyclerType.setSelectedPosition(1);
                             onCategoryClick(1);
                         }
+                    } else {
+                        mBinding.progressLayout.showEmpty();
                     }
                 } else if (result != null && result.getTypes() != null && !result.getTypes().isEmpty()) {
-                    // 首页推荐为空但有分类 → 回退到第一个非文件夹分类
-                    Class fallback = null;
-                    for (Class type : result.getTypes()) {
-                        if (!type.isFolder()) { fallback = type; break; }
-                    }
-                    if (fallback == null) fallback = result.getTypes().get(0);
-                    mPendingTypes = result.getTypes();
-                    mHomeFallback = true;
-                    mAdapter.add("progress");
-                    mViewModel.categoryContent(getHome().getKey(), fallback.getTypeId(), "1", true, new HashMap<>());
-                } else if (result != null) {
                     setTypes(result.getTypes());
+                    mBinding.progressLayout.showContent();
+                    if (mBinding.recyclerType != null && mTypeAdapter != null && mTypeAdapter.getItemCount() > 1) {
+                        mBinding.recyclerType.setSelectedPosition(1);
+                        onCategoryClick(1);
+                    }
+                } else {
+                    mBinding.progressLayout.showEmpty();
                 }
             }
             // else: result 为空但 mResult 有 savedInstanceState 恢复的有效数据，保留现有数据，仅移除 progress
