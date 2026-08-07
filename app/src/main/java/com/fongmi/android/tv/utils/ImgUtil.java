@@ -85,6 +85,29 @@ public class ImgUtil {
         return Math.max(ResUtil.dp2px(200), ResUtil.getScreenWidth() / 4);
     }
 
+    /**
+     * 加载全屏背景图（如 TMDB backdrop），使用屏幕原始尺寸而非缩略图尺寸，
+     * 避免 centerCrop 将小尺寸图放大导致背景过度放大模糊。
+     */
+    public static void loadBackdrop(String text, String url, ImageView view) {
+        view.setScaleType(CENTER_CROP);
+        if (TextUtils.isEmpty(url) || failed.contains(url)) {
+            view.setImageDrawable(getTextDrawable(text, true));
+            return;
+        }
+        try {
+            Glide.with(view)
+                .load(getUrl(url))
+                .centerCrop()
+                .override(ResUtil.getScreenWidth(), ResUtil.getScreenHeight())
+                .listener(getListener(text, url, view, true))
+                .error(R.drawable.artwork)
+                .into(view);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
     public static Object getUrl(String url) {
         String param = null;
         url = UrlUtil.convert(url);

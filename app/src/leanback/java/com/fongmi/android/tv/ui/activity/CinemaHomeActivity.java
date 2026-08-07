@@ -279,15 +279,14 @@ public class CinemaHomeActivity extends BaseActivity implements
         mBinding.coverTint.setBackgroundResource(R.drawable.bg_tv_cinema_cover_tint);
         mBinding.coverTint.setAlpha(0.5f);
         mBinding.homeMask.setAlpha(0.5f);
-        mBinding.coverBg.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
         if (isFirstLoad) {
             mBinding.coverBg.setVisibility(View.VISIBLE);
             mBinding.coverBg.setAlpha(0f);
-            ImgUtil.load(name, coverUrl, mBinding.coverBg);
+            ImgUtil.loadBackdrop(name, coverUrl, mBinding.coverBg);
             mBinding.coverBg.animate().alpha(0.92f).setDuration(400).start();
         } else {
             mBinding.coverBg.animate().alpha(0f).setDuration(200).withEndAction(() -> {
-                ImgUtil.load(name, coverUrl, mBinding.coverBg);
+                ImgUtil.loadBackdrop(name, coverUrl, mBinding.coverBg);
                 mBinding.coverBg.animate().alpha(0.92f).setDuration(400).start();
             }).start();
         }
