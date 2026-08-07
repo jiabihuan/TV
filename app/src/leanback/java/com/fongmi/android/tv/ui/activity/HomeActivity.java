@@ -59,6 +59,7 @@ import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
 import com.fongmi.android.tv.ui.custom.CustomSelector;
 import com.fongmi.android.tv.ui.custom.CustomTitleView;
+import com.fongmi.android.tv.ui.custom.CustomVerticalGridView;
 import com.fongmi.android.tv.ui.dialog.SiteDialog;
 import com.fongmi.android.tv.ui.presenter.FuncPresenter;
 import com.fongmi.android.tv.ui.presenter.HeaderPresenter;
@@ -1003,6 +1004,25 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         }
     }
 
+    /** 判断当前焦点是否已到分类内容列表的第一行 */
+    private boolean isPagerListAtTop() {
+        try {
+            View focus = getCurrentFocus();
+            if (focus == null) return false;
+            View v = focus;
+            while (v != null) {
+                if (v instanceof CustomVerticalGridView) {
+                    return ((CustomVerticalGridView) v).getSelectedPosition() <= 0;
+                }
+                Object p = v.getParent();
+                v = (p instanceof View) ? (View) p : null;
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     /** 判断当前焦点是否在 ViewPager（非首页分类的内容区）内 */
     private boolean isPagerContentFocused() {
         try {
@@ -1065,9 +1085,11 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                     return mBinding.recyclerType.requestFocus();
                 }
             }
-            // ViewPager 里的海报按 ↑ → 回到分类栏
+            // ViewPager 里的海报按 ↑ → 先检查列表是否已到第一行，到顶才回到分类栏
             if (isPagerContentFocused()) {
-                return mBinding.recyclerType.requestFocus();
+                if (isPagerListAtTop()) {
+                    return mBinding.recyclerType.requestFocus();
+                }
             }
         }
         return super.dispatchKeyEvent(event);

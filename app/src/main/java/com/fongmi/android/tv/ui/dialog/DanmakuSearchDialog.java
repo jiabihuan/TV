@@ -79,7 +79,10 @@ public final class DanmakuSearchDialog extends BaseBottomSheetDialog implements 
             return true;
         });
         binding.keyword.setOnKeyListener((view, keyCode, event) -> {
-            if (KeyUtil.isActionDown(event) && KeyUtil.isDownKey(event) && binding.recycler.getVisibility() == VISIBLE) return binding.recycler.requestFocus();
+            if (KeyUtil.isActionDown(event) && KeyUtil.isDownKey(event) && binding.recycler.getVisibility() == VISIBLE) {
+                binding.recycler.post(() -> binding.recycler.scrollToPosition(0));
+                return true;
+            }
             return false;
         });
         binding.search.setOnClickListener(view -> {
@@ -118,7 +121,7 @@ public final class DanmakuSearchDialog extends BaseBottomSheetDialog implements 
     private void onSuccess(List<Danmaku> items) {
         adapter.addAll(items);
         hideProgress(items.isEmpty());
-        binding.recycler.requestFocus();
+        if (!items.isEmpty()) binding.recycler.post(() -> binding.recycler.scrollToPosition(0));
     }
 
     private void onError(Exception e) {
