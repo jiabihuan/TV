@@ -72,6 +72,9 @@ public class CinemaHomeActivity extends BaseActivity implements
     private boolean mConfigReady;
     private boolean mHasMovieSelected;
     private boolean mLoading;
+    private boolean mHomeLoaded;
+    private int mHomeRetryCount;
+    private List<Class> mPendingTypes;
     private String mLastCoverUrl = "";
     private String mLastTitleUrl = "";
     private String mCurrentTypeId = "home";
@@ -157,14 +160,21 @@ public class CinemaHomeActivity extends BaseActivity implements
             mLoading = false;
             if (result != null && result.getList() != null && !result.getList().isEmpty()) {
                 mResult = result;
+                mHomeLoaded = true;
                 mPosterAdapter.setItems(result.getList());
                 if ("home".equals(mCurrentTypeId) && result.getTypes() != null) {
                     setCategories(result.getTypes());
+                    com.fongmi.android.tv.setting.Setting.putHomeRecommend(
+                        getHome() != null ? getHome().getKey() : "", result.toString());
+                } else if (mPendingTypes != null && !mPendingTypes.isEmpty()) {
+                    setCategories(mPendingTypes);
+                    mPendingTypes = null;
                 }
                 updateHero(0);
                 mBinding.posters.requestFocus();
                 com.fongmi.android.tv.bean.Cache.clear().put(result);
             } else if ("home".equals(mCurrentTypeId) && result != null && result.getTypes() != null && !result.getTypes().isEmpty()) {
+                mPendingTypes = result.getTypes();
                 setCategories(result.getTypes());
                 if (mCategoryAdapter != null && mCategoryAdapter.getItemCount() > 1) {
                     Class first = mCategoryAdapter.getItem(1);
@@ -173,6 +183,13 @@ public class CinemaHomeActivity extends BaseActivity implements
                         onItemClick(first, 1);
                     }
                 }
+            } else if ("home".equals(mCurrentTypeId) && mHomeRetryCount < 2) {
+                mHomeRetryCount++;
+                App.post(() -> {
+                    if (!mHomeLoaded && !mLoading) {
+                        loadHomeContent();
+                    }
+                }, 1500);
             } else {
                 mBinding.loading.setVisibility(View.VISIBLE);
                 mBinding.empty.setText(R.string.home_empty);
@@ -333,7 +350,14 @@ public class CinemaHomeActivity extends BaseActivity implements
                 mConfigReady = true;
                 setTitle();
                 updateSiteName();
-                loadHomeContent();
+                // 不直接调用 loadHomeContent()，等待 onRefreshEvent(HOME) 触发
+                // 与 HomeActivity 保持一致，避免在 ConfigEvent 尚未处理完时过早请求
+                // 兜底：2 秒后如果仍未加载，手动触发
+                App.post(() -> {
+                    if (!mHomeLoaded && !mLoading) {
+                        loadHomeContent();
+                    }
+                }, 2000);
             }
 
             @Override
@@ -374,6 +398,27 @@ public class CinemaHomeActivity extends BaseActivity implements
         mBinding.loading.setVisibility(View.VISIBLE);
         mBinding.loadingProgress.setVisibility(View.VISIBLE);
         mBinding.empty.setText(R.string.home_loading);
+        // 先尝试从缓存恢复首页推荐数据，避免等待网络时空白
+        String cache = com.fongmi.android.tv.setting.Setting.getHomeRecommend(getHome().getKey());
+        if (!cache.isEmpty()) {
+            try {
+                Result cachedResult = Result.fromJson(cache);
+                if (cachedResult != null && cachedResult.getList() != null && !cachedResult.getList().isEmpty()) {
+                    mHomeLoaded = true;
+                    mResult = cachedResult;
+                    mPosterAdapter.setItems(cachedResult.getList());
+                    if (cachedResult.getTypes() != null && !cachedResult.getTypes().isEmpty()) {
+                        setCategories(cachedResult.getTypes());
+                    }
+                    updateHero(0);
+                    mBinding.loading.setVisibility(View.GONE);
+                    mBinding.loadingProgress.setVisibility(View.GONE);
+                    mBinding.posters.requestFocus();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         mViewModel.homeContent();
     }
 
@@ -473,6 +518,7 @@ public class CinemaHomeActivity extends BaseActivity implements
         switch (event.getType()) {
             case HOME:
                 setTitle();
+                mHomeRetryCount = 0;
                 loadHomeContent();
                 break;
         }
