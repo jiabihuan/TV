@@ -253,6 +253,14 @@ public class Setting {
         Prefers.put("search_mode", value);
     }
 
+    public static int getSearchThread() {
+        return Math.min(Math.max(Prefers.getInt("search_thread", 10), 3), 15);
+    }
+
+    public static void putSearchThread(int value) {
+        Prefers.put("search_thread", Math.min(Math.max(value, 3), 15));
+    }
+
     public static int getLayoutMode() {
         return Prefers.getInt("layout_mode", 0);
     }

@@ -84,6 +84,10 @@ public class CustomVerticalGridView extends VerticalGridView {
         if (KeyUtil.isBackKey(event)) return moveTop && moveToTop();
         pressUp = KeyUtil.isUpKey(event);
         pressDown = KeyUtil.isDownKey(event);
+        if (pressUp && getSelectedPosition() > 0) {
+            setSelectedPositionSmooth(getSelectedPosition() - 1);
+            return true;
+        }
         return super.dispatchKeyEvent(event);
     }
 

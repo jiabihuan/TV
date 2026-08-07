@@ -3,6 +3,7 @@ package com.fongmi.android.tv.ui.fragment;
 import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
@@ -135,6 +136,10 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
         mBinding.recycler.setAdapter(new ItemBridgeAdapter(mAdapter = new ArrayObjectAdapter(selector)));
         mBinding.recycler.setHeader(getActivity(), R.id.recycler);
         mBinding.recycler.setVerticalSpacing(ResUtil.dp2px(16));
+        mBinding.recycler.setItemViewCacheSize(20);
+        mBinding.recycler.setDrawingCacheEnabled(true);
+        mBinding.recycler.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
+        mBinding.recycler.setHasFixedSize(true);
     }
 
     private void setViewModel() {

@@ -19,6 +19,8 @@ public class Task {
     private static final ListeningExecutorService executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(8));
     private static final ListeningExecutorService largeExecutor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(20));
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private static volatile ListeningExecutorService searchExecutor;
+    private static volatile int searchPoolSize = 0;
 
     public static ListeningExecutorService executor() {
         return executor;
@@ -26,6 +28,19 @@ public class Task {
 
     public static ListeningExecutorService largeExecutor() {
         return largeExecutor;
+    }
+
+    public static ListeningExecutorService searchExecutor() {
+        int configured = com.fongmi.android.tv.setting.Setting.getSearchThread();
+        if (searchExecutor == null || searchPoolSize != configured) {
+            synchronized (Task.class) {
+                if (searchExecutor == null || searchPoolSize != configured) {
+                    searchPoolSize = configured;
+                    searchExecutor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(configured));
+                }
+            }
+        }
+        return searchExecutor;
     }
 
     public static ScheduledExecutorService scheduler() {
