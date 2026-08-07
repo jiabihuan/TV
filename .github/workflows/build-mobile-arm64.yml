@@ -49,8 +49,8 @@ jobs:
 
       - name: Build mobile arm64 release APK
         run: |
+          set -o pipefail
           ./gradlew :app:assembleMobileArm64_v8aRelease --no-daemon --no-build-cache --stacktrace 2>&1 | tee build.log
-          exit ${PIPESTATUS[0]}
 
       - name: Collect APK
         if: success()
