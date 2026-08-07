@@ -90,6 +90,7 @@ import android.os.IBinder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -117,6 +118,9 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private Clock mClock;
     private TypeAdapter mTypeAdapter;
     private View mOldView;
+    // 首页推荐回退：站点无首页推荐时，用第一个分类内容替代
+    private boolean mHomeFallback;
+    private List<Class> mPendingTypes;
     private ServiceConnection mPlaybackServiceConnection;
     private PlaybackService mPlaybackService;
     private final BroadcastReceiver mNetworkReceiver = new BroadcastReceiver() {
@@ -502,16 +506,53 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                 if (mAdapter.size() > index) {
                     mAdapter.removeItems(index, mAdapter.size() - index);
                 }
+                // 回退模式：用分类内容填充 Banner 轮播
+                if (mHomeFallback && mHomeRecommends.isEmpty()) {
+                    synchronized (mHomeRecommends) {
+                        for (Vod vod : result.getList()) {
+                            if (mHomeRecommends.size() >= HOME_RECOMMEND_LIMIT) break;
+                            vod.setSite(getHome());
+                            mHomeRecommends.add(vod);
+                        }
+                    }
+                }
                 addVideo(mResult = result);
                 Cache.clear().put(result);
-                setTypes(result.getTypes());
+                // 回退模式下使用之前保存的分类列表（categoryContent 不返回分类）
+                List<Class> types = mHomeFallback ? mPendingTypes : result.getTypes();
+                mHomeFallback = false;
+                mPendingTypes = null;
+                setTypes(types != null ? types : result.getTypes());
 
                 Result cacheResult = new Result();
                 cacheResult.setList(result.getList());
                 com.fongmi.android.tv.setting.Setting.putHomeRecommend(getHome().getKey(), cacheResult.toString());
             } else if (!hasValidSavedData) {
-                // 既无新数据也无已保存的 savedInstanceState 数据，至少尝试设置分类
-                if (result != null) {
+                if (mHomeFallback) {
+                    // 回退的分类也没有内容，重置回退状态，设置分类并自动切到第一个分类
+                    mHomeFallback = false;
+                    List<Class> types = mPendingTypes;
+                    mPendingTypes = null;
+                    if (types != null && !types.isEmpty()) {
+                        setTypes(types);
+                        // 自动切换到第一个分类（跳过"首页"标签）
+                        if (mBinding.recyclerType != null && mTypeAdapter != null && mTypeAdapter.getItemCount() > 1) {
+                            mBinding.recyclerType.setSelectedPosition(1);
+                            onCategoryClick(1);
+                        }
+                    }
+                } else if (result != null && result.getTypes() != null && !result.getTypes().isEmpty()) {
+                    // 首页推荐为空但有分类 → 回退到第一个非文件夹分类
+                    Class fallback = null;
+                    for (Class type : result.getTypes()) {
+                        if (!type.isFolder()) { fallback = type; break; }
+                    }
+                    if (fallback == null) fallback = result.getTypes().get(0);
+                    mPendingTypes = result.getTypes();
+                    mHomeFallback = true;
+                    mAdapter.add("progress");
+                    mViewModel.categoryContent(getHome().getKey(), fallback.getTypeId(), "1", true, new HashMap<>());
+                } else if (result != null) {
                     setTypes(result.getTypes());
                 }
             }
@@ -587,6 +628,8 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     private void getVideo() {
         mResult = Result.empty();
+        mHomeFallback = false;
+        mPendingTypes = null;
         int index = getRecommendIndex();
         boolean gone = mAdapter.indexOf("progress") == -1;
         boolean hasItem = gone && mAdapter.size() > index;
