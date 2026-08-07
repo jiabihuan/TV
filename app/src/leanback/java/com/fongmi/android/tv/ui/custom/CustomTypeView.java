@@ -40,7 +40,8 @@ public class CustomTypeView extends MaterialTextView {
     }
 
     private boolean onKeyDown() {
-        App.post(() -> coolDown = false, 3000);
+        // 刷新冷却从 3000ms 缩短到 800ms，避免遥控器连按 UP 键刷新被长时间忽略
+        App.post(() -> coolDown = false, 800);
         listener.onRefresh();
         coolDown = true;
         return true;

@@ -189,6 +189,9 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
 
     private void checkMore() {
         if (mScroller.isDisable() || mAdapter.size() >= 5) return;
+        // 内容已经能向下滚动说明首屏已满，不急于继续预加载下一页；
+        // 避免慢站源下首屏不足 5 行时串行连续请求多页拖垮加载
+        if (mBinding.recycler.canScrollVertically(1)) return;
         mScroller.checkMore();
     }
 

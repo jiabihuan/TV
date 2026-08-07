@@ -73,11 +73,16 @@ public class ImgUtil {
         if (TextUtils.isEmpty(url) || failed.contains(url)) view.setImageDrawable(getTextDrawable(text, vod));
         else try {
             RequestBuilder<Drawable> builder = Glide.with(view).load(getUrl(url)).listener(getListener(text, url, view, vod));
-            if (vod) builder.centerCrop().into(view);
-            else builder.fitCenter().into(view);
+            if (vod) builder.centerCrop().override(getTargetWidth()).into(view);
+            else builder.fitCenter().override(getTargetWidth()).into(view);
         } catch (Throwable e) {
             e.printStackTrace();
         }
+    }
+
+    // 列表海报目标尺寸：按屏幕宽度约 1/4 缩放，避免 TV 站源大图全尺寸解码导致列表滚动卡顿
+    private static int getTargetWidth() {
+        return Math.max(ResUtil.dp2px(200), ResUtil.getScreenWidth() / 4);
     }
 
     public static Object getUrl(String url) {

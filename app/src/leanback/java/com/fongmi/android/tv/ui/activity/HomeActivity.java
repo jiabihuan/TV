@@ -91,6 +91,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import android.view.ViewGroup;
 import androidx.fragment.app.Fragment;
@@ -204,7 +205,9 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         }
         final boolean hasCached = hasCachedHolder[0];
 
-        com.fongmi.android.tv.utils.Task.executor().submit(() -> {
+        // 首页 Banner 推荐数据属于低优先级加载，改走大线程池，
+        // 避免与首页/分类内容请求争抢 5 线程池导致内容加载排队超时
+        com.fongmi.android.tv.utils.Task.largeExecutor().submit(() -> {
             try {
                 List<Vod> recommends = new ArrayList<>();
                 // forceRefresh = true 时直接走网络；forceRefresh = false 时有缓存就先展示缓存，
@@ -566,7 +569,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     private void setFocus() {
         mBinding.title.setSelected(true);
-        App.post(() -> mBinding.title.setFocusable(true), 500);
+        App.post(() -> mBinding.title.setFocusable(true), 100);
         if (!mBinding.title.hasFocus()) {
             App.post(() -> {
                 RecyclerView.ViewHolder holder = mBinding.recycler.findViewHolderForAdapterPosition(0);
@@ -578,7 +581,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                     }
                 }
                 mBinding.recycler.requestFocus();
-            }, 200);
+            }, 50);
         }
     }
 
@@ -1249,9 +1252,26 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
         mTypeAdapter.addAll(items);
         mBinding.recyclerType.setVisibility(View.VISIBLE);
-        mBinding.pager.setAdapter(new PageAdapter(getSupportFragmentManager(), types));
+
+        // 分类列表没变时复用现有 PageAdapter，避免每次首页刷新都重建整个 ViewPager，
+        // 导致已创建的分类 Fragment 全部销毁、切 tab 时重新发 categoryContent 请求
+        if (mBinding.pager.getAdapter() instanceof PageAdapter && sameTypes(((PageAdapter) mBinding.pager.getAdapter()).mTypes, types)) {
+            ((PageAdapter) mBinding.pager.getAdapter()).mTypes.clear();
+            ((PageAdapter) mBinding.pager.getAdapter()).mTypes.addAll(types);
+            mBinding.pager.getAdapter().notifyDataSetChanged();
+        } else {
+            mBinding.pager.setAdapter(new PageAdapter(getSupportFragmentManager(), types));
+        }
 
         onCategoryClick(0);
+    }
+
+    private boolean sameTypes(List<Class> oldTypes, List<Class> newTypes) {
+        if (oldTypes == null || newTypes == null || oldTypes.size() != newTypes.size()) return false;
+        for (int i = 0; i < oldTypes.size(); i++) {
+            if (!Objects.equals(oldTypes.get(i).getTypeId(), newTypes.get(i).getTypeId())) return false;
+        }
+        return true;
     }
 
     private void onCategoryClick(int position) {
@@ -1276,7 +1296,8 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         if (mOldView != null) mOldView.setSelected(false);
         if ((mOldView = child != null ? child.itemView : null) == null) return;
         mOldView.setSelected(true);
-        App.post(mRunnable, 100);
+        // 切页防抖从 100ms 缩短到 30ms，提升遥控器分类切换跟手度
+        App.post(mRunnable, 30);
     }
 
     private final Runnable mRunnable = new Runnable() {

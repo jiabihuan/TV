@@ -15,7 +15,8 @@ import java.util.function.Consumer;
 
 public class Task {
 
-    private static final ListeningExecutorService executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(5));
+    // 内容请求线程池：由 5 提到 8，避免首页/分类请求与详情等任务排队过久导致 30s 超时被排队时间消耗
+    private static final ListeningExecutorService executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(8));
     private static final ListeningExecutorService largeExecutor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(20));
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 

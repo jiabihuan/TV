@@ -30,7 +30,9 @@ import com.fongmi.android.tv.ui.activity.SearchActivity;
 import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.ResUtil;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 首页 Banner Presenter — 8-Slot Cover Flow 走马灯
@@ -49,6 +51,7 @@ public class HomeBannerPresenter extends Presenter {
 
     private final HomeActivity activity;
     private String mCurrentVodId;
+    private final Set<String> requestedDetails = Collections.synchronizedSet(new java.util.HashSet<>());
 
     public HomeBannerPresenter(HomeActivity activity) {
         this.activity = activity;
@@ -214,7 +217,12 @@ public class HomeBannerPresenter extends Presenter {
             !android.text.TextUtils.isEmpty(vod.getContent())) {
             return;
         }
-        com.fongmi.android.tv.utils.Task.executor().submit(() -> {
+        // 同一张卡片只预取一次详情，避免走马灯每 5 秒轮播时反复提交网络请求，
+        // 把 5 线程池全部占满导致首页/分类内容请求排队超时。
+        String detailKey = key + "|" + id;
+        if (!requestedDetails.add(detailKey)) return;
+        // 详情预取属于低优先级优化，改走大线程池，避免与首页/分类内容争抢小线程池
+        com.fongmi.android.tv.utils.Task.largeExecutor().submit(() -> {
             try {
                 com.fongmi.android.tv.bean.Result result = com.fongmi.android.tv.api.SiteApi.detailContent(key, id);
                 if (result != null && result.getList() != null && !result.getList().isEmpty()) {
@@ -244,7 +252,9 @@ public class HomeBannerPresenter extends Presenter {
     // ========================================================================
 
     private static final int MARQUEE_INTERVAL_MS = 5000;
-    private static final int MARQUEE_ANIM_MS    = 800;
+    // 切换动画时长从 800ms 缩短到 350ms：动画期间左右键会被消费但无动作，
+    // 过长的动画会导致遥控器"按了没反应"、连按丢键
+    private static final int MARQUEE_ANIM_MS    = 350;
     // 相邻卡片「可见边缘空隙」严格相等：-2↔-1、-1↔0、0↔+1、+1↔+2 都是 CARD_GAP_DP
     private static final int CARD_GAP_DP        = 18;
     // Banner 左右两侧安全内边距（TV overscan 时需要一点），缩小到 8dp 让 5 张卡填满
