@@ -124,8 +124,9 @@ public class JarLoader {
     public Spider getSpider(String key, String api, String ext, String jar) {
         String jaKey = Util.md5(jar);
         String spKey = jaKey + key;
-        return spiders.computeIfAbsent(spKey, k -> {
-            try {
+        Spider cached = spiders.get(spKey);
+        if (cached != null) return cached;
+        try {
                 Class<?> clazz = null;
                 if (jar != null && !jar.isEmpty()) {
                     try {
@@ -167,12 +168,12 @@ public class JarLoader {
                 Spider spider = (Spider) clazz.newInstance();
                 spider.siteKey = key;
                 spider.init(App.get(), ext);
+                spiders.put(spKey, spider);
                 return spider;
-            } catch (Throwable e) {
-                e.printStackTrace();
-                return new SpiderNull();
-            }
-        });
+        } catch (Throwable e) {
+            e.printStackTrace();
+            return new SpiderNull();
+        }
     }
 
     private DexClassLoader requireRecentLoader() {
