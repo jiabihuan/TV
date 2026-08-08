@@ -153,6 +153,19 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // 设置为大屏UI时，从桌面/通知等入口启动 App 会先进入 HomeActivity（Launcher），
+        // 在此重定向到 CinemaHomeActivity，避免每次打开都显示普通UI
+        if (com.fongmi.android.tv.setting.Setting.isHomeCapsule()) {
+            Intent original = getIntent();
+            Intent redirect = new Intent(this, CinemaHomeActivity.class);
+            redirect.setAction(original.getAction());
+            if (original.getData() != null) redirect.setData(original.getData());
+            if (original.getExtras() != null) redirect.putExtras(original.getExtras());
+            redirect.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(redirect);
+            finish();
+            return;
+        }
         SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
     }
