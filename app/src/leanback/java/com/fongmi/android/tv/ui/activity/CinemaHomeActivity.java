@@ -19,7 +19,6 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 
-import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.Updater;
 import com.fongmi.android.tv.api.config.LiveConfig;
@@ -53,7 +52,6 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -71,13 +69,9 @@ public class CinemaHomeActivity extends BaseActivity implements
     private Clock mClock;
     private boolean mConfigReady;
     private boolean mHasMovieSelected;
-    private boolean mHomeLoaded;
-    private boolean mHomeLoading;
-    private int mHomeRetryCount;
     private String mLastCoverUrl = "";
     private String mLastTitleUrl = "";
     private String mCurrentTypeId = "home";
-    private List<Class> mPendingTypes;
 
     private final BroadcastReceiver mNetworkReceiver = new BroadcastReceiver() {
         @Override
@@ -157,45 +151,40 @@ public class CinemaHomeActivity extends BaseActivity implements
         mViewModel = new ViewModelProvider(this).get(SiteViewModel.class);
         mViewModel.getResult().observe(this, result -> {
             mBinding.loading.setVisibility(View.GONE);
-            mHomeLoading = false;
-            if (result != null && result.getList() != null && !result.getList().isEmpty()) {
+            if (result == null) return;
+            // Always show categories if available (matching mobile UI behavior)
+            if (result.getTypes() != null && !result.getTypes().isEmpty()) {
+                setCategories(result.getTypes());
+            }
+            if (result.getList() != null && !result.getList().isEmpty()) {
+                // Has videos - show them
                 mResult = result;
-                mHomeLoaded = true;
                 mPosterAdapter.setItems(result.getList());
                 if ("home".equals(mCurrentTypeId)) {
-                    setCategories(result.getTypes());
                     com.fongmi.android.tv.setting.Setting.putHomeRecommend(
                         getHome() != null ? getHome().getKey() : "", result.toString());
-                } else if (mPendingTypes != null && !mPendingTypes.isEmpty()) {
-                    setCategories(mPendingTypes);
-                    mPendingTypes = null;
                 }
                 updateHero(0);
                 mBinding.posters.requestFocus();
                 com.fongmi.android.tv.bean.Cache.clear().put(result);
-            } else {
-                if ("home".equals(mCurrentTypeId) && result != null && result.getTypes() != null && !result.getTypes().isEmpty()) {
-                    setCategories(result.getTypes());
-                    mPendingTypes = result.getTypes();
-                    if (mCategoryAdapter != null && mCategoryAdapter.getItemCount() > 1) {
-                        Class first = mCategoryAdapter.getItem(1);
-                        if (first != null) {
-                            mBinding.categories.setSelectedPosition(1);
-                            onItemClick(first, 1);
-                        }
+            } else if ("home".equals(mCurrentTypeId)) {
+                // Home content returned no videos but may have categories
+                // Auto-select first category to show content (like mobile UI showing first tab)
+                if (mCategoryAdapter != null && mCategoryAdapter.getItemCount() > 1) {
+                    Class first = mCategoryAdapter.getItem(1);
+                    if (first != null) {
+                        mBinding.categories.setSelectedPosition(1);
+                        loadCategoryContent(first);
                     }
-                } else if ("home".equals(mCurrentTypeId) && mHomeRetryCount < 3 && !mHomeLoaded) {
-                    mHomeRetryCount++;
-                    App.post(() -> {
-                        if (!mHomeLoaded && !mHomeLoading) {
-                            loadHomeContent();
-                        }
-                    }, 2000);
                 } else {
                     mBinding.loading.setVisibility(View.VISIBLE);
                     mBinding.empty.setText(R.string.home_empty);
                     mBinding.loadingProgress.setVisibility(View.GONE);
                 }
+            } else {
+                mBinding.loading.setVisibility(View.VISIBLE);
+                mBinding.empty.setText(R.string.home_empty);
+                mBinding.loadingProgress.setVisibility(View.GONE);
             }
         });
     }
@@ -352,14 +341,7 @@ public class CinemaHomeActivity extends BaseActivity implements
                 mConfigReady = true;
                 setTitle();
                 updateSiteName();
-                // 不直接调用 loadHomeContent()，由 onConfigEvent(VOD) -> RefreshEvent.home() -> onRefreshEvent(HOME) 触发
-                // 与 mobile UI 的 HomeActivity 行为保持一致，避免双重调用导致 spider 被中断
-                // 兜底：如果 5 秒后仍未开始加载（事件总线未触发），手动触发一次
-                App.post(() -> {
-                    if (!mHomeLoaded && !mHomeLoading) {
-                        loadHomeContent();
-                    }
-                }, 5000);
+                // Config loaded successfully, onConfigEvent(VOD) -> RefreshEvent.home() -> onRefreshEvent(HOME) will trigger loadHomeContent()
             }
 
             @Override
@@ -390,13 +372,7 @@ public class CinemaHomeActivity extends BaseActivity implements
     }
 
     private void loadHomeContent() {
-        if (getHome() == null || TextUtils.isEmpty(getHome().getKey())) {
-            return;
-        }
-        if (mHomeLoading) {
-            return;
-        }
-        mHomeLoading = true;
+        if (getHome() == null || getHome().isEmpty()) return;
         mCurrentTypeId = "home";
         mHasMovieSelected = false;
         mLastCoverUrl = "";
@@ -404,12 +380,12 @@ public class CinemaHomeActivity extends BaseActivity implements
         mBinding.loading.setVisibility(View.VISIBLE);
         mBinding.loadingProgress.setVisibility(View.VISIBLE);
         mBinding.empty.setText(R.string.home_loading);
+        // Load from cache first for instant display
         String cache = com.fongmi.android.tv.setting.Setting.getHomeRecommend(getHome().getKey());
         if (!cache.isEmpty()) {
             try {
                 Result cachedResult = Result.fromJson(cache);
                 if (cachedResult != null && cachedResult.getList() != null && !cachedResult.getList().isEmpty()) {
-                    mHomeLoaded = true;
                     mResult = cachedResult;
                     mPosterAdapter.setItems(cachedResult.getList());
                     if (cachedResult.getTypes() != null && !cachedResult.getTypes().isEmpty()) {
@@ -424,6 +400,7 @@ public class CinemaHomeActivity extends BaseActivity implements
                 e.printStackTrace();
             }
         }
+        // Always fetch from network (SiteViewModel.execute handles cancellation internally)
         mViewModel.homeContent();
     }
 
@@ -521,8 +498,6 @@ public class CinemaHomeActivity extends BaseActivity implements
         switch (event.getType()) {
             case HOME:
                 setTitle();
-                mHomeRetryCount = 0;
-                mHomeLoaded = false;
                 loadHomeContent();
                 break;
         }

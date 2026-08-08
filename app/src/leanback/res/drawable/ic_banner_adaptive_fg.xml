@@ -1,10 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 用于 adaptive-icon 的前景，将 660x660 正方形图标居中显示在 16:9 banner 中不拉伸 -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item>
-        <bitmap
-            android:src="@drawable/ic_banner_fg"
-            android:gravity="center_inside"
-            android:tileMode="disabled" />
-    </item>
-</layer-list>
+<!-- Pre-made 16:9 banner with 1:1 icon centered, no stretching -->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/ic_banner_full"
+    android:gravity="center" />
