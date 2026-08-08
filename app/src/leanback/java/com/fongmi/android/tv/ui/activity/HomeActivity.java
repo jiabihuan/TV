@@ -614,6 +614,13 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         App.post(() -> mBinding.title.setFocusable(true), 100);
         if (!mBinding.title.hasFocus()) {
             App.post(() -> {
+                // 优先聚焦分类栏（首页 tab），这是遥控器操作的正常入口
+                if (mBinding.recyclerType.getVisibility() == View.VISIBLE && mBinding.recyclerType.getChildCount() > 0) {
+                    mBinding.recyclerType.setSelectedPosition(0);
+                    mBinding.recyclerType.requestFocus();
+                    return;
+                }
+                // 分类栏不可用时，聚焦第一个内容行
                 for (int i = 0; i < mBinding.recycler.getAdapter().getItemCount(); i++) {
                     RecyclerView.ViewHolder vh = mBinding.recycler.findViewHolderForAdapterPosition(i);
                     if (vh == null || vh.itemView == null) continue;
