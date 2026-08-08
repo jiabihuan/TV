@@ -1235,7 +1235,11 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void onEnding() {
-        showSkipDialog();
+        long position = player().getPosition();
+        long duration = player().getDuration();
+        long remaining = duration > 0 ? duration - position : 0;
+        setEnding(remaining);
+        syncHistory(true);
         setR1Callback();
     }
 
@@ -1248,24 +1252,24 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private void setEnding(long ending) {
         mHistory.setEnding(ending);
         mBinding.control.action.ending.setText(getSkipText(R.string.play_ed, ending));
-        setSkipText();
     }
 
     private void onOpening() {
-        showSkipDialog();
+        long position = player().getPosition();
+        setOpening(position);
+        syncHistory(true);
         setR1Callback();
     }
 
     private boolean onOpeningReset() {
         setR1Callback();
         setOpening(0);
-        setEnding(0);
         return true;
     }
 
     private void setOpening(long opening) {
         mHistory.setOpening(opening);
-        setSkipText();
+        mBinding.control.action.opening.setText(getSkipText(R.string.play_op, opening));
     }
 
     private void showSkipDialog() {
@@ -1277,11 +1281,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void setSkipText() {
-        long opening = mHistory.getOpening();
-        long ending = mHistory.getEnding();
-        String text = getString(R.string.play_op);
-        if (opening > 0 || ending > 0) text += " " + SkipDialog.format(opening) + " / " + SkipDialog.format(ending);
-        mBinding.control.action.opening.setText(text);
+        mBinding.control.action.opening.setText(getSkipText(R.string.play_op, mHistory.getOpening()));
+        mBinding.control.action.ending.setText(getSkipText(R.string.play_ed, mHistory.getEnding()));
     }
 
     @Override
@@ -1564,7 +1565,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (!TextUtils.isEmpty(getMark())) mHistory.setVodRemarks(getMark());
         if (Setting.isIncognito() && mHistory.getKey().equals(getHistoryKey())) mHistory.delete();
         setSkipText();
-        mBinding.control.action.ending.setText(getSkipText(R.string.play_ed, mHistory.getEnding()));
         mBinding.control.action.speed.setText(player().setSpeed(mHistory.getSpeed()));
         mHistory.setVodName(item.getName());
         setArtwork(item.getPic());

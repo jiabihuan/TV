@@ -93,8 +93,7 @@
             android:id="@+id/ending"
             style="@style/Control"
             android:layout_marginEnd="12dp"
-            android:text="@string/play_ed"
-            android:visibility="gone" />
+            android:text="@string/play_ed" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/danmakuShow"

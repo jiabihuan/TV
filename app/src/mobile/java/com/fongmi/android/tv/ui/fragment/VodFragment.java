@@ -348,6 +348,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         if (result != null && result.getList() != null && !result.getList().isEmpty()) {
             Result cacheResult = new Result();
             cacheResult.setList(result.getList());
+            cacheResult.setTypes(result.getTypes());
             com.fongmi.android.tv.setting.Setting.putHomeRecommend(getHome().getKey(), cacheResult.toString());
         }
         mResult = result;
@@ -449,8 +450,8 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
                 if (cachedResult != null && cachedResult.getList() != null && !cachedResult.getList().isEmpty()) {
                     Result tempResult = new Result();
                     tempResult.setList(cachedResult.getList());
+                    tempResult.setTypes(cachedResult.getTypes());
                     mAdapter.addAll(mResult = tempResult);
-                    // 有缓存时先显示内容，但保持进度条直到网络请求完成
                     showContent();
                 }
             } catch (Exception e) {

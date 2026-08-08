@@ -70,6 +70,20 @@ public class SiteApi {
             Result result = Result.fromJson(home);
             List<Vod> list = Result.fromJson(video).getList();
             if (!list.isEmpty()) result.setList(list);
+            if (result.getTypes().isEmpty()) {
+                Result videoResult = Result.fromJson(video);
+                if (!videoResult.getTypes().isEmpty()) result.setTypes(videoResult.getTypes());
+            }
+            if (result.getTypes().isEmpty() && !site.getCategories().isEmpty()) {
+                List<Class> types = new ArrayList<>();
+                for (String category : site.getCategories()) {
+                    Class type = new Class();
+                    type.setTypeName(category);
+                    type.setTypeId(category);
+                    types.add(type);
+                }
+                result.setTypes(types);
+            }
             setTypes(site, result);
             return result;
         } else if (site.getType() == 4) {
