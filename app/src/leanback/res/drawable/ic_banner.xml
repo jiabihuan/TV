@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Pre-made 16:9 banner with 1:1 icon centered, no stretching -->
+<!-- 16:9 banner image scaled to fill the banner area, no cropping -->
 <bitmap xmlns:android="http://schemas.android.com/apk/res/android"
     android:src="@drawable/ic_banner_full"
-    android:gravity="center" />
+    android:gravity="fitXY" />
