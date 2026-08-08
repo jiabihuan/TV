@@ -153,15 +153,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        if (com.fongmi.android.tv.setting.Setting.isHomeCapsule()) {
-            Intent intent = new Intent(this, CinemaHomeActivity.class);
-            intent.setData(getIntent().getData());
-            intent.setAction(getIntent().getAction());
-            if (getIntent().getExtras() != null) intent.putExtras(getIntent().getExtras());
-            startActivity(intent);
-            finish();
-            return;
-        }
         SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
     }

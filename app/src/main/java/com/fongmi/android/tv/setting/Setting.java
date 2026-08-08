@@ -334,7 +334,7 @@ public class Setting {
     }
 
     public static int getHomeStyle() {
-        return Prefers.getInt("home_style", 1);
+        return Prefers.getInt("home_style", 0);
     }
 
     public static void putHomeStyle(int value) {

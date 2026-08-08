@@ -13,7 +13,7 @@
         android:id="@+id/coverBg"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:alpha="0.45"
+        android:alpha="0.35"
         android:scaleType="centerCrop"
         android:visibility="invisible" />
 
@@ -31,60 +31,60 @@
         android:clipToPadding="false"
         android:orientation="vertical">
 
-        <!-- Top navigation bar with glassmorphism effect -->
+        <!-- Top navigation bar -->
         <LinearLayout
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="8dp"
+            android:layout_height="52dp"
+            android:layout_marginTop="10dp"
             android:animateLayoutChanges="true"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="32dp"
-            android:paddingEnd="32dp">
+            android:paddingStart="40dp"
+            android:paddingEnd="40dp">
 
             <!-- App logo -->
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/logo"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginEnd="10dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginEnd="12dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_logo" />
 
-            <!-- App title -->
+            <!-- App title (site name) -->
             <com.fongmi.android.tv.ui.custom.CustomTitleView
                 android:id="@+id/title"
                 android:layout_width="wrap_content"
-                android:layout_height="38dp"
+                android:layout_height="36dp"
                 android:background="@drawable/bg_home_nav_item"
                 android:ellipsize="marquee"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:gravity="center"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
                 android:singleLine="true"
                 android:text="@string/app_name"
                 android:textColor="@color/white"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
             <!-- Search -->
             <TextView
                 android:id="@+id/search"
                 android:layout_width="wrap_content"
-                android:layout_height="38dp"
+                android:layout_height="36dp"
                 android:layout_marginStart="8dp"
                 android:background="@drawable/bg_home_nav_item"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:gravity="center"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
                 android:text="@string/home_search"
                 android:textColor="@color/white"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
             <!-- Spacer -->
@@ -97,89 +97,89 @@
             <TextView
                 android:id="@+id/live"
                 android:layout_width="wrap_content"
-                android:layout_height="38dp"
+                android:layout_height="36dp"
                 android:layout_marginEnd="6dp"
                 android:background="@drawable/bg_home_nav_item"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:gravity="center"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
                 android:text="直播"
                 android:textColor="@color/white"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
             <TextView
                 android:id="@+id/keep"
                 android:layout_width="wrap_content"
-                android:layout_height="38dp"
+                android:layout_height="36dp"
                 android:layout_marginEnd="6dp"
                 android:background="@drawable/bg_home_nav_item"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:gravity="center"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
                 android:text="收藏"
                 android:textColor="@color/white"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/push"
                 android:layout_width="wrap_content"
-                android:layout_height="38dp"
+                android:layout_height="36dp"
                 android:layout_marginEnd="6dp"
                 android:background="@drawable/bg_home_nav_item"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:gravity="center"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
                 android:text="推送"
                 android:textColor="@color/white"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/history"
                 android:layout_width="wrap_content"
-                android:layout_height="38dp"
+                android:layout_height="36dp"
                 android:layout_marginEnd="6dp"
                 android:background="@drawable/bg_home_nav_item"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:gravity="center"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
                 android:text="历史"
                 android:textColor="@color/white"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/setting"
                 android:layout_width="wrap_content"
-                android:layout_height="38dp"
+                android:layout_height="36dp"
                 android:layout_marginEnd="6dp"
                 android:background="@drawable/bg_home_nav_item"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:gravity="center"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
                 android:text="@string/toolbar_setting"
                 android:textColor="@color/white"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
             <!-- Clock -->
             <TextView
                 android:id="@+id/clock"
                 android:layout_width="wrap_content"
-                android:layout_height="38dp"
+                android:layout_height="36dp"
                 android:gravity="center"
                 android:textColor="@color/white_70"
                 android:textSize="13sp" />
@@ -187,8 +187,8 @@
             <!-- Network indicator -->
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/net"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:layout_marginStart="8dp"
                 android:background="@drawable/bg_home_nav_item"
                 android:clickable="true"
@@ -202,12 +202,12 @@
         <androidx.leanback.widget.HorizontalGridView
             android:id="@+id/recyclerType"
             android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:layout_marginTop="4dp"
+            android:layout_height="38dp"
+            android:layout_marginTop="6dp"
             android:clipChildren="false"
             android:clipToPadding="false"
-            android:paddingStart="32dp"
-            android:paddingEnd="32dp"
+            android:paddingStart="40dp"
+            android:paddingEnd="40dp"
             android:visibility="gone"
             app:focusOutEnd="false"
             app:focusOutFront="false" />
@@ -225,9 +225,9 @@
                 android:layout_height="match_parent"
                 android:clipChildren="false"
                 android:clipToPadding="false"
-                android:paddingStart="32dp"
-                android:paddingTop="10dp"
-                android:paddingEnd="32dp"
+                android:paddingStart="40dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="40dp"
                 android:paddingBottom="24dp"
                 app:focusOutEnd="true"
                 app:focusOutFront="true" />

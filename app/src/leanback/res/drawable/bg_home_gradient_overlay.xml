@@ -1,25 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Top-to-bottom gradient: darker at top for nav readability -->
+    <!-- Top gradient: darker at top for nav readability -->
     <item>
         <shape android:shape="rectangle">
             <gradient
-                android:startColor="#CC000000"
-                android:centerColor="#40000000"
+                android:startColor="#E6000000"
+                android:centerColor="#66000000"
                 android:endColor="#00000000"
                 android:type="linear"
                 android:angle="90" />
         </shape>
     </item>
-    <!-- Bottom-to-top gradient: darker at bottom for poster area -->
+    <!-- Bottom gradient: darker at bottom for content area -->
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:startColor="#00000000"
-                android:centerColor="#10000000"
-                android:endColor="#99000000"
+                android:centerColor="#1A000000"
+                android:endColor="#CC000000"
                 android:type="linear"
                 android:angle="90" />
+        </shape>
+    </item>
+    <!-- Left vignette: subtle darkening on left edge -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="#33000000"
+                android:centerColor="#00000000"
+                android:endColor="#00000000"
+                android:type="linear"
+                android:angle="0" />
+        </shape>
+    </item>
+    <!-- Right vignette: subtle darkening on right edge -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="#00000000"
+                android:centerColor="#00000000"
+                android:endColor="#33000000"
+                android:type="linear"
+                android:angle="0" />
         </shape>
     </item>
 </layer-list>
