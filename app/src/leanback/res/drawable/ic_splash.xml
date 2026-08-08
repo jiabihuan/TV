@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Splash screen icon: centered, not cropped, using the 660x660 app icon -->
-<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
-    android:src="@drawable/ic_splash_tv"
-    android:gravity="center_inside" />

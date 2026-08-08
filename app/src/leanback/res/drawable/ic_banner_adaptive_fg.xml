@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 16:9 banner image scaled to fill, no cropping -->
-<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
-    android:src="@drawable/ic_banner_full"
-    android:gravity="fitXY" />
+<!-- Adaptive icon foreground: 16:9 banner image scaled to fill, no cropping -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <bitmap
+            android:src="@drawable/ic_banner_full"
+            android:gravity="fitXY"
+            android:tileMode="disabled" />
+    </item>
+</layer-list>
