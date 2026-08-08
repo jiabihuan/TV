@@ -551,6 +551,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     private void setAdapter() {
         mHistoryAdapter = new ArrayObjectAdapter(mPresenter = new HistoryPresenter(this));
+        setHomeBanner(new ArrayList<>());
         mAdapter.add(R.string.home_recommend);
     }
 
@@ -601,11 +602,15 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         App.post(() -> mBinding.title.setFocusable(true), 100);
         if (!mBinding.title.hasFocus()) {
             App.post(() -> {
-                if (mBinding.recycler.getChildCount() > 0) {
-                    mBinding.recycler.getChildAt(0).requestFocus();
-                } else {
-                    mBinding.recycler.requestFocus();
+                RecyclerView.ViewHolder holder = mBinding.recycler.findViewHolderForAdapterPosition(0);
+                if (holder instanceof ItemBridgeAdapter.ViewHolder) {
+                    View middleCard = ((ItemBridgeAdapter.ViewHolder) holder).itemView.findViewById(R.id.middleCard);
+                    if (middleCard != null && middleCard.isFocusable()) {
+                        middleCard.requestFocus();
+                        return;
+                    }
                 }
+                mBinding.recycler.requestFocus();
             }, 50);
         }
     }
@@ -685,8 +690,8 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             removeHistory(historyIndex);
         } else if (!items.isEmpty()) {
             if (!exist) {
-                mAdapter.add(0, R.string.home_history);
-                mAdapter.add(1, new ListRow(mHistoryAdapter));
+                mAdapter.add(1, R.string.home_history);
+                mAdapter.add(2, new ListRow(mHistoryAdapter));
             } else if (renew) {
                 removeHistory(historyIndex);
                 mAdapter.add(historyIndex, R.string.home_history);
@@ -905,24 +910,18 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         return false;
     }
 
-    /** 聚焦首页第一个可聚焦的内容行（跳过不可聚焦的 header）
+    /** 从 recycler 中找到第 0 行 HomeBanner 的 middleCard 并 requestFocus
      *  找不到时兜底：让 recycler 先聚焦
      */
-    private boolean requestFocusOnFirstContent() {
+    private boolean requestFocusOnHomeBanner() {
         try {
             RecyclerView rv = mBinding.recycler;
             if (rv == null || rv.getAdapter() == null || rv.getAdapter().getItemCount() <= 0) return false;
-            int count = rv.getAdapter().getItemCount();
-            for (int i = 0; i < count; i++) {
-                RecyclerView.ViewHolder vh = rv.findViewHolderForAdapterPosition(i);
-                if (vh == null || vh.itemView == null) continue;
-                View focusable = findFirstFocusable(vh.itemView);
-                if (focusable != null) {
-                    rv.scrollToPosition(i);
-                    return focusable.requestFocus();
-                }
+            RecyclerView.ViewHolder vh = rv.findViewHolderForAdapterPosition(0);
+            if (vh != null && vh.itemView != null) {
+                View mc = vh.itemView.findViewById(R.id.middleCard);
+                if (mc != null) return mc.requestFocus();
             }
-            // ViewHolder 还没创建，滚动到顶部再延迟聚焦
             if (rv.getChildCount() > 0) return rv.getChildAt(0).requestFocus();
             rv.scrollToPosition(0);
             return rv.requestFocus();
@@ -987,14 +986,13 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         return null;
     }
 
-    /** 判断当前焦点是否在 recycler 中第一行内容上（position 0 或 1） */
+    /** 判断当前焦点是否在 recycler 中 Banner 正下方的内容行上（position 1 或 2） */
     private boolean isFirstContentRowFocused() {
         try {
             View focus = getCurrentFocus();
             if (focus == null) return false;
             RecyclerView rv = mBinding.recycler;
             if (rv == null) return false;
-            // 焦点不在 recycler 内则返回 false
             View v = focus;
             boolean inRecycler = false;
             while (v != null) {
@@ -1004,8 +1002,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             }
             if (!inRecycler) return false;
             int position = mBinding.recycler.getSelectedPosition();
-            // position 0 = header("最近观看"等), position 1 = 第一行海报/ListRow
-            return position == 0 || position == 1;
+            return position == 1 || position == 2;
         } catch (Throwable e) {
             return false;
         }
@@ -1084,6 +1081,8 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             if (isToolbarFocused()) {
                 if (mBinding.recyclerType.getVisibility() == View.VISIBLE) {
                     return mBinding.recyclerType.requestFocus();
+                } else if (requestFocusOnHomeBanner()) {
+                    return true;
                 } else if (mBinding.recycler.getChildCount() > 0) {
                     return mBinding.recycler.getChildAt(0).requestFocus();
                 }
@@ -1092,18 +1091,26 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             else if (isRecyclerTypeFocused() && mBinding.recyclerType.getVisibility() == View.VISIBLE) {
                 int catPos = mBinding.recyclerType.getSelectedPosition();
                 if (catPos == 0) {
-                    // 首页 → 聚焦第一个内容行
-                    if (requestFocusOnFirstContent()) return true;
+                    // 首页 → 聚焦 Banner
+                    if (requestFocusOnHomeBanner()) return true;
                 } else {
                     // 非首页分类 → 聚焦 ViewPager 里的海报列表
                     if (requestFocusOnPager()) return true;
                 }
             }
+            // Banner 按下键 → 跳到下方"最近观看"或内容列表
+            else if (isBannerFocused()) {
+                if (requestFocusBelowBanner()) return true;
+            }
         }
         // 按 ↑ 键处理
         if (KeyUtil.isActionDown(event) && KeyUtil.isUpKey(event)) {
-            // 海报列表第一行按 ↑ → 回到分类栏
+            // 海报列表第一行按 ↑ → 回到 Banner
             if (isFirstContentRowFocused()) {
+                if (requestFocusOnHomeBanner()) return true;
+            }
+            // Banner 按 ↑ → 回到分类栏
+            if (isBannerFocused()) {
                 if (mBinding.recyclerType.getVisibility() == View.VISIBLE) {
                     return mBinding.recyclerType.requestFocus();
                 }
@@ -1169,8 +1176,16 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         }
     }
 
-    /** Banner 已移除，始终返回 false */
+    /** 判断当前焦点是否在 Banner（middleCard 或其内部）上 */
     private boolean isBannerFocused() {
+        View focus = getCurrentFocus();
+        if (focus == null) return false;
+        View v = focus;
+        while (v != null) {
+            if (v.getId() == R.id.middleCard) return true;
+            Object p = v.getParent();
+            v = (p instanceof View) ? (View) p : null;
+        }
         return false;
     }
 
@@ -1215,6 +1230,13 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     private void setHomeBanner(List<Vod> recommends) {
         mBinding.live.setVisibility(LiveConfig.hasUrl() ? View.VISIBLE : View.GONE);
+
+        HomeBanner banner = new HomeBanner(new ArrayList<>(), recommends);
+        if (mAdapter.size() > 0 && mAdapter.get(0) instanceof HomeBanner) {
+            mAdapter.replace(0, banner);
+        } else {
+            mAdapter.add(0, banner);
+        }
         updateCoverBg(recommends);
     }
 
