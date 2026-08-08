@@ -180,10 +180,10 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
     }
 
     public void setResult(Result result) {
+        if (!isHome()) return;
         boolean first = mScroller.first();
         int size = result.getList().size();
-        if (isHome() && size == 0) {
-            // 首页tab且结果为空（py线路可能还在加载或加载失败），保持转圈状态
+        if (size == 0) {
             mBinding.swipeLayout.setRefreshing(false);
             return;
         }

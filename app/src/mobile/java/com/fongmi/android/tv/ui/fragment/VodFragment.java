@@ -345,19 +345,23 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
 
     private void setAdapter(Result result) {
         if (!isViewReady()) return;
-        if (result != null && result.getList() != null && !result.getList().isEmpty()) {
+        if (result != null) {
             Result cacheResult = new Result();
-            cacheResult.setList(result.getList());
-            cacheResult.setTypes(result.getTypes());
-            com.fongmi.android.tv.setting.Setting.putHomeRecommend(getHome().getKey(), cacheResult.toString());
+            if (result.getList() != null) cacheResult.setList(result.getList());
+            if (result.getTypes() != null) cacheResult.setTypes(result.getTypes());
+            if (!result.getTypes().isEmpty() || (result.getList() != null && !result.getList().isEmpty())) {
+                com.fongmi.android.tv.setting.Setting.putHomeRecommend(getHome().getKey(), cacheResult.toString());
+            }
         }
         mResult = result;
         mAdapter.setItems(result);
         if (mBinding.pager.getAdapter() != null) {
             mBinding.pager.getAdapter().notifyDataSetChanged();
-            Fragment fragment = (Fragment) mBinding.pager.getAdapter().instantiateItem(mBinding.pager, 0);
-            if (fragment instanceof FolderFragment) {
-                ((FolderFragment) fragment).setResult(result);
+            if (mAdapter.getItemCount() > 0 && mAdapter.get(0).isHome()) {
+                Fragment fragment = (Fragment) mBinding.pager.getAdapter().instantiateItem(mBinding.pager, 0);
+                if (fragment instanceof FolderFragment) {
+                    ((FolderFragment) fragment).setResult(result);
+                }
             }
         } else {
             mBinding.pager.setAdapter(new PageAdapter(getChildFragmentManager()));
@@ -447,12 +451,16 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         if (!cache.isEmpty()) {
             try {
                 Result cachedResult = Result.fromJson(cache);
-                if (cachedResult != null && cachedResult.getList() != null && !cachedResult.getList().isEmpty()) {
-                    Result tempResult = new Result();
-                    tempResult.setList(cachedResult.getList());
-                    tempResult.setTypes(cachedResult.getTypes());
-                    mAdapter.addAll(mResult = tempResult);
-                    showContent();
+                if (cachedResult != null) {
+                    boolean hasList = cachedResult.getList() != null && !cachedResult.getList().isEmpty();
+                    boolean hasTypes = cachedResult.getTypes() != null && !cachedResult.getTypes().isEmpty();
+                    if (hasList || hasTypes) {
+                        Result tempResult = new Result();
+                        if (hasList) tempResult.setList(cachedResult.getList());
+                        if (hasTypes) tempResult.setTypes(cachedResult.getTypes());
+                        mAdapter.addAll(mResult = tempResult);
+                        showContent();
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();

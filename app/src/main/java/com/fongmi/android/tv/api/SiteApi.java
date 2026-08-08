@@ -84,6 +84,10 @@ public class SiteApi {
                 }
                 result.setTypes(types);
             }
+            if (result.getTypes().isEmpty()) {
+                List<Class> discovered = discoverCategories(spider);
+                if (!discovered.isEmpty()) result.setTypes(discovered);
+            }
             setTypes(site, result);
             return result;
         } else if (site.getType() == 4) {
@@ -349,6 +353,29 @@ public class SiteApi {
         result.getTypes().forEach(type -> typeByName.put(type.getTypeName(), type));
         List<Class> types = site.getCategories().stream().map(typeByName::get).filter(Objects::nonNull).toList();
         if (!types.isEmpty()) result.setTypes(types);
+    }
+
+    private static List<Class> discoverCategories(Spider spider) {
+        String[][] defaults = {
+            {"1", "电影"}, {"2", "电视剧"}, {"3", "综艺"}, {"4", "动漫"}
+        };
+        List<Class> types = new ArrayList<>();
+        for (String[] item : defaults) {
+            try {
+                String content = spider.categoryContent(item[0], "1", false, new HashMap<>());
+                Result catResult = Result.fromJson(content);
+                if (catResult.getList() != null && !catResult.getList().isEmpty()) {
+                    Class type = new Class();
+                    type.setTypeId(item[0]);
+                    type.setTypeName(item[1]);
+                    types.add(type);
+                    SpiderDebug.log("discover", "found category: " + item[0] + " -> " + item[1]);
+                }
+            } catch (Exception e) {
+                SpiderDebug.log("discover", "probe failed for " + item[0] + ": " + e.getMessage());
+            }
+        }
+        return types;
     }
 
     private static boolean isDirectMedia(Site site, String key, String id) {
