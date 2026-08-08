@@ -2,4 +2,4 @@
 <!-- 16:9 banner image scaled to fill the banner area, no cropping -->
 <bitmap xmlns:android="http://schemas.android.com/apk/res/android"
     android:src="@drawable/ic_banner_full"
-    android:gravity="fitXY" />
+    android:gravity="fill" />

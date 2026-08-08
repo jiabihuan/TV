@@ -4,7 +4,7 @@
     <item>
         <bitmap
             android:src="@drawable/ic_banner_full"
-            android:gravity="fitXY"
+            android:gravity="fill"
             android:tileMode="disabled" />
     </item>
 </layer-list>
