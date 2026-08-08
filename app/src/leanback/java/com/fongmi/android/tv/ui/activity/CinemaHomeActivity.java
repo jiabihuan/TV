@@ -72,6 +72,7 @@ public class CinemaHomeActivity extends BaseActivity implements
     private String mLastCoverUrl = "";
     private String mLastTitleUrl = "";
     private String mCurrentTypeId = "home";
+    private List<Class> mHomeTypes;
 
     private final BroadcastReceiver mNetworkReceiver = new BroadcastReceiver() {
         @Override
@@ -154,6 +155,7 @@ public class CinemaHomeActivity extends BaseActivity implements
             if (result == null) return;
             // Always show categories if available (matching mobile UI behavior)
             if (result.getTypes() != null && !result.getTypes().isEmpty()) {
+                mHomeTypes = result.getTypes();
                 setCategories(result.getTypes());
             }
             if (result.getList() != null && !result.getList().isEmpty()) {
@@ -169,13 +171,10 @@ public class CinemaHomeActivity extends BaseActivity implements
                 com.fongmi.android.tv.bean.Cache.clear().put(result);
             } else if ("home".equals(mCurrentTypeId)) {
                 // Home content returned no videos but may have categories
-                // Auto-select first category to show content (like mobile UI showing first tab)
                 if (mCategoryAdapter != null && mCategoryAdapter.getItemCount() > 1) {
-                    Class first = mCategoryAdapter.getItem(1);
-                    if (first != null) {
-                        mBinding.categories.setSelectedPosition(1);
-                        loadCategoryContent(first);
-                    }
+                    // Categories available - show hint, user can click to view full grid
+                    mBinding.loading.setVisibility(View.GONE);
+                    mBinding.loadingProgress.setVisibility(View.GONE);
                 } else {
                     mBinding.loading.setVisibility(View.VISIBLE);
                     mBinding.empty.setText(R.string.home_empty);
@@ -389,6 +388,7 @@ public class CinemaHomeActivity extends BaseActivity implements
                     mResult = cachedResult;
                     mPosterAdapter.setItems(cachedResult.getList());
                     if (cachedResult.getTypes() != null && !cachedResult.getTypes().isEmpty()) {
+                        mHomeTypes = cachedResult.getTypes();
                         setCategories(cachedResult.getTypes());
                     }
                     updateHero(0);
@@ -474,8 +474,15 @@ public class CinemaHomeActivity extends BaseActivity implements
         if (position == 0) {
             loadHomeContent();
         } else {
-            loadCategoryContent(item);
+            showCategoryGrid(position - 1);
         }
+    }
+
+    private void showCategoryGrid(int categoryIndex) {
+        if (mHomeTypes == null || mHomeTypes.isEmpty()) return;
+        Result result = new Result();
+        result.setTypes(mHomeTypes);
+        VodActivity.start(this, getHome().getKey(), result, categoryIndex);
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
