@@ -612,32 +612,39 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private void setFocus() {
         mBinding.title.setSelected(true);
         App.post(() -> mBinding.title.setFocusable(true), 100);
-        if (!mBinding.title.hasFocus()) {
-            // 强制聚焦分类栏首页 tab：用 post 等待 RecyclerView 布局完成后再 requestFocus
-            mBinding.recyclerType.post(() -> {
-                if (mBinding.recyclerType.getVisibility() == View.VISIBLE) {
-                    mBinding.recyclerType.setSelectedPosition(0);
-                    if (mBinding.recyclerType.getChildAt(0) != null) {
-                        mBinding.recyclerType.getChildAt(0).requestFocus();
-                    } else {
-                        mBinding.recyclerType.requestFocus();
-                    }
+        // 始终强制聚焦分类栏首页 tab：用 post 等待 RecyclerView 布局完成后再 requestFocus
+        // 不检查 title.hasFocus()，因为 title 默认会自动获得焦点导致整个逻辑被跳过
+        mBinding.recyclerType.post(() -> {
+            if (mBinding.recyclerType.getVisibility() == View.VISIBLE) {
+                mBinding.recyclerType.setSelectedPosition(0);
+                if (mBinding.recyclerType.getChildAt(0) != null) {
+                    mBinding.recyclerType.getChildAt(0).requestFocus();
+                } else {
+                    // 子 View 还没布局，再等一帧
+                    mBinding.recyclerType.post(() -> {
+                        mBinding.recyclerType.setSelectedPosition(0);
+                        if (mBinding.recyclerType.getChildAt(0) != null) {
+                            mBinding.recyclerType.getChildAt(0).requestFocus();
+                        } else {
+                            mBinding.recyclerType.requestFocus();
+                        }
+                    });
+                }
+                return;
+            }
+            // 分类栏不可用时，聚焦第一个内容行
+            for (int i = 0; i < mBinding.recycler.getAdapter().getItemCount(); i++) {
+                RecyclerView.ViewHolder vh = mBinding.recycler.findViewHolderForAdapterPosition(i);
+                if (vh == null || vh.itemView == null) continue;
+                View focusable = findFirstFocusable(vh.itemView);
+                if (focusable != null) {
+                    mBinding.recycler.scrollToPosition(i);
+                    focusable.requestFocus();
                     return;
                 }
-                // 分类栏不可用时，聚焦第一个内容行
-                for (int i = 0; i < mBinding.recycler.getAdapter().getItemCount(); i++) {
-                    RecyclerView.ViewHolder vh = mBinding.recycler.findViewHolderForAdapterPosition(i);
-                    if (vh == null || vh.itemView == null) continue;
-                    View focusable = findFirstFocusable(vh.itemView);
-                    if (focusable != null) {
-                        mBinding.recycler.scrollToPosition(i);
-                        focusable.requestFocus();
-                        return;
-                    }
-                }
-                mBinding.recycler.requestFocus();
-            });
-        }
+            }
+            mBinding.recycler.requestFocus();
+        });
     }
 
     private void getVideo() {
