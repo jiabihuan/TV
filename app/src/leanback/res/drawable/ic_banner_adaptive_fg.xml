@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive icon foreground: 16:9 banner image scaled to fill, no cropping -->
+<!-- Original 1:1 icon centered in banner, not stretched, not filled -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <bitmap
-            android:src="@drawable/ic_banner_full"
-            android:gravity="fill"
+            android:src="@drawable/ic_banner_fg"
+            android:gravity="center_inside"
             android:tileMode="disabled" />
     </item>
 </layer-list>
