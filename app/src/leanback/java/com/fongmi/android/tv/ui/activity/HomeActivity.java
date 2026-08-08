@@ -613,11 +613,15 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         mBinding.title.setSelected(true);
         App.post(() -> mBinding.title.setFocusable(true), 100);
         if (!mBinding.title.hasFocus()) {
-            App.post(() -> {
-                // 优先聚焦分类栏（首页 tab），这是遥控器操作的正常入口
-                if (mBinding.recyclerType.getVisibility() == View.VISIBLE && mBinding.recyclerType.getChildCount() > 0) {
+            // 强制聚焦分类栏首页 tab：用 post 等待 RecyclerView 布局完成后再 requestFocus
+            mBinding.recyclerType.post(() -> {
+                if (mBinding.recyclerType.getVisibility() == View.VISIBLE) {
                     mBinding.recyclerType.setSelectedPosition(0);
-                    mBinding.recyclerType.requestFocus();
+                    if (mBinding.recyclerType.getChildAt(0) != null) {
+                        mBinding.recyclerType.getChildAt(0).requestFocus();
+                    } else {
+                        mBinding.recyclerType.requestFocus();
+                    }
                     return;
                 }
                 // 分类栏不可用时，聚焦第一个内容行
@@ -632,7 +636,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                     }
                 }
                 mBinding.recycler.requestFocus();
-            }, 50);
+            });
         }
     }
 
