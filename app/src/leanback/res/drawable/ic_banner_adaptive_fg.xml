@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Original 1:1 icon centered in banner, not stretched, not filled -->
+<!-- 16:9 banner with icon at 60% size centered on white background -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <bitmap
-            android:src="@drawable/ic_banner_fg"
-            android:gravity="center_inside"
+            android:src="@drawable/ic_banner_full"
+            android:gravity="fill"
             android:tileMode="disabled" />
     </item>
 </layer-list>
