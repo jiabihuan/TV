@@ -423,6 +423,17 @@ public class CinemaHomeActivity extends BaseActivity implements
         } else if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
             String keyword = intent.getStringExtra(SearchManager.QUERY);
             if (!TextUtils.isEmpty(keyword)) SearchActivity.start(this, keyword);
+        } else if (Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
+            com.fongmi.android.tv.utils.PermissionUtil.requestFile(this, allGranted -> {
+                if ("text/plain".equals(intent.getType()) || com.fongmi.android.tv.utils.UrlUtil.path(intent.getData()).endsWith(".m3u")) {
+                    LiveConfig.load(com.fongmi.android.tv.bean.Config.find("file:/" + com.fongmi.android.tv.utils.FileChooser.getPathFromUri(intent.getData()), 1), new com.fongmi.android.tv.impl.Callback() {
+                        @Override public void success() { LiveActivity.start(CinemaHomeActivity.this); }
+                        @Override public void error(String msg) { Notify.show(msg); }
+                    });
+                } else {
+                    VideoActivity.push(this, intent.getData().toString());
+                }
+            });
         }
     }
 

@@ -150,17 +150,13 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        if (com.fongmi.android.tv.setting.Setting.isHomeCapsule()) {
-            Intent intent = new Intent(this, CinemaHomeActivity.class);
-            intent.setData(getIntent().getData());
-            intent.setAction(getIntent().getAction());
-            if (getIntent().getExtras() != null) intent.putExtras(getIntent().getExtras());
-            startActivity(intent);
-            finish();
-            return;
-        }
-        SplashScreen.installSplashScreen(this);
-        super.onCreate(savedInstanceState);
+        // 始终使用 CinemaHomeActivity（大屏UI），旧普通UI已废弃
+        Intent intent = new Intent(this, CinemaHomeActivity.class);
+        intent.setData(getIntent().getData());
+        intent.setAction(getIntent().getAction());
+        if (getIntent().getExtras() != null) intent.putExtras(getIntent().getExtras());
+        startActivity(intent);
+        finish();
     }
 
     private final List<Vod> mHomeRecommends = new ArrayList<>();
