@@ -306,7 +306,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.homeStyleText.setText(homeStyle[index]);
         Setting.putHomeStyle(index);
         Notify.show(R.string.setting_home_style);
-        Intent intent = new Intent(this, CinemaHomeActivity.class);
+        Intent intent = new Intent(this, Setting.isHomeCapsule() ? CinemaHomeActivity.class : HomeActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
     }

@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -26,6 +27,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 
+import com.bumptech.glide.request.transition.Transition;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Product;
 import com.fongmi.android.tv.player.PlayerManager;
@@ -49,6 +51,7 @@ import com.fongmi.android.tv.event.ConfigEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.event.ServerEvent;
 import com.fongmi.android.tv.impl.Callback;
+import com.fongmi.android.tv.impl.CustomTarget;
 import com.fongmi.android.tv.model.SiteViewModel;
 import com.fongmi.android.tv.player.Source;
 import com.fongmi.android.tv.server.Server;
@@ -150,13 +153,17 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // 始终使用 CinemaHomeActivity（大屏UI），旧普通UI已废弃
-        Intent intent = new Intent(this, CinemaHomeActivity.class);
-        intent.setData(getIntent().getData());
-        intent.setAction(getIntent().getAction());
-        if (getIntent().getExtras() != null) intent.putExtras(getIntent().getExtras());
-        startActivity(intent);
-        finish();
+        if (com.fongmi.android.tv.setting.Setting.isHomeCapsule()) {
+            Intent intent = new Intent(this, CinemaHomeActivity.class);
+            intent.setData(getIntent().getData());
+            intent.setAction(getIntent().getAction());
+            if (getIntent().getExtras() != null) intent.putExtras(getIntent().getExtras());
+            startActivity(intent);
+            finish();
+            return;
+        }
+        SplashScreen.installSplashScreen(this);
+        super.onCreate(savedInstanceState);
     }
 
     private final List<Vod> mHomeRecommends = new ArrayList<>();
@@ -1245,6 +1252,32 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         } else {
             mAdapter.add(0, banner);
         }
+        updateCoverBg(recommends);
+    }
+
+    private String mLastCoverUrl = "";
+
+    private void updateCoverBg(List<Vod> recommends) {
+        if (recommends == null || recommends.isEmpty()) {
+            mBinding.coverBg.setVisibility(View.INVISIBLE);
+            mLastCoverUrl = "";
+            return;
+        }
+        Vod item = recommends.get(0);
+        String url = item.getBackdrop();
+        if (TextUtils.isEmpty(url)) url = item.getPic();
+        if (TextUtils.isEmpty(url) || url.equals(mLastCoverUrl)) return;
+        mLastCoverUrl = url;
+        ImgUtil.load(this, url, new com.fongmi.android.tv.impl.CustomTarget<>() {
+            @Override
+            public void onResourceReady(@NonNull Drawable resource, @Nullable Transition<? super Drawable> transition) {
+                mBinding.coverBg.setImageDrawable(resource);
+                mBinding.coverBg.setVisibility(View.VISIBLE);
+            }
+            @Override
+            public void onLoadFailed(@Nullable Drawable errorDrawable) {
+            }
+        });
     }
 
     private void bindPlaybackService() {

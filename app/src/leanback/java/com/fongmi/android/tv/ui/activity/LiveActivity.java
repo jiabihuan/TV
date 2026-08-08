@@ -1152,7 +1152,7 @@ public class LiveActivity extends PlaybackActivity implements GroupAdapter.OnCli
         } else if (isVisible(mBinding.widget.bottom)) {
             hideInfo();
         } else {
-            if (isTaskRoot()) startActivity(new Intent(this, CinemaHomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            if (isTaskRoot()) startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
             super.onBackInvoked();
         }
     }
