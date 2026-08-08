@@ -1574,18 +1574,13 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     @Override
     public void onKeyUp() {
-        mBinding.widget.center.setVisibility(View.VISIBLE);
-        showControl(getFocus2());
+        showInfoLayout();
     }
 
     @Override
     public void onKeyDown() {
-        if (isFullscreen()) {
-            mBinding.widget.center.setVisibility(View.VISIBLE);
-            showControl(getDownFocus());
-        } else {
-            showInfoLayout();
-        }
+        mBinding.widget.center.setVisibility(View.VISIBLE);
+        showControl(getDownFocus());
     }
 
     @Override
