@@ -645,9 +645,11 @@ public class HomeBannerPresenter extends Presenter {
      */
     private void advanceCoverFlow(ViewHolder holder) {
         if (holder.marqueeAnimator != null && holder.marqueeAnimator.isRunning()) return;
+        if (holder.carouselVods == null || holder.carouselSize <= 0) return;
         layoutCoverFlow(holder); // 保险：刷新尺寸
 
         final int n = holder.carouselSize;
+        final List<Vod> vodsRef = holder.carouselVods;
         AnimatorSet set = new AnimatorSet();
         List<Animator> anims = new java.util.ArrayList<>(NUM_SLOTS * 5);
 
@@ -682,9 +684,25 @@ public class HomeBannerPresenter extends Presenter {
         set.setInterpolator(SMOOTH_INTERP);
 
         final int oldCenter = holder.currentCenterIdx;
+        final List<Vod> vodsRef = holder.carouselVods;
         set.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
+                try {
+                // === 防崩溃：动画期间数据可能已被刷新清空 ===
+                // 场景：从 SettingActivity 返回时配置刷新 → onBindViewHolder 重新调用
+                // → stopMarqueeKeepImages + startCoverFlowMarquee 替换了 carouselVods
+                // → 旧动画的 onAnimationEnd 仍然触发，但 holder.carouselVods 已是新（可能为空）的列表
+                // 此时必须直接 return，不做任何数据访问
+                if (holder.carouselVods == null || holder.carouselVods.isEmpty() || holder.carouselSize <= 0) {
+                    holder.marqueeAnimator = null;
+                    return;
+                }
+                // 如果 carouselVods 引用已变（被 onBind 替换），也直接 return
+                if (holder.carouselVods != vodsRef) {
+                    holder.marqueeAnimator = null;
+                    return;
+                }
                 // === 步骤 0：先算好本轮的新中心索引（rebindAllSlots 要用！） ===
                 // 关键：rebindAllSlots 内部用 holder.currentCenterIdx + slotPosition[i] 计算数据下标。
                 // 如果 currentCenterIdx 还是旧值、但 slotPosition 已经更新为新位置，
@@ -709,6 +727,9 @@ public class HomeBannerPresenter extends Presenter {
                 if (exitSlotIdx >= 0) {
                     final int recyclePos = 3;
                     int newDataIdx = mod(newCenterIdx + recyclePos, n);
+                    if (newDataIdx < 0 || newDataIdx >= holder.carouselVods.size()) {
+                        // 越界保护：数据列表可能已变更，跳过回收
+                    } else {
                     holder.slotDataIndex[exitSlotIdx] = newDataIdx;
                     Vod newVod = holder.carouselVods.get(newDataIdx);
                     ImgUtil.load(newVod.getName(), newVod.getPic(), holder.imgs[exitSlotIdx]);
@@ -724,6 +745,7 @@ public class HomeBannerPresenter extends Presenter {
                     s.setTranslationZ(posToZ(recyclePos));
                     s.setVisibility(posToVisibility(recyclePos));
                     slotClickListenerReset(holder, exitSlotIdx);
+                    }
                 }
 
                 // ★ 先更新 currentCenterIdx 到新中心 —— 这样下面 rebindAllSlots 里
@@ -745,8 +767,10 @@ public class HomeBannerPresenter extends Presenter {
                     sl.setTranslationZ(posToZ(p));
                 }
                 // === 步骤 4：更新中间卡片详情 + 指示器 ===
-                Vod newCenterVod = holder.carouselVods.get(newCenterIdx);
-                bindCenterDetails(holder, newCenterVod);
+                if (newCenterIdx >= 0 && newCenterIdx < holder.carouselVods.size()) {
+                    Vod newCenterVod = holder.carouselVods.get(newCenterIdx);
+                    bindCenterDetails(holder, newCenterVod);
+                }
 
                 // 更新所有 slot 的点击事件（因为中间详情换了，所有 slot 也更新一遍保险）
                 for (int i = 0; i < NUM_SLOTS; i++) slotClickListenerReset(holder, i);
@@ -758,15 +782,20 @@ public class HomeBannerPresenter extends Presenter {
                         dot.setBackgroundResource(i == newCenterIdx ? R.drawable.shape_dot_active : R.drawable.shape_dot_inactive);
                     }
                 }
-                holder.marqueeAnimator = null;
 
                 // === 步骤 5：预加载后续可能出现的新海报（保险） ===
                 for (int k = 3; k <= 5; k++) {
                     int idx = mod(newCenterIdx + k, n);
+                    if (idx < 0 || idx >= holder.carouselVods.size()) continue;
                     Vod v = holder.carouselVods.get(idx);
                     if (v != null && v.getPic() != null) {
                         try { Glide.with(holder.binding.getRoot().getContext()).load(v.getPic()).preload(); } catch (Exception ignored) {}
                     }
+                }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    holder.marqueeAnimator = null;
                 }
             }
         });
@@ -791,9 +820,11 @@ public class HomeBannerPresenter extends Presenter {
      */
     private void retreatCoverFlow(ViewHolder holder) {
         if (holder.marqueeAnimator != null && holder.marqueeAnimator.isRunning()) return;
+        if (holder.carouselVods == null || holder.carouselSize <= 0) return;
         layoutCoverFlow(holder); // 保险：刷新尺寸
 
         final int n = holder.carouselSize;
+        final List<Vod> vodsRef = holder.carouselVods;
         AnimatorSet set = new AnimatorSet();
         List<Animator> anims = new java.util.ArrayList<>(NUM_SLOTS * 5);
 
@@ -828,9 +859,18 @@ public class HomeBannerPresenter extends Presenter {
         set.setInterpolator(SMOOTH_INTERP);
 
         final int oldCenter = holder.currentCenterIdx;
+        final List<Vod> vodsRef2 = holder.carouselVods;
         set.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
+                try {
+                // === 防崩溃：与 advanceCoverFlow 相同的保护 ===
+                if (holder.carouselVods == null || holder.carouselVods.isEmpty() || holder.carouselSize <= 0) {
+                    return;
+                }
+                if (holder.carouselVods != vodsRef2) {
+                    return;
+                }
                 // === 步骤 0：先算好本轮的新中心索引（rebindAllSlots 要用！） ===
                 // 与 advance 严格对称：rebindAllSlots 内部用
                 //   holder.currentCenterIdx + slotPosition[i]
@@ -854,6 +894,9 @@ public class HomeBannerPresenter extends Presenter {
                 if (exitSlotIdx >= 0) {
                     final int recyclePos = -4;
                     int newDataIdx = mod(newCenterIdx + recyclePos, n);
+                    if (newDataIdx < 0 || newDataIdx >= holder.carouselVods.size()) {
+                        // 越界保护
+                    } else {
                     holder.slotDataIndex[exitSlotIdx] = newDataIdx;
                     Vod newVod = holder.carouselVods.get(newDataIdx);
                     ImgUtil.load(newVod.getName(), newVod.getPic(), holder.imgs[exitSlotIdx]);
@@ -869,6 +912,7 @@ public class HomeBannerPresenter extends Presenter {
                     s.setTranslationZ(posToZ(recyclePos));
                     s.setVisibility(posToVisibility(recyclePos));
                     slotClickListenerReset(holder, exitSlotIdx);
+                    }
                 }
 
                 // ★ 先更新 currentCenterIdx 到新中心 —— 这样下面 rebindAllSlots 里
@@ -890,8 +934,10 @@ public class HomeBannerPresenter extends Presenter {
                     sl.setTranslationZ(posToZ(p));
                 }
                 // === 步骤 4：更新中间卡片详情 + 指示器 ===
-                Vod newCenterVod = holder.carouselVods.get(newCenterIdx);
-                bindCenterDetails(holder, newCenterVod);
+                if (newCenterIdx >= 0 && newCenterIdx < holder.carouselVods.size()) {
+                    Vod newCenterVod = holder.carouselVods.get(newCenterIdx);
+                    bindCenterDetails(holder, newCenterVod);
+                }
 
                 for (int i = 0; i < NUM_SLOTS; i++) slotClickListenerReset(holder, i);
 
@@ -901,15 +947,20 @@ public class HomeBannerPresenter extends Presenter {
                         dot.setBackgroundResource(i == newCenterIdx ? R.drawable.shape_dot_active : R.drawable.shape_dot_inactive);
                     }
                 }
-                holder.marqueeAnimator = null;
 
                 // === 步骤 5：反向预加载（向左缓冲） ===
                 for (int k = -5; k <= -3; k++) {
                     int idx = mod(newCenterIdx + k, n);
+                    if (idx < 0 || idx >= holder.carouselVods.size()) continue;
                     Vod v = holder.carouselVods.get(idx);
                     if (v != null && v.getPic() != null) {
                         try { Glide.with(holder.binding.getRoot().getContext()).load(v.getPic()).preload(); } catch (Exception ignored) {}
                     }
+                }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    holder.marqueeAnimator = null;
                 }
             }
         });
