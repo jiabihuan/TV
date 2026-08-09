@@ -122,7 +122,7 @@ public class SiteViewModel extends ViewModel {
         String key = Trans.t2s(keyword);
         List<Vod> list = new ArrayList<>();
         for (Vod item : result.getList()) {
-            if (item.getVodName() != null && item.getVodName().contains(key)) list.add(item);
+            if (item.getName() != null && item.getName().contains(key)) list.add(item);
         }
         result.setList(list);
         return result;
