@@ -26,7 +26,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickListener {
 
     private static final int GRID_COUNT = 10;
-    private static final int SPAN_COUNT = 5;
+    private static final int SPAN_COUNT = 3;
     private static final int SPACING = 8;
 
     private RecyclerView.ItemDecoration decoration;
