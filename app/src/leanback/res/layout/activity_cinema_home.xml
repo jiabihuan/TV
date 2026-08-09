@@ -16,27 +16,6 @@
         android:scaleType="centerCrop"
         android:visibility="invisible" />
 
-    <!-- Hero overlay: left gradient + bottom gradient for text readability -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/bg_cinema_hero_overlay" />
-
-    <!-- Cover tint for extra darkening -->
-    <View
-        android:id="@+id/coverTint"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/bg_tv_cinema_cover_tint" />
-
-    <!-- Old mask (kept for compatibility, alpha controlled by code) -->
-    <androidx.appcompat.widget.AppCompatImageView
-        android:id="@+id/homeMask"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="fitXY"
-        android:src="@drawable/bg_tv_cinema_mask" />
-
     <!-- Navigation bar -->
     <LinearLayout
         android:id="@+id/nav"
@@ -322,13 +301,12 @@
                 android:visibility="gone" />
         </LinearLayout>
 
-        <!-- Synopsis: left 1/3 with semi-transparent background for readability -->
+        <!-- Synopsis: shown directly over the backdrop poster -->
         <TextView
             android:id="@+id/tip"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:background="#80000000"
             android:ellipsize="end"
             android:lineSpacingExtra="3dp"
             android:maxLines="5"

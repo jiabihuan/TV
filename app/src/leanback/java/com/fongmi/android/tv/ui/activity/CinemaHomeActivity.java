@@ -286,9 +286,6 @@ public class CinemaHomeActivity extends BaseActivity implements
 
     private void hideCoverBg() {
         mLastCoverUrl = "";
-        mBinding.coverTint.setBackgroundResource(R.drawable.bg_tv_cinema_backdrop_tint);
-        mBinding.coverTint.setAlpha(1.0f);
-        mBinding.homeMask.setAlpha(0.5f);
         mBinding.coverBg.setVisibility(View.INVISIBLE);
     }
 
@@ -296,9 +293,6 @@ public class CinemaHomeActivity extends BaseActivity implements
         if (TextUtils.equals(mLastCoverUrl, coverUrl)) return;
         mLastCoverUrl = coverUrl;
         boolean isFirstLoad = mBinding.coverBg.getVisibility() != View.VISIBLE;
-        mBinding.coverTint.setBackgroundResource(R.drawable.bg_tv_cinema_cover_tint);
-        mBinding.coverTint.setAlpha(0.5f);
-        mBinding.homeMask.setAlpha(0.5f);
         if (isFirstLoad) {
             mBinding.coverBg.setVisibility(View.VISIBLE);
             mBinding.coverBg.setAlpha(0f);
