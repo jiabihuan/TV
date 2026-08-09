@@ -27,7 +27,7 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
 
     private static final int GRID_COUNT = 10;
     private static final int SPAN_COUNT = 3;
-    private static final int SPACING = 6;
+    private static final int SPACING = 4;
 
     private RecyclerView.ItemDecoration decoration;
     private DialogSiteBinding binding;
@@ -115,7 +115,7 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
         binding.recycler.setHasFixedSize(true);
         binding.recycler.setItemAnimator(null);
         if (decoration != null) binding.recycler.removeItemDecoration(decoration);
-        binding.recycler.addItemDecoration(decoration = new SpaceItemDecoration(getCount(), SPACING, 2));
+        binding.recycler.addItemDecoration(decoration = new SpaceItemDecoration(getCount(), SPACING, 8));
         binding.recycler.setLayoutManager(new GridLayoutManager(requireContext(), getCount()));
         if (!binding.mode.hasFocus()) binding.recycler.post(() -> binding.recycler.scrollToPosition(VodConfig.getHomeIndex()));
     }
