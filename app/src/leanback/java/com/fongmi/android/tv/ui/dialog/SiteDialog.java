@@ -1,7 +1,10 @@
 package com.fongmi.android.tv.ui.dialog;
 
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.drawable.ColorDrawable;
+import android.text.TextPaint;
+import android.util.TypedValue;
 import android.view.View;
 
 import androidx.fragment.app.FragmentActivity;
@@ -62,7 +65,18 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
     }
 
     private float getWidth() {
-        return action ? 0.88f : 0.84f;
+        int maxTextWidth = 0;
+        TextPaint paint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        paint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 16, requireContext().getResources().getDisplayMetrics()));
+        for (Site site : VodConfig.get().getSites()) {
+            if (site.isHide()) continue;
+            maxTextWidth = Math.max(maxTextWidth, (int) paint.measureText(site.getName()));
+        }
+        int itemWidth = maxTextWidth + ResUtil.dp2px(18 * 2 + 12 + 24);
+        int dialogWidth = itemWidth * SPAN_COUNT + ResUtil.dp2px(16 * (SPAN_COUNT - 1) + 22 * 2);
+        if (action) dialogWidth += ResUtil.dp2px(40 + 16);
+        float ratio = (float) dialogWidth / ResUtil.getScreenWidth();
+        return Math.min(Math.max(ratio, 0.55f), 0.88f);
     }
 
     @Override
