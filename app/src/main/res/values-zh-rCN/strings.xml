@@ -411,4 +411,17 @@
         <item>横向</item>
         <item>竖向</item>
     </string-array>
+    <string name="setting_search_type">搜索方式</string>
+    <string-array name="select_search_type">
+        <item>模糊搜索</item>
+        <item>精确搜索</item>
+    </string-array>
+    <string name="setting_search_thread">搜索线程</string>
+    <string-array name="select_search_thread">
+        <item>3</item>
+        <item>6</item>
+        <item>9</item>
+        <item>12</item>
+        <item>15</item>
+    </string-array>
 </resources>

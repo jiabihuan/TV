@@ -27,7 +27,7 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
 
     private static final int GRID_COUNT = 10;
     private static final int SPAN_COUNT = 3;
-    private static final int SPACING = 8;
+    private static final int SPACING = 6;
 
     private RecyclerView.ItemDecoration decoration;
     private DialogSiteBinding binding;

@@ -55,6 +55,8 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
     private ActivitySettingBinding mBinding;
     private String[] size;
     private String[] search;
+    private String[] searchType;
+    private String[] searchThread;
     private String[] homeStyle;
 
     public static void start(Activity activity) {
@@ -97,6 +99,8 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.liveBootText.setText(getSwitch(LiveSetting.isBootGlobal()));
         mBinding.sizeText.setText((size = ResUtil.getStringArray(R.array.select_size))[PlayerSetting.getSize()]);
         mBinding.searchText.setText((search = ResUtil.getStringArray(R.array.select_search))[Setting.getSearchMode()]);
+        mBinding.searchTypeText.setText((searchType = ResUtil.getStringArray(R.array.select_search_type))[Setting.getSearchType()]);
+        mBinding.searchThreadText.setText((searchThread = ResUtil.getStringArray(R.array.select_search_thread))[getSearchThreadIndex()]);
         mBinding.homeStyleText.setText((homeStyle = ResUtil.getStringArray(R.array.select_home_style))[Setting.getHomeStyle()]);
         mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary());
         setTmdbText();
@@ -143,6 +147,8 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.incognito.setOnClickListener(this::setIncognito);
         mBinding.liveBoot.setOnClickListener(this::setLiveBoot);
         mBinding.search.setOnClickListener(this::setSearch);
+        mBinding.searchType.setOnClickListener(this::setSearchType);
+        mBinding.searchThread.setOnClickListener(this::setSearchThread);
         mBinding.homeStyle.setOnClickListener(this::setHomeStyle);
         mBinding.tmdbApi.setOnClickListener(this::setTmdbApi);
         mBinding.vodHistory.setOnClickListener(this::onVodHistory);
@@ -299,6 +305,27 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         int index = (Setting.getSearchMode() + 1) % search.length;
         mBinding.searchText.setText(search[index]);
         Setting.putSearchMode(index);
+    }
+
+    private int getSearchThreadIndex() {
+        int thread = Setting.getSearchThread();
+        int best = 0;
+        for (int i = 0; i < searchThread.length; i++) {
+            if (Math.abs(Integer.parseInt(searchThread[i]) - thread) < Math.abs(Integer.parseInt(searchThread[best]) - thread)) best = i;
+        }
+        return best;
+    }
+
+    private void setSearchType(View view) {
+        int index = (Setting.getSearchType() + 1) % searchType.length;
+        mBinding.searchTypeText.setText(searchType[index]);
+        Setting.putSearchType(index);
+    }
+
+    private void setSearchThread(View view) {
+        int index = (getSearchThreadIndex() + 1) % searchThread.length;
+        mBinding.searchThreadText.setText(searchThread[index]);
+        Setting.putSearchThread(Integer.parseInt(searchThread[index]));
     }
 
     private void setHomeStyle(View view) {

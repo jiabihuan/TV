@@ -9,12 +9,16 @@ import com.fongmi.android.tv.api.SiteApi;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Site;
+import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.exception.ExtractException;
+import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.utils.Task;
+import com.github.catvod.utils.Trans;
 import com.google.common.util.concurrent.FluentFuture;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -106,10 +110,22 @@ public class SiteViewModel extends ViewModel {
             searchFuture.add(future);
             future.addCallback(Task.callback(
                     result -> {
-                        if (searchEpoch.get() == epoch) search.postValue(result);
+                        if (searchEpoch.get() == epoch) search.postValue(filterResult(result, keyword));
                     }
             ), MoreExecutors.directExecutor());
         });
+    }
+
+    private Result filterResult(Result result, String keyword) {
+        if (Setting.getSearchType() == 0) return result;
+        if (result.getList().isEmpty()) return result;
+        String key = Trans.t2s(keyword);
+        List<Vod> list = new ArrayList<>();
+        for (Vod item : result.getList()) {
+            if (item.getVodName() != null && item.getVodName().contains(key)) list.add(item);
+        }
+        result.setList(list);
+        return result;
     }
 
     private void execute(TaskType type, MutableLiveData<Result> liveData, Callable<Result> callable) {

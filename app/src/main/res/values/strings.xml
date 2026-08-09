@@ -416,4 +416,17 @@
         <item>Horizontal</item>
         <item>Vertical</item>
     </string-array>
+    <string name="setting_search_type">Search Type</string>
+    <string-array name="select_search_type">
+        <item>Fuzzy</item>
+        <item>Exact</item>
+    </string-array>
+    <string name="setting_search_thread">Search Thread</string>
+    <string-array name="select_search_thread">
+        <item>3</item>
+        <item>6</item>
+        <item>9</item>
+        <item>12</item>
+        <item>15</item>
+    </string-array>
 </resources>

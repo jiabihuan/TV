@@ -253,6 +253,14 @@ public class Setting {
         Prefers.put("search_mode", value);
     }
 
+    public static int getSearchType() {
+        return Prefers.getInt("search_type", 0);
+    }
+
+    public static void putSearchType(int value) {
+        Prefers.put("search_type", value);
+    }
+
     public static int getSearchThread() {
         return Math.min(Math.max(Prefers.getInt("search_thread", 10), 3), 15);
     }

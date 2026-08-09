@@ -70,6 +70,12 @@
                 android:textSize="13sp"
                 android:textStyle="bold" />
 
+            <!-- Spacer -->
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
             <!-- Search -->
             <TextView
                 android:id="@+id/search"
@@ -86,12 +92,6 @@
                 android:textColor="@color/white"
                 android:textSize="13sp"
                 android:textStyle="bold" />
-
-            <!-- Spacer -->
-            <Space
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
 
             <!-- Right side action buttons -->
             <TextView
