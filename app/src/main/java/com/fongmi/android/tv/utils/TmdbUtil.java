@@ -16,7 +16,7 @@ import java.util.Map;
 
 /**
  * TMDB API 工具类
- * 用于通过 TMDB API 搜索影视内容并获取横屏背景图(backdrop)、剧情简介(overview)以及标题 Logo。
+ * 用于通过 TMDB API 搜索影视内容并获取横屏背景图(backdrop)和剧情简介(overview)。
  * 需要在设置中配置 TMDB API Key 后才能使用。
  * 支持自定义 API 地址和图片地址（用于国内镜像）。
  */
@@ -44,17 +44,17 @@ public class TmdbUtil {
         return url;
     }
 
-    private static String buildImageUrl(String path) {
-        if (TextUtils.isEmpty(path)) return "";
-        return getImageBase() + "/original" + path;
+    private static String buildImageUrl(String backdropPath) {
+        if (TextUtils.isEmpty(backdropPath)) return "";
+        return getImageBase() + "/original" + backdropPath;
     }
 
     /**
-     * 搜索影视内容并返回包含横屏背景图、剧情简介和标题 Logo 的结果。
+     * 搜索影视内容并返回包含横屏背景图和剧情简介的结果。
      * 依次尝试 multi 搜索、movie 搜索、tv 搜索。
      *
      * @param name 影视名称
-     * @return TmdbResult，未找到返回空结果
+     * @return TmdbResult，未找到返回 backdropUrl 和 overview 均为空的 TmdbResult
      */
     public static TmdbResult search(String name) {
         if (TextUtils.isEmpty(name) || !Setting.hasTmdbApiKey()) return new TmdbResult("", "");
@@ -66,7 +66,6 @@ public class TmdbUtil {
         TmdbResult result = searchMulti(baseUrl, apiKey, name);
         if (result.hasBackdrop()) {
             Log.d(TAG, "Found via multi search: " + result.getBackdropUrl());
-            fetchAndAttachLogo(baseUrl, apiKey, result);
             return result;
         }
 
@@ -74,7 +73,6 @@ public class TmdbUtil {
         result = searchMovie(baseUrl, apiKey, name);
         if (result.hasBackdrop()) {
             Log.d(TAG, "Found via movie search: " + result.getBackdropUrl());
-            fetchAndAttachLogo(baseUrl, apiKey, result);
             return result;
         }
 
@@ -82,7 +80,6 @@ public class TmdbUtil {
         result = searchTv(baseUrl, apiKey, name);
         if (result.hasBackdrop()) {
             Log.d(TAG, "Found via tv search: " + result.getBackdropUrl());
-            fetchAndAttachLogo(baseUrl, apiKey, result);
             return result;
         }
 
@@ -126,19 +123,6 @@ public class TmdbUtil {
         }
     }
 
-    private static void fetchAndAttachLogo(String baseUrl, String apiKey, TmdbResult result) {
-        if (!result.hasId() || TextUtils.isEmpty(result.getMediaType())) return;
-        try {
-            String endpoint = "tv".equals(result.getMediaType()) ? "/tv/" : "/movie/";
-            String url = baseUrl + endpoint + result.getId() + "/images?api_key=" + apiKey;
-            String json = OkHttp.string(url, Map.of("Accept", "application/json"));
-            String logoUrl = extractLogoUrl(json);
-            if (!TextUtils.isEmpty(logoUrl)) result.setLogoUrl(logoUrl);
-        } catch (Exception e) {
-            Log.w(TAG, "fetchAndAttachLogo failed: " + e.getMessage());
-        }
-    }
-
     private static TmdbResult extractFromResults(String json) {
         if (TextUtils.isEmpty(json)) return new TmdbResult("", "");
         try {
@@ -147,20 +131,9 @@ public class TmdbUtil {
             if (results == null || results.isEmpty()) return new TmdbResult("", "");
             for (JsonElement element : results) {
                 JsonObject item = element.getAsJsonObject();
-                String id = "";
-                String mediaType = "";
                 String backdropUrl = "";
                 String overview = "";
 
-                if (item.has("id") && !item.get("id").isJsonNull()) {
-                    id = item.get("id").getAsString();
-                }
-                if (item.has("media_type") && !item.get("media_type").isJsonNull()) {
-                    mediaType = item.get("media_type").getAsString();
-                } else {
-                    // movie/tv 搜索没有 media_type，根据接口推断
-                    mediaType = item.has("title") ? "movie" : "tv";
-                }
                 if (item.has("backdrop_path") && !item.get("backdrop_path").isJsonNull()) {
                     String backdropPath = item.get("backdrop_path").getAsString();
                     if (!TextUtils.isEmpty(backdropPath)) {
@@ -173,19 +146,15 @@ public class TmdbUtil {
 
                 // 优先返回有 backdrop 的结果
                 if (!TextUtils.isEmpty(backdropUrl)) {
-                    return new TmdbResult(id, mediaType, backdropUrl, overview);
+                    return new TmdbResult(backdropUrl, overview);
                 }
             }
             // 如果没有 backdrop，但第一个结果有 overview，也返回
             JsonObject firstItem = results.get(0).getAsJsonObject();
-            String id = firstItem.has("id") && !firstItem.get("id").isJsonNull() ? firstItem.get("id").getAsString() : "";
-            String mediaType = firstItem.has("media_type") && !firstItem.get("media_type").isJsonNull()
-                    ? firstItem.get("media_type").getAsString()
-                    : (firstItem.has("title") ? "movie" : "tv");
             if (firstItem.has("overview") && !firstItem.get("overview").isJsonNull()) {
                 String overview = firstItem.get("overview").getAsString();
                 if (!TextUtils.isEmpty(overview)) {
-                    return new TmdbResult(id, mediaType, "", overview);
+                    return new TmdbResult("", overview);
                 }
             }
         } catch (Exception e) {
@@ -194,39 +163,9 @@ public class TmdbUtil {
         return new TmdbResult("", "");
     }
 
-    private static String extractLogoUrl(String json) {
-        if (TextUtils.isEmpty(json)) return "";
-        try {
-            JsonObject root = JsonParser.parseString(json).getAsJsonObject();
-            JsonArray logos = root.has("logos") ? root.getAsJsonArray("logos") : null;
-            if (logos == null || logos.isEmpty()) return "";
-            // 优先使用英文 Logo，没有则取第一个
-            for (JsonElement element : logos) {
-                JsonObject logo = element.getAsJsonObject();
-                String iso = logo.has("iso_639_1") && !logo.get("iso_639_1").isJsonNull()
-                        ? logo.get("iso_639_1").getAsString()
-                        : "";
-                String filePath = logo.has("file_path") && !logo.get("file_path").isJsonNull()
-                        ? logo.get("file_path").getAsString()
-                        : "";
-                if ("en".equals(iso) && !TextUtils.isEmpty(filePath)) {
-                    return buildImageUrl(filePath);
-                }
-            }
-            JsonObject first = logos.get(0).getAsJsonObject();
-            String filePath = first.has("file_path") && !first.get("file_path").isJsonNull()
-                    ? first.get("file_path").getAsString()
-                    : "";
-            return TextUtils.isEmpty(filePath) ? "" : buildImageUrl(filePath);
-        } catch (Exception e) {
-            Log.w(TAG, "extractLogoUrl failed: " + e.getMessage());
-        }
-        return "";
-    }
-
     /**
-     * 异步搜索影视内容，通过回调返回包含背景图、简介和标题 Logo 的结果。
-     * 背景图和 Logo 结果会缓存到 Setting 中，避免重复请求。
+     * 异步搜索影视内容，通过回调返回包含背景图和简介的结果。
+     * 背景图结果会缓存到 Setting 中，避免重复请求。
      *
      * @param name     影视名称
      * @param callback 回调接口
@@ -239,12 +178,9 @@ public class TmdbUtil {
         // 先查缓存
         String cachedBackdrop = Setting.getTmdbBackdrop(name);
         String cachedOverview = Setting.getTmdbOverview(name);
-        String cachedLogo = Setting.getTmdbLogo(name);
         if (!TextUtils.isEmpty(cachedBackdrop)) {
             Log.d(TAG, "Using cached result for: " + name);
-            TmdbResult result = new TmdbResult(cachedBackdrop, cachedOverview);
-            result.setLogoUrl(cachedLogo);
-            callback.onResult(result);
+            callback.onResult(new TmdbResult(cachedBackdrop, cachedOverview));
             return;
         }
         new Thread(() -> {
@@ -254,9 +190,6 @@ public class TmdbUtil {
             }
             if (result.hasOverview()) {
                 Setting.putTmdbOverview(name, result.getOverview());
-            }
-            if (result.hasLogoUrl()) {
-                Setting.putTmdbLogo(name, result.getLogoUrl());
             }
             callback.onResult(result);
         }, "tmdb-search").start();

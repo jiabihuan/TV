@@ -68,7 +68,6 @@ public class CinemaHomeActivity extends BaseActivity implements
     private Result mResult;
     private Clock mClock;
     private boolean mConfigReady;
-    private String mCurrentHeroName = "";
     private boolean mHasMovieSelected;
     private String mLastCoverUrl = "";
     private String mLastTitleUrl = "";
@@ -199,7 +198,6 @@ public class CinemaHomeActivity extends BaseActivity implements
     private void updateHero(int position) {
         Vod item = mPosterAdapter.getItem(position);
         if (item == null) return;
-        mCurrentHeroName = item.getName();
         mHasMovieSelected = true;
         mBinding.appTitle.setText(item.getName());
         if (!TextUtils.isEmpty(item.getActor())) {
@@ -251,12 +249,11 @@ public class CinemaHomeActivity extends BaseActivity implements
 
     private void updateCoverBg(Vod item) {
         String itemName = item.getName();
-        // 优先使用 TMDB API 获取横屏背景图、剧情简介和标题 Logo
+        // 优先使用 TMDB API 获取横屏背景图和剧情简介
         if (Setting.hasTmdbApiKey()) {
             final String fallbackUrl = getFallbackCoverUrl(item);
             com.fongmi.android.tv.utils.TmdbUtil.searchAsync(itemName, result -> {
                 runOnUiThread(() -> {
-                    if (!TextUtils.equals(mCurrentHeroName, itemName)) return;
                     if (result.hasBackdrop()) {
                         loadCoverBg(itemName, result.getBackdropUrl());
                     } else if (!TextUtils.isEmpty(fallbackUrl)) {
@@ -268,18 +265,11 @@ public class CinemaHomeActivity extends BaseActivity implements
                     if (result.hasOverview()) {
                         mBinding.tip.setText(result.getOverview());
                     }
-                    // 使用 TMDB 标题 Logo 更新
-                    if (result.hasLogoUrl()) {
-                        loadTitleLogo(itemName, result.getLogoUrl());
-                    } else {
-                        showTitleText();
-                    }
                 });
             });
             return;
         }
-        // 没有配置 TMDB API Key，使用站点提供的图片和标题
-        showTitleText();
+        // 没有配置 TMDB API Key，使用站点提供的图片
         String coverUrl = getFallbackCoverUrl(item);
         if (TextUtils.isEmpty(coverUrl)) {
             hideCoverBg();
@@ -320,20 +310,6 @@ public class CinemaHomeActivity extends BaseActivity implements
                 mBinding.coverBg.animate().alpha(0.92f).setDuration(400).start();
             }).start();
         }
-    }
-
-    private void loadTitleLogo(String name, String logoUrl) {
-        if (TextUtils.equals(mLastTitleUrl, logoUrl)) return;
-        mLastTitleUrl = logoUrl;
-        mBinding.appTitle.setVisibility(View.GONE);
-        mBinding.appTitleLogo.setVisibility(View.VISIBLE);
-        ImgUtil.load(name, logoUrl, mBinding.appTitleLogo, false);
-    }
-
-    private void showTitleText() {
-        mLastTitleUrl = "";
-        mBinding.appTitleLogo.setVisibility(View.GONE);
-        mBinding.appTitle.setVisibility(View.VISIBLE);
     }
 
     private void setCategories(List<Class> types) {
