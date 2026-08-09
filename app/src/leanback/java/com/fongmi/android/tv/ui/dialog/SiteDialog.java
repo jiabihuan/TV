@@ -62,7 +62,7 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
     }
 
     private float getWidth() {
-        return action ? 0.58f : 0.52f;
+        return action ? 0.88f : 0.84f;
     }
 
     @Override
