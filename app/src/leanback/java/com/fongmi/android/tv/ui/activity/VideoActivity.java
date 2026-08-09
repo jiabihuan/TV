@@ -1517,16 +1517,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private View getDownFocus() {
-        long position = player().getPosition();
-        long duration = player().getDuration();
-        long limit = Constant.getOpEdLimit(duration);
-        if (position > 0 && duration > 0 && position <= limit) {
-            return mBinding.control.action.opening;
-        } else if (position > 0 && duration > 0 && duration - position <= limit) {
-            return mBinding.control.action.ending;
-        } else {
-            return getFocus2();
-        }
+        return getFocus2();
     }
 
     @Override
