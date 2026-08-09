@@ -115,7 +115,7 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
         binding.recycler.setHasFixedSize(true);
         binding.recycler.setItemAnimator(null);
         if (decoration != null) binding.recycler.removeItemDecoration(decoration);
-        binding.recycler.addItemDecoration(decoration = new SpaceItemDecoration(getCount(), SPACING));
+        binding.recycler.addItemDecoration(decoration = new SpaceItemDecoration(getCount(), SPACING, 2));
         binding.recycler.setLayoutManager(new GridLayoutManager(requireContext(), getCount()));
         if (!binding.mode.hasFocus()) binding.recycler.post(() -> binding.recycler.scrollToPosition(VodConfig.getHomeIndex()));
     }

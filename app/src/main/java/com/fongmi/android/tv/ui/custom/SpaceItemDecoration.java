@@ -11,6 +11,7 @@ import com.fongmi.android.tv.utils.ResUtil;
 public class SpaceItemDecoration extends RecyclerView.ItemDecoration {
 
     private final int spacing;
+    private final int rowSpacing;
     private final int spanCount;
 
     public SpaceItemDecoration(int spacing) {
@@ -18,8 +19,13 @@ public class SpaceItemDecoration extends RecyclerView.ItemDecoration {
     }
 
     public SpaceItemDecoration(int spanCount, int spacing) {
+        this(spanCount, spacing, spacing);
+    }
+
+    public SpaceItemDecoration(int spanCount, int spacing, int rowSpacing) {
         this.spanCount = spanCount;
         this.spacing = ResUtil.dp2px(spacing);
+        this.rowSpacing = ResUtil.dp2px(rowSpacing);
     }
 
     @Override
@@ -32,7 +38,7 @@ public class SpaceItemDecoration extends RecyclerView.ItemDecoration {
             int column = position % spanCount;
             outRect.left = column * spacing / spanCount;
             outRect.right = spacing - (column + 1) * spacing / spanCount;
-            if (position >= spanCount) outRect.top = spacing;
+            if (position >= spanCount) outRect.top = rowSpacing;
         } else {
             outRect.left = 0;
             outRect.right = 0;
