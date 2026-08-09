@@ -27,7 +27,7 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
 
     private static final int GRID_COUNT = 10;
     private static final int SPAN_COUNT = 3;
-    private static final int SPACING = 4;
+    private static final int SPACING = 2;
 
     private RecyclerView.ItemDecoration decoration;
     private DialogSiteBinding binding;
@@ -79,7 +79,7 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
         int dialogWidth = itemWidth * SPAN_COUNT + ResUtil.dp2px(SPACING * (SPAN_COUNT - 1) + 22 * 2);
         if (action) dialogWidth += ResUtil.dp2px(40 + 16);
         float ratio = (float) dialogWidth / ResUtil.getScreenWidth();
-        return Math.min(Math.max(ratio, 0.55f), 0.88f);
+        return Math.min(Math.max(ratio, 0.40f), 0.88f);
     }
 
     @Override
