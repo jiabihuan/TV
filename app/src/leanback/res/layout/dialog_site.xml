@@ -21,7 +21,7 @@
         android:clipChildren="false"
         android:clipToPadding="false"
         android:overScrollMode="never"
-        app:maxHeight="400dp"
+        app:maxHeight="340dp"
         tools:itemCount="5"
         tools:listitem="@layout/adapter_site" />
 
@@ -45,7 +45,7 @@
             android:nextFocusDown="@id/change"
             android:padding="8dp"
             android:src="@drawable/ic_site_search"
-            app:tint="@color/white" />
+            app:tint="@color/black_90" />
 
         <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/change"
@@ -59,7 +59,7 @@
             android:nextFocusDown="@id/select"
             android:padding="8dp"
             android:src="@drawable/ic_site_change"
-            app:tint="@color/white" />
+            app:tint="@color/black_90" />
 
         <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/select"
@@ -72,7 +72,8 @@
             android:nextFocusUp="@id/change"
             android:nextFocusDown="@id/cancel"
             android:padding="8dp"
-            android:src="@drawable/ic_site_select" />
+            android:src="@drawable/ic_site_select"
+            app:tint="@color/black_90" />
 
         <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/cancel"
@@ -85,7 +86,8 @@
             android:nextFocusUp="@id/select"
             android:nextFocusDown="@id/mode"
             android:padding="8dp"
-            android:src="@drawable/ic_site_cancel" />
+            android:src="@drawable/ic_site_cancel"
+            app:tint="@color/black_90" />
 
         <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/mode"
@@ -98,7 +100,8 @@
             android:nextFocusUp="@id/cancel"
             android:nextFocusDown="@id/mode"
             android:padding="8dp"
-            tools:src="@drawable/ic_site_list" />
+            android:src="@drawable/ic_site_list"
+            app:tint="@color/black_90" />
 
     </androidx.appcompat.widget.LinearLayoutCompat>
 

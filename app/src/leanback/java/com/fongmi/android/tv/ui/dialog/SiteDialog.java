@@ -5,6 +5,7 @@ import android.graphics.Paint;
 import android.graphics.drawable.ColorDrawable;
 import android.text.TextPaint;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
 
 import androidx.fragment.app.FragmentActivity;
@@ -25,7 +26,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickListener {
 
     private static final int GRID_COUNT = 10;
-    private static final int SPAN_COUNT = 3;
+    private static final int SPAN_COUNT = 5;
+    private static final int SPACING = 8;
 
     private RecyclerView.ItemDecoration decoration;
     private DialogSiteBinding binding;
@@ -73,8 +75,8 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
             if (site.isHide()) continue;
             maxTextWidth = Math.max(maxTextWidth, (int) paint.measureText(site.getName()));
         }
-        int itemWidth = maxTextWidth + ResUtil.dp2px(18 * 2 + 12 + 24);
-        int dialogWidth = itemWidth * SPAN_COUNT + ResUtil.dp2px(16 * (SPAN_COUNT - 1) + 22 * 2);
+        int itemWidth = maxTextWidth + ResUtil.dp2px(16 * 2 + 10 + 24);
+        int dialogWidth = itemWidth * SPAN_COUNT + ResUtil.dp2px(SPACING * (SPAN_COUNT - 1) + 22 * 2);
         if (action) dialogWidth += ResUtil.dp2px(40 + 16);
         float ratio = (float) dialogWidth / ResUtil.getScreenWidth();
         return Math.min(Math.max(ratio, 0.55f), 0.88f);
@@ -113,7 +115,7 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
         binding.recycler.setHasFixedSize(true);
         binding.recycler.setItemAnimator(null);
         if (decoration != null) binding.recycler.removeItemDecoration(decoration);
-        binding.recycler.addItemDecoration(decoration = new SpaceItemDecoration(getCount(), 16));
+        binding.recycler.addItemDecoration(decoration = new SpaceItemDecoration(getCount(), SPACING));
         binding.recycler.setLayoutManager(new GridLayoutManager(requireContext(), getCount()));
         if (!binding.mode.hasFocus()) binding.recycler.post(() -> binding.recycler.scrollToPosition(VodConfig.getHomeIndex()));
     }
@@ -151,7 +153,10 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
     @Override
     public void onStart() {
         super.onStart();
-        if (getDialog() != null && getDialog().getWindow() != null) getDialog().getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        if (getDialog() != null && getDialog().getWindow() != null) {
+            getDialog().getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            getDialog().getWindow().setGravity(Gravity.CENTER);
+        }
         if (adapter.getItemCount() == 0) dismiss();
         else setWidth();
     }
