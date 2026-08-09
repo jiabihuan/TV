@@ -406,4 +406,12 @@ public class Setting {
     public static void putTmdbOverview(String name, String overview) {
         Prefers.put("tmdb_overview_" + name, overview);
     }
+
+    public static String getTmdbLogo(String name) {
+        return Prefers.getString("tmdb_logo_" + name, "");
+    }
+
+    public static void putTmdbLogo(String name, String url) {
+        Prefers.put("tmdb_logo_" + name, url);
+    }
 }
