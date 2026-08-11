@@ -6,12 +6,19 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- 背景同步：不写死底色，由 BaseActivity 注入的 CustomWallView(软件壁纸) 透出 -->
+    <!-- 底部渐变 scrim：提升底部通栏文字在壁纸上的可读性（影院风） -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_tv_cinema_bottom_gradient" />
+
     <!-- 主容器：上半区(左预览 + 右信息) / 下半区(全屏通栏选集) -->
     <androidx.appcompat.widget.LinearLayoutCompat
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/black"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:paddingTop="20dp">
 
         <!-- ============ 上半区：左预览 + 右信息 ============ -->
         <androidx.appcompat.widget.LinearLayoutCompat
@@ -19,15 +26,19 @@
             android:layout_height="0dp"
             android:layout_weight="1"
             android:orientation="horizontal"
-            android:padding="24dp">
+            android:paddingStart="32dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="32dp"
+            android:paddingBottom="16dp">
 
-            <!-- 左：圆角视频预览窗口 -->
+            <!-- 左：圆角视频预览窗口（影院卡片风） -->
             <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_marginEnd="24dp"
+                android:layout_marginEnd="28dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_detail_preview"
+                android:elevation="8dp"
                 android:padding="4dp">
 
                 <FrameLayout
@@ -106,7 +117,7 @@
                         tools:text="已播放 30:15/60:30 预计完成于 11:45"
                         tools:visibility="visible" />
 
-                    <!-- 右下角悬浮：OK 全屏播放 -->
+                    <!-- 右下角悬浮：OK 全屏播放（影院橙色播放按钮） -->
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/cardHint"
                         android:layout_width="wrap_content"
@@ -114,17 +125,18 @@
                         android:layout_gravity="bottom|end"
                         android:layout_marginEnd="16dp"
                         android:layout_marginBottom="16dp"
-                        android:background="@drawable/bg_detail_hint"
+                        android:background="@drawable/bg_cinema_play_btn"
                         android:focusable="true"
                         android:focusableInTouchMode="true"
                         android:gravity="center"
-                        android:paddingStart="14dp"
-                        android:paddingTop="8dp"
-                        android:paddingEnd="14dp"
-                        android:paddingBottom="8dp"
+                        android:paddingStart="18dp"
+                        android:paddingTop="9dp"
+                        android:paddingEnd="18dp"
+                        android:paddingBottom="9dp"
                         android:text="@string/detail_fullscreen_ok"
                         android:textColor="@color/white"
                         android:textSize="15sp"
+                        android:textStyle="bold"
                         android:nextFocusUp="@id/video"
                         android:nextFocusDown="@id/keep"
                         android:nextFocusLeft="@id/video"
@@ -133,7 +145,7 @@
                 </FrameLayout>
             </FrameLayout>
 
-            <!-- 右：信息列 -->
+            <!-- 右：信息列（影院风） -->
             <androidx.appcompat.widget.LinearLayoutCompat
                 android:id="@+id/infoLayout"
                 android:layout_width="0dp"
@@ -147,22 +159,27 @@
                     android:id="@+id/titleLayout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
+                    android:layout_marginBottom="14dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
 
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/name"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="16dp"
+                        android:layout_weight="1"
                         android:ellipsize="marquee"
                         android:marqueeRepeatLimit="marquee_forever"
-                        android:maxEms="12"
+                        android:maxEms="14"
                         android:scrollHorizontally="true"
+                        android:shadowColor="#99000000"
+                        android:shadowDx="0"
+                        android:shadowDy="2"
+                        android:shadowRadius="10"
                         android:singleLine="true"
                         android:textColor="@color/white"
-                        android:textSize="34sp"
+                        android:textSize="40sp"
                         android:textStyle="bold"
                         tools:text="莫离" />
 
@@ -207,54 +224,72 @@
 
                 </androidx.appcompat.widget.LinearLayoutCompat>
 
+                <!-- 更新状态（影院芯片） -->
                 <com.google.android.material.textview.MaterialTextView
                     android:id="@+id/remark"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
+                    android:layout_height="24dp"
+                    android:layout_marginBottom="10dp"
+                    android:background="@drawable/bg_cinema_tag_chip"
+                    android:gravity="center"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
                     android:singleLine="true"
                     android:textColor="@color/white"
-                    android:textSize="16sp"
+                    android:textSize="13sp"
                     android:visibility="gone"
-                    tools:text="更新到第二季" />
+                    tools:text="更新到第二季"
+                    tools:visibility="visible" />
 
-                <!-- 标签栏：站源 / 年份 / 地区 -->
+                <!-- 标签栏：站源 / 年份 / 地区（影院芯片） -->
                 <androidx.appcompat.widget.LinearLayoutCompat
                     android:id="@+id/row1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
+                    android:layout_marginBottom="10dp"
                     android:orientation="horizontal"
-                    android:visibility="gone">
+                    android:visibility="gone"
+                    tools:visibility="visible">
 
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/site"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="12dp"
+                        android:layout_height="24dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/bg_cinema_tag_chip"
+                        android:gravity="center"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
                         android:singleLine="true"
                         android:textColor="@color/white"
-                        android:textSize="16sp"
+                        android:textSize="13sp"
                         tools:text="站源：泥巴" />
 
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/year"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="12dp"
+                        android:layout_height="24dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/bg_cinema_tag_chip"
+                        android:gravity="center"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
                         android:singleLine="true"
                         android:textColor="@color/white"
-                        android:textSize="16sp"
+                        android:textSize="13sp"
                         tools:text="年份：2022" />
 
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/area"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="12dp"
+                        android:layout_height="24dp"
+                        android:background="@drawable/bg_cinema_tag_chip"
+                        android:gravity="center"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
                         android:singleLine="true"
                         android:textColor="@color/white"
-                        android:textSize="16sp"
+                        android:textSize="13sp"
                         tools:text="地區：台湾" />
 
                 </androidx.appcompat.widget.LinearLayoutCompat>
@@ -270,26 +305,23 @@
                     <androidx.appcompat.widget.LinearLayoutCompat
                         android:id="@+id/typeLayout"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="24dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
                         android:visibility="gone"
                         tools:visibility="visible">
 
-                        <androidx.appcompat.widget.AppCompatImageView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:layout_marginEnd="8dp"
-                            android:src="@drawable/ic_detail_type"
-                            app:tint="#FFC107" />
-
                         <com.google.android.material.textview.MaterialTextView
                             android:id="@+id/type"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                            android:layout_height="24dp"
+                            android:background="@drawable/bg_cinema_tag_chip"
+                            android:gravity="center"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
                             android:singleLine="true"
-                            android:textColor="#FFC107"
-                            android:textSize="14sp"
+                            android:textColor="@color/white"
+                            android:textSize="13sp"
                             tools:text="类型：情感 综艺" />
 
                     </androidx.appcompat.widget.LinearLayoutCompat>
@@ -298,17 +330,9 @@
                         android:id="@+id/descLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="10dp"
                         android:gravity="top"
                         android:orientation="horizontal">
-
-                        <androidx.appcompat.widget.AppCompatImageView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:layout_marginTop="2dp"
-                            android:layout_marginEnd="8dp"
-                            android:src="@drawable/ic_detail_desc"
-                            app:tint="#B3FFFFFF" />
 
                         <com.google.android.material.textview.MaterialTextView
                             android:id="@+id/content"
@@ -318,14 +342,18 @@
                             android:ellipsize="end"
                             android:focusable="true"
                             android:focusableInTouchMode="true"
-                            android:lineSpacingExtra="4dp"
+                            android:lineSpacingExtra="5dp"
                             android:maxLines="6"
                             android:nextFocusDown="@id/flag"
                             android:nextFocusLeft="@id/video"
                             android:nextFocusUp="@id/keep"
                             android:padding="4dp"
-                            android:textColor="#B3FFFFFF"
-                            android:textSize="15sp"
+                            android:shadowColor="#99000000"
+                            android:shadowDx="0"
+                            android:shadowDy="1"
+                            android:shadowRadius="6"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="16sp"
                             tools:text="影片简介剧情介绍内容..." />
 
                     </androidx.appcompat.widget.LinearLayoutCompat>
@@ -334,18 +362,11 @@
                         android:id="@+id/actorLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="10dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
                         android:visibility="gone"
                         tools:visibility="visible">
-
-                        <androidx.appcompat.widget.AppCompatImageView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:layout_marginEnd="8dp"
-                            android:src="@drawable/ic_detail_actor"
-                            app:tint="#80FFFFFF" />
 
                         <com.google.android.material.textview.MaterialTextView
                             android:id="@+id/actor"
@@ -353,8 +374,8 @@
                             android:layout_height="wrap_content"
                             android:ellipsize="end"
                             android:singleLine="true"
-                            android:textColor="#80FFFFFF"
-                            android:textSize="13sp"
+                            android:textColor="@color/white_70"
+                            android:textSize="14sp"
                             tools:text="演员：FongMi" />
 
                     </androidx.appcompat.widget.LinearLayoutCompat>
@@ -513,7 +534,7 @@
                         android:layout_marginEnd="12dp"
                         android:singleLine="true"
                         android:text="1-20"
-                        android:textColor="#B3FFFFFF"
+                        android:textColor="@color/white_70"
                         android:textSize="14sp" />
 
                     <androidx.leanback.widget.HorizontalGridView
