@@ -404,23 +404,23 @@ public class Setting {
     }
 
     public static String getTmdbBackdrop(String name) {
-        return Prefers.getString("tmdb_backdrop_" + name, "");
+        return Prefers.getString("tmdb_backdrop_v2_" + name, "");
     }
 
     public static void putTmdbBackdrop(String name, String url) {
-        Prefers.put("tmdb_backdrop_" + name, url);
+        Prefers.put("tmdb_backdrop_v2_" + name, url);
     }
 
     public static String getTmdbOverview(String name) {
-        return Prefers.getString("tmdb_overview_" + name, "");
+        return Prefers.getString("tmdb_overview_v2_" + name, "");
     }
 
     public static void putTmdbOverview(String name, String overview) {
-        Prefers.put("tmdb_overview_" + name, overview);
+        Prefers.put("tmdb_overview_v2_" + name, overview);
     }
 
     public static List<String> getTmdbBackdrops(String name) {
-        String value = Prefers.getString("tmdb_backdrops_" + name, "");
+        String value = Prefers.getString("tmdb_backdrops_v2_" + name, "");
         if (TextUtils.isEmpty(value)) return new ArrayList<>();
         String[] split = value.split("\\|");
         List<String> list = new ArrayList<>();
@@ -432,7 +432,7 @@ public class Setting {
 
     public static void putTmdbBackdrops(String name, List<String> urls) {
         if (urls == null || urls.isEmpty()) {
-            Prefers.put("tmdb_backdrops_" + name, "");
+            Prefers.put("tmdb_backdrops_v2_" + name, "");
             return;
         }
         StringBuilder sb = new StringBuilder();
@@ -440,7 +440,7 @@ public class Setting {
             if (sb.length() > 0) sb.append("|");
             sb.append(url);
         }
-        Prefers.put("tmdb_backdrops_" + name, sb.toString());
+        Prefers.put("tmdb_backdrops_v2_" + name, sb.toString());
     }
 
     public static String getTmdbLogo(String name) {

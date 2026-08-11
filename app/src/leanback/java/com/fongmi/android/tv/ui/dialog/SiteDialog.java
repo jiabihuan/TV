@@ -75,11 +75,12 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
             if (site.isHide()) continue;
             maxTextWidth = Math.max(maxTextWidth, (int) paint.measureText(site.getName()));
         }
-        int itemWidth = maxTextWidth + ResUtil.dp2px(10 * 2 + 10 + 24);
+        int itemWidth = maxTextWidth + ResUtil.dp2px(6 * 2 + 10 + 24);
         int dialogWidth = itemWidth * SPAN_COUNT + ResUtil.dp2px(SPACING * (SPAN_COUNT - 1) + 22 * 2);
         if (action) dialogWidth += ResUtil.dp2px(40 + 16);
         float ratio = (float) dialogWidth / ResUtil.getScreenWidth();
-        return Math.min(Math.max(ratio, 0.40f), 0.88f);
+        // 不强制最小宽度：对话框按 3 列内容精确铺满，多余屏宽不会被平摊成列间距
+        return Math.min(ratio, 0.88f);
     }
 
     @Override
