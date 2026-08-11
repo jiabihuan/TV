@@ -13,7 +13,6 @@ import com.google.gson.JsonParser;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -129,6 +128,7 @@ public class TmdbUtil {
             JsonObject root = JsonParser.parseString(json).getAsJsonObject();
             JsonArray results = root.has("results") ? root.getAsJsonArray("results") : null;
             if (results == null || results.isEmpty()) return TmdbResult.empty();
+            TmdbResult backdropResult = TmdbResult.empty();
             for (JsonElement element : results) {
                 JsonObject item = element.getAsJsonObject();
                 String overview = "";
@@ -146,14 +146,17 @@ public class TmdbUtil {
                 // multi 搜索可能返回 person 等非影视类型，只处理 movie/tv
                 if (!"movie".equals(mediaType) && !"tv".equals(mediaType)) continue;
                 TmdbResult images = fetchImages(baseUrl, apiKey, id, mediaType);
-                if (images.hasBackdrop() || images.hasLogoUrl()) {
+                // 优先选取第一个（最相关）带标题 Logo 的结果，最大化 logo 覆盖率
+                if (images.hasLogoUrl()) {
                     return new TmdbResult(id, mediaType, images.getBackdropUrl(), images.getBackdrops(), overview, images.getLogoUrl());
                 }
-                // 无图片但有简介，仍作为备选
-                if (!TextUtils.isEmpty(overview)) {
-                    return new TmdbResult(id, mediaType, "", Collections.emptyList(), overview, "");
+                // 没有 logo 时，记录第一个带背景图或简介的结果作为备选
+                if (backdropResult.isEmpty() && (images.hasBackdrop() || !TextUtils.isEmpty(overview))) {
+                    backdropResult = new TmdbResult(id, mediaType, images.getBackdropUrl(), images.getBackdrops(), overview, "");
                 }
             }
+            // 没有命中带 Logo 的结果时，返回带背景图/简介的备选
+            return backdropResult;
         } catch (Exception e) {
             Log.w(TAG, "extractFromResults failed: " + e.getMessage());
         }
@@ -193,7 +196,9 @@ public class TmdbUtil {
     private static String extractLogoUrl(JsonObject root) {
         if (!root.has("logos") || root.get("logos").isJsonNull()) return "";
         JsonArray logos = root.getAsJsonArray("logos");
-        String fallback = "";
+        String zh = "";
+        String en = "";
+        String other = "";
         for (JsonElement e : logos) {
             JsonObject o = e.getAsJsonObject();
             if (!o.has("file_path") || o.get("file_path").isJsonNull()) continue;
@@ -204,11 +209,23 @@ public class TmdbUtil {
                 iso = o.get("iso_639_1").getAsString();
             }
             String url = buildImageUrl(path);
-            if (fallback.isEmpty()) fallback = url;
-            // 优先使用中文（zh、zh-CN、zh-SG 等）Logo
-            if (iso != null && iso.toLowerCase().startsWith("zh")) return url;
+            if (other.isEmpty()) other = url;
+            // 识别无语言标识（通用）Logo，视为英文备选
+            if (TextUtils.isEmpty(iso)) {
+                if (en.isEmpty()) en = url;
+                continue;
+            }
+            String lower = iso.toLowerCase();
+            // 优先中文（zh、zh-CN、zh-SG 等）
+            if (lower.startsWith("zh") && zh.isEmpty()) {
+                zh = url;
+            } else if (lower.startsWith("en") && en.isEmpty()) {
+                en = url;
+            }
         }
-        return fallback;
+        if (!zh.isEmpty()) return zh;
+        if (!en.isEmpty()) return en;
+        return other;
     }
 
     /**
@@ -228,7 +245,9 @@ public class TmdbUtil {
         String cachedOverviews = Setting.getTmdbOverview(name);
         List<String> cachedBackdrops = Setting.getTmdbBackdrops(name);
         String cachedLogo = Setting.getTmdbLogo(name);
-        if (!cachedBackdrops.isEmpty() || !cachedBackdrop.isEmpty()) {
+        boolean hasBackdropCache = !cachedBackdrops.isEmpty() || !cachedBackdrop.isEmpty();
+        // 背景图已缓存且 Logo 是否已查询过（含“无 Logo”哨兵）：都满足则直接返回，否则重新请求补全 Logo
+        if (hasBackdropCache && Setting.isTmdbLogoDecided(name)) {
             Log.d(TAG, "Using cached result for: " + name);
             TmdbResult result = new TmdbResult(
                 0, "",
@@ -250,9 +269,8 @@ public class TmdbUtil {
             if (result.hasOverview()) {
                 Setting.putTmdbOverview(name, result.getOverview());
             }
-            if (result.hasLogoUrl()) {
-                Setting.putTmdbLogo(name, result.getLogoUrl());
-            }
+            // 无论是否有 Logo 都写入（无 Logo 时写入 none 哨兵），避免重复请求
+            Setting.putTmdbLogo(name, result.getLogoUrl());
             callback.onResult(result);
         }, "tmdb-search").start();
     }

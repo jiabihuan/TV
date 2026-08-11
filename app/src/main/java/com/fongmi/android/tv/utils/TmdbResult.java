@@ -1,7 +1,6 @@
 package com.fongmi.android.tv.utils;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -75,6 +74,10 @@ public class TmdbResult {
 
     public boolean hasLogoUrl() {
         return logoUrl != null && !logoUrl.isEmpty();
+    }
+
+    public boolean isEmpty() {
+        return !hasId() && !hasBackdrop() && !hasBackdrops() && !hasOverview() && !hasLogoUrl();
     }
 
     public String getRandomBackdrop() {

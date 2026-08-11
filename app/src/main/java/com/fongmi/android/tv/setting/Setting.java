@@ -444,10 +444,18 @@ public class Setting {
     }
 
     public static String getTmdbLogo(String name) {
-        return Prefers.getString("tmdb_logo_" + name, "");
+        String value = Prefers.getString("tmdb_logo_v2_" + name, "");
+        // 哨兵 "none" 表示已查询过但确实没有 Logo，对外当作空处理
+        return "none".equals(value) ? "" : value;
+    }
+
+    public static boolean isTmdbLogoDecided(String name) {
+        // 仅当曾经写入过 tmdb_logo_v2_ 时才认为已查询（含 none 哨兵）
+        return Prefers.getString("tmdb_logo_v2_" + name, null) != null;
     }
 
     public static void putTmdbLogo(String name, String url) {
-        Prefers.put("tmdb_logo_" + name, url);
+        // 没有 Logo 时写入哨兵，避免后续重复请求却永远拿不到
+        Prefers.put("tmdb_logo_v2_" + name, TextUtils.isEmpty(url) ? "none" : url);
     }
 }
