@@ -303,6 +303,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.reverse.setOnClickListener(view -> reverseEpisode(false));
         mBinding.episodePrev.setOnClickListener(view -> pageEpisode(-1));
         mBinding.episodeNext.setOnClickListener(view -> pageEpisode(1));
+        mBinding.cardHint.setOnClickListener(view -> toggleDetail());
         mBinding.control.action.text.setOnClickListener(this::onTrack);
         mBinding.control.action.audio.setOnClickListener(this::onTrack);
         mBinding.control.action.video.setOnClickListener(this::onTrack);
@@ -621,6 +622,17 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         int start = pos / page * page + 1;
         int end = Math.min(start + page - 1, total);
         mBinding.episodeRange.setText(start + "-" + end);
+    }
+
+    private void toggleDetail() {
+        boolean detail = mBinding.scroll.getVisibility() == View.VISIBLE;
+        mBinding.scroll.setVisibility(detail ? View.GONE : View.VISIBLE);
+        mBinding.infoLayout.setVisibility(detail ? View.GONE : View.VISIBLE);
+        if (detail) {
+            mBinding.video.requestFocus();
+        } else {
+            mBinding.keep.requestFocus();
+        }
     }
 
     @Override

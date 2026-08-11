@@ -106,6 +106,30 @@
                         tools:text="已播放 30:15/60:30 预计完成于 11:45"
                         tools:visibility="visible" />
 
+                    <!-- 右下角悬浮：OK 全屏播放 -->
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/cardHint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="bottom|end"
+                        android:layout_marginEnd="16dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/bg_detail_hint"
+                        android:focusable="true"
+                        android:focusableInTouchMode="true"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingTop="8dp"
+                        android:paddingEnd="14dp"
+                        android:paddingBottom="8dp"
+                        android:text="@string/detail_fullscreen_ok"
+                        android:textColor="@color/white"
+                        android:textSize="15sp"
+                        android:nextFocusUp="@id/video"
+                        android:nextFocusDown="@id/keep"
+                        android:nextFocusLeft="@id/video"
+                        android:nextFocusRight="@id/keep" />
+
                 </FrameLayout>
             </FrameLayout>
 
@@ -174,7 +198,7 @@
                         android:nextFocusDown="@id/content"
                         android:nextFocusLeft="@id/keep"
                         android:nextFocusRight="@id/change1"
-                        android:nextFocusUp="@id/change1"
+                        android:nextFocusUp="@id/video"
                         android:singleLine="true"
                         android:text="@string/play_change"
                         android:textColor="@color/white"
@@ -432,7 +456,11 @@
                         android:singleLine="true"
                         android:text="@string/play_reverse"
                         android:textColor="@color/white"
-                        android:textSize="15sp" />
+                        android:textSize="15sp"
+                        android:nextFocusLeft="@id/video"
+                        android:nextFocusRight="@id/episodePrev"
+                        android:nextFocusUp="@id/flag"
+                        android:nextFocusDown="@id/episode" />
 
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/episodePrev"
@@ -450,7 +478,11 @@
                         android:text="‹"
                         android:textColor="@color/white"
                         android:textSize="20sp"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:nextFocusLeft="@id/reverse"
+                        android:nextFocusRight="@id/episodeNext"
+                        android:nextFocusUp="@id/flag"
+                        android:nextFocusDown="@id/episode" />
 
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/episodeNext"
@@ -468,7 +500,11 @@
                         android:text="›"
                         android:textColor="@color/white"
                         android:textSize="20sp"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:nextFocusLeft="@id/episodePrev"
+                        android:nextFocusRight="@id/episode"
+                        android:nextFocusUp="@id/flag"
+                        android:nextFocusDown="@id/episode" />
 
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/episodeRange"
