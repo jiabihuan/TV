@@ -4,9 +4,13 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import android.text.TextUtils;
 
 import com.fongmi.android.tv.App;
 import com.github.catvod.utils.Prefers;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Setting {
 
@@ -413,5 +417,37 @@ public class Setting {
 
     public static void putTmdbOverview(String name, String overview) {
         Prefers.put("tmdb_overview_" + name, overview);
+    }
+
+    public static List<String> getTmdbBackdrops(String name) {
+        String value = Prefers.getString("tmdb_backdrops_" + name, "");
+        if (TextUtils.isEmpty(value)) return new ArrayList<>();
+        String[] split = value.split("\\|");
+        List<String> list = new ArrayList<>();
+        for (String url : split) {
+            if (!TextUtils.isEmpty(url)) list.add(url);
+        }
+        return list;
+    }
+
+    public static void putTmdbBackdrops(String name, List<String> urls) {
+        if (urls == null || urls.isEmpty()) {
+            Prefers.put("tmdb_backdrops_" + name, "");
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String url : urls) {
+            if (sb.length() > 0) sb.append("|");
+            sb.append(url);
+        }
+        Prefers.put("tmdb_backdrops_" + name, sb.toString());
+    }
+
+    public static String getTmdbLogo(String name) {
+        return Prefers.getString("tmdb_logo_" + name, "");
+    }
+
+    public static void putTmdbLogo(String name, String url) {
+        Prefers.put("tmdb_logo_" + name, url);
     }
 }

@@ -16,6 +16,20 @@
         android:scaleType="centerCrop"
         android:visibility="invisible" />
 
+    <!-- TMDB title logo overlay on top of the backdrop poster -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/appTitleLogo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="32dp"
+        android:layout_marginTop="118dp"
+        android:adjustViewBounds="true"
+        android:maxWidth="420dp"
+        android:maxHeight="120dp"
+        android:scaleType="fitStart"
+        android:visibility="gone" />
+
     <!-- Navigation bar -->
     <LinearLayout
         android:id="@+id/nav"
@@ -227,14 +241,6 @@
                 android:textColor="@color/white"
                 android:textSize="28sp"
                 android:textStyle="bold" />
-
-            <androidx.appcompat.widget.AppCompatImageView
-                android:id="@+id/appTitleLogo"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:adjustViewBounds="true"
-                android:scaleType="fitStart"
-                android:visibility="gone" />
         </LinearLayout>
 
         <!-- Actor info -->

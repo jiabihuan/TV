@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.KeyEvent;
@@ -55,6 +57,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 public class CinemaHomeActivity extends BaseActivity implements
         CinemaPosterAdapter.OnClickListener,
@@ -69,10 +72,16 @@ public class CinemaHomeActivity extends BaseActivity implements
     private Clock mClock;
     private boolean mConfigReady;
     private boolean mHasMovieSelected;
+    private String mCurrentHeroName = "";
     private String mLastCoverUrl = "";
     private String mLastTitleUrl = "";
     private String mCurrentTypeId = "home";
     private List<Class> mHomeTypes;
+    private List<String> mCurrentBackdrops = new ArrayList<>();
+    private int mCurrentBackdropIndex = 0;
+    private final Random mRandom = new Random();
+    private final Handler mBackdropHandler = new Handler(Looper.getMainLooper());
+    private Runnable mBackdropRunnable;
 
     private final BroadcastReceiver mNetworkReceiver = new BroadcastReceiver() {
         @Override
@@ -199,7 +208,12 @@ public class CinemaHomeActivity extends BaseActivity implements
         Vod item = mPosterAdapter.getItem(position);
         if (item == null) return;
         mHasMovieSelected = true;
+        mCurrentHeroName = item.getName();
+        stopBackdropRotation();
+        mCurrentBackdrops.clear();
+        mCurrentBackdropIndex = 0;
         mBinding.appTitle.setText(item.getName());
+        showTitleText();
         if (!TextUtils.isEmpty(item.getActor())) {
             mBinding.actor.setText("主演：" + item.getActor());
             mBinding.actor.setVisibility(View.VISIBLE);
@@ -249,13 +263,29 @@ public class CinemaHomeActivity extends BaseActivity implements
 
     private void updateCoverBg(Vod item) {
         String itemName = item.getName();
-        // 优先使用 TMDB API 获取横屏背景图和剧情简介
+        // 优先使用 TMDB API 获取横屏背景图、剧情简介和标题 Logo
         if (Setting.hasTmdbApiKey()) {
             final String fallbackUrl = getFallbackCoverUrl(item);
             com.fongmi.android.tv.utils.TmdbUtil.searchAsync(itemName, result -> {
                 runOnUiThread(() -> {
-                    if (result.hasBackdrop()) {
-                        loadCoverBg(itemName, result.getBackdropUrl());
+                    if (!TextUtils.equals(mCurrentHeroName, itemName)) return;
+                    // 使用 TMDB 标题 Logo 替换左侧文字标题
+                    if (result.hasLogoUrl()) {
+                        loadTitleLogo(itemName, result.getLogoUrl());
+                    } else {
+                        showTitleText();
+                    }
+                    // 保存多张背景图并启动随机轮换
+                    if (result.hasBackdrops()) {
+                        mCurrentBackdrops = new ArrayList<>(result.getBackdrops());
+                    } else if (result.hasBackdrop()) {
+                        mCurrentBackdrops.clear();
+                        mCurrentBackdrops.add(result.getBackdropUrl());
+                    }
+                    if (!mCurrentBackdrops.isEmpty()) {
+                        mCurrentBackdropIndex = mRandom.nextInt(mCurrentBackdrops.size());
+                        loadCoverBg(itemName, mCurrentBackdrops.get(mCurrentBackdropIndex));
+                        startBackdropRotation(itemName);
                     } else if (!TextUtils.isEmpty(fallbackUrl)) {
                         loadCoverBg(itemName, fallbackUrl);
                     } else {
@@ -270,6 +300,7 @@ public class CinemaHomeActivity extends BaseActivity implements
             return;
         }
         // 没有配置 TMDB API Key，使用站点提供的图片
+        showTitleText();
         String coverUrl = getFallbackCoverUrl(item);
         if (TextUtils.isEmpty(coverUrl)) {
             hideCoverBg();
@@ -304,6 +335,49 @@ public class CinemaHomeActivity extends BaseActivity implements
                 mBinding.coverBg.animate().alpha(0.92f).setDuration(400).start();
             }).start();
         }
+    }
+
+    private void startBackdropRotation(String itemName) {
+        stopBackdropRotation();
+        if (mCurrentBackdrops == null || mCurrentBackdrops.size() <= 1) return;
+        mBackdropRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (!TextUtils.equals(mCurrentHeroName, itemName)) return;
+                if (mCurrentBackdrops == null || mCurrentBackdrops.size() <= 1) return;
+                int nextIndex = mRandom.nextInt(mCurrentBackdrops.size());
+                if (nextIndex == mCurrentBackdropIndex) {
+                    nextIndex = (nextIndex + 1) % mCurrentBackdrops.size();
+                }
+                mCurrentBackdropIndex = nextIndex;
+                loadCoverBg(itemName, mCurrentBackdrops.get(mCurrentBackdropIndex));
+                if (mBackdropHandler != null) {
+                    mBackdropHandler.postDelayed(this, 6000);
+                }
+            }
+        };
+        mBackdropHandler.postDelayed(mBackdropRunnable, 6000);
+    }
+
+    private void stopBackdropRotation() {
+        if (mBackdropRunnable != null) {
+            mBackdropHandler.removeCallbacks(mBackdropRunnable);
+            mBackdropRunnable = null;
+        }
+    }
+
+    private void loadTitleLogo(String name, String logoUrl) {
+        if (TextUtils.equals(mLastTitleUrl, logoUrl)) return;
+        mLastTitleUrl = logoUrl;
+        mBinding.appTitle.setVisibility(View.GONE);
+        mBinding.appTitleLogo.setVisibility(View.VISIBLE);
+        ImgUtil.load(name, logoUrl, mBinding.appTitleLogo, false);
+    }
+
+    private void showTitleText() {
+        mLastTitleUrl = "";
+        mBinding.appTitleLogo.setVisibility(View.GONE);
+        mBinding.appTitle.setVisibility(View.VISIBLE);
     }
 
     private void setCategories(List<Class> types) {
@@ -603,6 +677,7 @@ public class CinemaHomeActivity extends BaseActivity implements
         super.onPause();
         mClock.stop();
         unregisterReceiver(mNetworkReceiver);
+        stopBackdropRotation();
     }
 
     @Override
