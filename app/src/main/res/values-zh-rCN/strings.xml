@@ -24,6 +24,7 @@
     <string name="detail_content">简介：<xliff:g name="name">%s</xliff:g></string>
     <string name="detail_desc">简介</string>
     <string name="detail_fullscreen_ok">按 OK 全屏</string>
+    <string name="detail_current_ep">第 1 集</string>
     <string name="detail_hint_more">▼ 选集 · 线路 · 更多</string>
     <string name="detail_flag">线路</string>
     <string name="detail_flag_count">共 %d 条线路</string>
