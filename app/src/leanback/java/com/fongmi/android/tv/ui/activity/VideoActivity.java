@@ -300,6 +300,9 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.video.setOnClickListener(view -> onVideo());
         mBinding.change1.setOnClickListener(view -> onChange());
         mBinding.content.setOnClickListener(view -> onContent());
+        mBinding.reverse.setOnClickListener(view -> reverseEpisode(false));
+        mBinding.episodePrev.setOnClickListener(view -> pageEpisode(-1));
+        mBinding.episodeNext.setOnClickListener(view -> pageEpisode(1));
         mBinding.control.action.text.setOnClickListener(this::onTrack);
         mBinding.control.action.audio.setOnClickListener(this::onTrack);
         mBinding.control.action.video.setOnClickListener(this::onTrack);
@@ -556,6 +559,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mEpisodeAdapter.addAll(items);
         setArrayAdapter(items.size());
         setR2Callback();
+        updateEpisodeRange();
     }
 
     private void seamless(Flag flag) {
@@ -591,6 +595,32 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mFlagAdapter.reverse();
         setEpisodeAdapter(getFlag().getEpisodes());
         if (scroll) mBinding.episode.setSelectedPosition(mEpisodeAdapter.getPosition());
+    }
+
+    private void pageEpisode(int dir) {
+        int total = mEpisodeAdapter.getItemCount();
+        if (total <= 0) return;
+        int pos = mBinding.episode.getSelectedPosition();
+        if (pos < 0) pos = 0;
+        int page = 20;
+        int next = (pos / page + dir) * page;
+        next = Math.max(0, Math.min(next, total - 1));
+        mBinding.episode.setSelectedPosition(next);
+        updateEpisodeRange();
+    }
+
+    private void updateEpisodeRange() {
+        int total = mEpisodeAdapter.getItemCount();
+        if (total <= 0) {
+            mBinding.episodeRange.setText("0-0");
+            return;
+        }
+        int pos = mBinding.episode.getSelectedPosition();
+        if (pos < 0) pos = 0;
+        int page = 20;
+        int start = pos / page * page + 1;
+        int end = Math.min(start + page - 1, total);
+        mBinding.episodeRange.setText(start + "-" + end);
     }
 
     @Override
@@ -982,10 +1012,15 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private final Runnable mClockRunnable = new Runnable() {
         @Override
         public void run() {
+            if (player() != null && player().getDuration() > 0) {
+                long dur = player().getDuration();
+                long pos = player().getPosition();
+                mBinding.playProgress.setProgress((int) (pos * 100 / dur));
+            }
             if (mBinding.alwaysTimeText != null && isVisible(mBinding.alwaysTimeText)) {
                 mBinding.alwaysTimeText.setText(java.time.LocalTime.now().format(com.fongmi.android.tv.utils.Formatters.TIME));
-                App.post(this, 1000);
             }
+            App.post(this, 1000);
         }
     };
 
@@ -1072,6 +1107,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         if (empty) {
             startFlow();
         } else {
+            mBinding.flagTitle.setText(getString(R.string.detail_flag) + " " + item.getFlags().size());
             onItemClick(mHistory.getFlag());
             if (mHistory.isRevSort()) reverseEpisode(true);
         }
