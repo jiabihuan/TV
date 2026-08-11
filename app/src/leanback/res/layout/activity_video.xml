@@ -25,19 +25,22 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
+            android:gravity="top"
             android:orientation="horizontal"
             android:paddingStart="32dp"
             android:paddingTop="12dp"
             android:paddingEnd="32dp"
             android:paddingBottom="16dp">
 
-            <!-- 左：圆角视频预览窗口（影院卡片风） -->
-            <FrameLayout
+            <!-- 左：固定 16:9 圆角视频预览窗口（影院卡片风） -->
+            <com.fongmi.android.tv.ui.custom.FixedAspectRatioFrameLayout
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_marginEnd="28dp"
-                android:layout_weight="1"
+                android:layout_weight="1.25"
                 android:background="@drawable/bg_detail_preview"
+                android:clipChildren="true"
+                android:clipToOutline="true"
                 android:elevation="8dp"
                 android:padding="4dp">
 
@@ -143,9 +146,9 @@
                         android:nextFocusRight="@id/keep" />
 
                 </FrameLayout>
-            </FrameLayout>
+            </com.fongmi.android.tv.ui.custom.FixedAspectRatioFrameLayout>
 
-            <!-- 右：信息列（影院风） -->
+            <!-- 右：信息列（影院风），填满上半区高度 -->
             <androidx.appcompat.widget.LinearLayoutCompat
                 android:id="@+id/infoLayout"
                 android:layout_width="0dp"
@@ -179,7 +182,7 @@
                         android:shadowRadius="10"
                         android:singleLine="true"
                         android:textColor="@color/white"
-                        android:textSize="40sp"
+                        android:textSize="32sp"
                         android:textStyle="bold"
                         tools:text="莫离" />
 
@@ -342,8 +345,8 @@
                             android:ellipsize="end"
                             android:focusable="true"
                             android:focusableInTouchMode="true"
-                            android:lineSpacingExtra="5dp"
-                            android:maxLines="6"
+                            android:lineSpacingExtra="4dp"
+                            android:maxLines="5"
                             android:nextFocusDown="@id/flag"
                             android:nextFocusLeft="@id/video"
                             android:nextFocusUp="@id/keep"
@@ -352,7 +355,7 @@
                             android:shadowDx="0"
                             android:shadowDy="1"
                             android:shadowRadius="6"
-                            android:textColor="@color/text_secondary"
+                            android:textColor="@color/white_80"
                             android:textSize="16sp"
                             tools:text="影片简介剧情介绍内容..." />
 
@@ -566,8 +569,7 @@
                     android:layout_marginBottom="12dp"
                     android:clipChildren="false"
                     android:clipToPadding="false"
-                    android:visibility="gone"
-                    tools:visibility="visible" />
+                    android:visibility="gone" />
 
                 <androidx.leanback.widget.HorizontalGridView
                     android:id="@+id/part"

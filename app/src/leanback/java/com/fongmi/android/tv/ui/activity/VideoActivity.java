@@ -475,9 +475,9 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.content.setText(item.getContent());
         setText(mBinding.type, R.string.detail_type, item.getTypeName());
         setText(mBinding.actor, R.string.detail_actor, item.getActor());
-        /*
         setText(mBinding.year, R.string.detail_year, item.getYear());
         setText(mBinding.area, R.string.detail_area, item.getArea());
+        /*
         setText(mBinding.site, R.string.detail_site, getSite().getName());
         setText(mBinding.director, R.string.detail_director, item.getDirector());
         setText(mBinding.remark, 0, item.getRemarks());
@@ -650,7 +650,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         List<String> items = new ArrayList<>();
         items.add(getString(R.string.play_reverse));
         items.add(getString(mHistory.getRevPlayText()));
-        mBinding.array.setVisibility(size > 1 ? View.VISIBLE : View.GONE);
+        mBinding.array.setVisibility(View.GONE);
         if (mHistory.isRevSort()) for (int i = size; i > 0; i -= 20) items.add(i + "-" + Math.max(i - 19, 1));
         else for (int i = 0; i < size; i += 20) items.add((i + 1) + "-" + Math.min(i + 20, size));
         mArrayAdapter.addAll(items);
