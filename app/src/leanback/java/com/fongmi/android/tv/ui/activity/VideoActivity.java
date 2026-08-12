@@ -278,7 +278,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mKeyDown = CustomKeyDownVod.create(this);
         mKeyDown.setFull(true);
         mKeyDown.setSpeedOnDown(true);
-        setFullscreen(true);
+        setFullscreen(false);
         mObserveDetail = this::setDetail;
         mObservePlayer = this::setPlayer;
         mObserveSearch = this::setSearch;
@@ -647,11 +647,17 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private void enterFullscreen() {
+        mBinding.video.requestFocus();
+        mBinding.video.setForeground(null);
+        mBinding.video.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
         mKeyDown.setFull(true);
         setFullscreen(true);
     }
 
     private void exitFullscreen() {
+        mBinding.video.setLayoutParams(mFrameParams);
+        mKeyDown.setFull(false);
+        setFullscreen(false);
     }
 
     private void showInfoLayout() {
