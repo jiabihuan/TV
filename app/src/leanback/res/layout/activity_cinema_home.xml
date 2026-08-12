@@ -201,7 +201,7 @@
         <!-- Movie title row -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="64dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -228,14 +228,14 @@
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
-            <!-- TMDB 标题 Logo：尺寸限制为与剧名字体一致，放入标题行内，不遮挡简介 -->
+            <!-- TMDB 标题 Logo：尺寸调大一点，仍限制在标题行内，不遮挡下面的简介 -->
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/appTitleLogo"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:layout_gravity="center_vertical"
                 android:adjustViewBounds="true"
-                android:maxWidth="340dp"
+                android:maxWidth="360dp"
                 android:scaleType="fitStart"
                 android:visibility="gone" />
         </LinearLayout>

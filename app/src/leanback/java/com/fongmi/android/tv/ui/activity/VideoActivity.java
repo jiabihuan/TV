@@ -125,7 +125,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private Clock mClock;
     private View mFocus1;
     private View mFocus2;
-    private long mLastBackTime = 0;
     private final Runnable mHideInfoRunnable = this::hideInfoLayout;
 
     public static void push(FragmentActivity activity, String text) {
@@ -647,6 +646,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private void enterFullscreen() {
+        mFocus1 = getCurrentFocus();
         mBinding.video.requestFocus();
         mBinding.video.setForeground(null);
         mBinding.video.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
@@ -1567,16 +1567,12 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
             hideControl();
         } else if (isVisible(mBinding.widget.center)) {
             hideCenter();
+        } else if (isFullscreen()) {
+            exitFullscreen();
         } else {
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - mLastBackTime < 2000) {
-                mViewModel.stopSearch();
-                if (isTaskRoot()) startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
-                super.onBackInvoked();
-            } else {
-                mLastBackTime = currentTime;
-                Notify.show(R.string.play_exit_hint);
-            }
+            mViewModel.stopSearch();
+            if (isTaskRoot()) startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            super.onBackInvoked();
         }
     }
 
