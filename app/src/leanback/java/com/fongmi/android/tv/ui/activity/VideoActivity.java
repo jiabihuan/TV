@@ -484,12 +484,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         if (TextUtils.isEmpty(text) && !TextUtils.isEmpty(view.getText())) return;
         view.setText(Sniffer.buildClickable(resId > 0 ? getString(resId, text) : text, this::clickableSpan), TextView.BufferType.SPANNABLE);
         view.setVisibility(text.isEmpty() ? View.GONE : View.VISIBLE);
-        if (view.getParent() instanceof View) {
-            View parent = (View) view.getParent();
-            if (parent.getId() == R.id.typeLayout || parent.getId() == R.id.actorLayout) {
-                parent.setVisibility(text.isEmpty() ? View.GONE : View.VISIBLE);
-            }
-        }
         view.setLinkTextColor(MDColor.YELLOW_500);
         CustomMovement.bind(view);
     }
