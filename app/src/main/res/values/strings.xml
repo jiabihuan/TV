@@ -24,7 +24,6 @@
     <string name="detail_content">Summary: <xliff:g name="name">%s</xliff:g></string>
     <string name="detail_desc">Summary</string>
     <string name="detail_fullscreen_ok">OK · Fullscreen</string>
-    <string name="detail_current_ep">Episode 1</string>
     <string name="detail_hint_more">▼ Episodes · Lines · More</string>
     <string name="detail_flag">Line</string>
     <string name="detail_flag_count">%d lines</string>
