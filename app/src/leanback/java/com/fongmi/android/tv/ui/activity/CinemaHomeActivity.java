@@ -552,9 +552,20 @@ public class CinemaHomeActivity extends BaseActivity implements
     public void onItemClick(Vod item) {
         if (getHome() == null) return;
         if (TextUtils.isEmpty(item.getName())) return;
-        // 首页海报（尤其豆瓣等无剧集来源）点进去常一直转圈/空态，
-        // 改为跨站点搜索，自动选第一个可用播放源直接播放
-        startSmartPlay(item);
+        // 与 HomeActivity 保持一致：首页源被标记为 index（推荐/索引源，如“豆瓣推荐”）
+        // 说明自身没有播放源，点海报走“跨站点智能选源播放”；
+        // 其余真实有播放源的站点，直接打开播放（原逻辑），不要走豆瓣首页这套。
+        if (getHome().isIndex()) {
+            startSmartPlay(item);
+            return;
+        }
+        String siteKey = TextUtils.isEmpty(item.getSiteKey()) ? getHome().getKey() : item.getSiteKey();
+        String vodId = item.getId();
+        if (TextUtils.isEmpty(vodId)) {
+            SearchActivity.start(this, item.getName());
+        } else {
+            VideoActivity.start(this, siteKey, vodId, item.getName(), item.getPic());
+        }
     }
 
     @Override
