@@ -15,6 +15,7 @@ import android.view.KeyEvent;
 import android.view.View;
 
 import androidx.annotation.NonNull;
+import androidx.lifecycle.Observer;
 import androidx.core.splashscreen.SplashScreen;
 import androidx.leanback.widget.HorizontalGridView;
 import androidx.lifecycle.ViewModelProvider;
@@ -82,6 +83,22 @@ public class CinemaHomeActivity extends BaseActivity implements
     private final Random mRandom = new Random();
     private final Handler mBackdropHandler = new Handler(Looper.getMainLooper());
     private Runnable mBackdropRunnable;
+
+    // 短按智能选源播放：跨站点搜索后自动打开第一个可播源
+    private final Handler mSmartHandler = new Handler(Looper.getMainLooper());
+    private boolean mSmartPlaying;
+    private String mSmartSelfKey = "";
+    private Runnable mSmartTimeout;
+    private final Observer<Result> mSmartSearchObserver = result -> {
+        if (result == null || result.getList() == null) return;
+        for (Vod vod : result.getList()) {
+            if (TextUtils.isEmpty(vod.getId()) || TextUtils.isEmpty(vod.getSiteKey())) continue;
+            if (TextUtils.equals(vod.getSiteKey(), mSmartSelfKey)) continue; // 跳过海报自身的死源
+            stopSmartPlay();
+            VideoActivity.start(CinemaHomeActivity.this, vod.getSiteKey(), vod.getId(), vod.getName(), vod.getPic());
+            return;
+        }
+    };
 
     private final BroadcastReceiver mNetworkReceiver = new BroadcastReceiver() {
         @Override
@@ -534,13 +551,50 @@ public class CinemaHomeActivity extends BaseActivity implements
     @Override
     public void onItemClick(Vod item) {
         if (getHome() == null) return;
-        String siteKey = TextUtils.isEmpty(item.getSiteKey()) ? getHome().getKey() : item.getSiteKey();
-        String vodId = item.getId();
-        if (vodId == null || vodId.isEmpty()) {
-            SearchActivity.start(this, item.getName());
-        } else {
-            VideoActivity.start(this, siteKey, vodId, item.getName(), item.getPic());
+        if (TextUtils.isEmpty(item.getName())) return;
+        // 首页海报（尤其豆瓣等无剧集来源）点进去常一直转圈/空态，
+        // 改为跨站点搜索，自动选第一个可用播放源直接播放
+        startSmartPlay(item);
+    }
+
+    @Override
+    public boolean onLongClick(Vod item) {
+        // 长按：打开聚合搜索页手动挑选
+        CollectActivity.start(this, item.getName());
+        return true;
+    }
+
+    private void startSmartPlay(Vod item) {
+        if (getHome() == null) return;
+        String keyword = item.getName();
+        List<Site> sites = VodConfig.get().getSites().stream().filter(Site::isSearchable).toList();
+        if (sites.isEmpty()) {
+            // 没有任何可搜索站点，退回普通搜索页
+            SearchActivity.start(this, keyword);
+            return;
         }
+        stopSmartPlay();
+        mSmartSelfKey = TextUtils.isEmpty(item.getSiteKey()) ? "" : item.getSiteKey();
+        mSmartPlaying = true;
+        mViewModel.resetSearch();
+        mViewModel.getSearch().observe(this, mSmartSearchObserver);
+        mViewModel.searchContent(sites, keyword, false);
+        // 超时兜底：若一段时间无可用源，退回聚合搜索页让用户手动选
+        final String fallback = keyword;
+        mSmartTimeout = () -> {
+            if (!mSmartPlaying) return;
+            stopSmartPlay();
+            CollectActivity.start(CinemaHomeActivity.this, fallback);
+        };
+        mSmartHandler.postDelayed(mSmartTimeout, 8000);
+    }
+
+    private void stopSmartPlay() {
+        if (!mSmartPlaying) return;
+        mSmartPlaying = false;
+        mSmartHandler.removeCallbacks(mSmartTimeout);
+        mViewModel.getSearch().removeObserver(mSmartSearchObserver);
+        mViewModel.stopSearch();
     }
 
     @Override
@@ -701,6 +755,7 @@ public class CinemaHomeActivity extends BaseActivity implements
 
     @Override
     protected void onDestroy() {
+        stopSmartPlay();
         com.fongmi.android.tv.service.DLNARendererService.stop(this);
         if (isFinishing() || isChangingConfigurations()) {
             LiveConfig.get().clear();

@@ -22,6 +22,8 @@ public class CinemaPosterAdapter extends RecyclerView.Adapter<CinemaPosterAdapte
 
     public interface OnClickListener {
         void onItemClick(Vod item);
+
+        boolean onLongClick(Vod item);
     }
 
     public CinemaPosterAdapter(OnClickListener listener) {
@@ -79,6 +81,13 @@ public class CinemaPosterAdapter extends RecyclerView.Adapter<CinemaPosterAdapte
             super(binding.getRoot());
             this.binding = binding;
             itemView.setOnClickListener(this);
+            itemView.setOnLongClickListener(v -> {
+                int position = getBindingAdapterPosition();
+                if (position >= 0 && position < items.size() && listener != null) {
+                    return listener.onLongClick(items.get(position));
+                }
+                return false;
+            });
             itemView.setOnFocusChangeListener((v, hasFocus) -> {
                 float scale = hasFocus ? 1.1f : 1.0f;
                 itemView.animate().scaleX(scale).scaleY(scale).setDuration(200).start();

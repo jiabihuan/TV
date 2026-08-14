@@ -79,6 +79,10 @@ public class SiteViewModel extends ViewModel {
         return this;
     }
 
+    public void resetSearch() {
+        search.setValue(null);
+    }
+
     public void homeContent() {
         execute(TaskType.RESULT, result, () -> SiteApi.homeContent(VodConfig.get().getHome()));
     }
