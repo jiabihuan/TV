@@ -70,9 +70,23 @@
             android:focusable="true"
             android:focusableInTouchMode="true"
             android:nextFocusUp="@id/change"
-            android:nextFocusDown="@id/cancel"
+            android:nextFocusDown="@id/speed"
             android:padding="8dp"
             android:src="@drawable/ic_site_select"
+            app:tint="@color/black_90" />
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/speed"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/selector_chip_round"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:nextFocusUp="@id/select"
+            android:nextFocusDown="@id/cancel"
+            android:padding="8dp"
+            android:src="@drawable/ic_site_speed"
             app:tint="@color/black_90" />
 
         <androidx.appcompat.widget.AppCompatImageView
@@ -83,7 +97,7 @@
             android:background="@drawable/selector_chip_round"
             android:focusable="true"
             android:focusableInTouchMode="true"
-            android:nextFocusUp="@id/select"
+            android:nextFocusUp="@id/speed"
             android:nextFocusDown="@id/mode"
             android:padding="8dp"
             android:src="@drawable/ic_site_cancel"

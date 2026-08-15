@@ -102,6 +102,9 @@ public class Site implements Parcelable {
     @Ignore
     private boolean selected;
 
+    @Ignore
+    private long delay;
+
     public Site() {
     }
 
@@ -265,6 +268,26 @@ public class Site implements Parcelable {
 
     public void setSelected(boolean selected) {
         this.selected = selected;
+    }
+
+    public long getDelay() {
+        return delay;
+    }
+
+    public void setDelay(long delay) {
+        this.delay = delay;
+    }
+
+    public String getDelayText() {
+        if (delay > 0) return delay + "ms";
+        if (delay == -1) return "timeout";
+        return "";
+    }
+
+    public int getDelayColor() {
+        if (delay > 0 && delay < 300) return android.graphics.Color.parseColor("#4CAF50");
+        if (delay >= 300 && delay <= 800) return android.graphics.Color.parseColor("#FFC107");
+        return android.graphics.Color.parseColor("#F44336");
     }
 
     public void setSelected(Site item) {

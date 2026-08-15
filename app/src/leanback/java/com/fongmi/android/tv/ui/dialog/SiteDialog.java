@@ -4,6 +4,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.drawable.ColorDrawable;
 import android.text.TextPaint;
+import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -21,19 +22,30 @@ import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.adapter.SiteAdapter;
 import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
 import com.fongmi.android.tv.utils.ResUtil;
+import com.fongmi.android.tv.utils.Task;
+import com.github.catvod.net.OkHttp;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickListener {
 
     private static final int GRID_COUNT = 10;
     private static final int SPAN_COUNT = 3;
     private static final int SPACING = 0;
+    private static final long SPEED_TIMEOUT = 3000;
 
     private RecyclerView.ItemDecoration decoration;
     private DialogSiteBinding binding;
     private SiteListener listener;
     private SiteAdapter adapter;
     private boolean action;
+    private boolean testing;
     private int type;
 
     public static SiteDialog create() {
@@ -109,6 +121,7 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
         binding.cancel.setOnClickListener(v -> adapter.cancelAll());
         binding.search.setOnClickListener(v -> setType(v.isSelected() ? 0 : 1));
         binding.change.setOnClickListener(v -> setType(v.isSelected() ? 0 : 2));
+        binding.speed.setOnClickListener(this::onSpeed);
     }
 
     private void setRecyclerView() {
@@ -124,9 +137,63 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
     private void setType(int type) {
         binding.search.setSelected(type == 1);
         binding.change.setSelected(type == 2);
+        binding.speed.setSelected(type == 3);
         binding.select.setClickable(type > 0);
         binding.cancel.setClickable(type > 0);
         adapter.setType(this.type = type);
+    }
+
+    private void onSpeed(View view) {
+        if (testing) return;
+        if (type != 3) {
+            setType(3);
+            adapter.selectAll();
+        } else {
+            startSpeedTest();
+        }
+    }
+
+    private void startSpeedTest() {
+        List<Site> items = adapter.getSelectedItems();
+        if (items.isEmpty()) return;
+        FragmentActivity activity = requireActivity();
+        testing = true;
+        binding.speed.setEnabled(false);
+        for (Site site : items) site.setDelay(0);
+        adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        CountDownLatch latch = new CountDownLatch(items.size());
+        for (Site site : items) {
+            Task.largeExecutor().execute(() -> {
+                site.setDelay(testSite(site));
+                latch.countDown();
+            });
+        }
+        Task.largeExecutor().execute(() -> {
+            try {
+                latch.await(SPEED_TIMEOUT + 2, TimeUnit.SECONDS);
+            } catch (InterruptedException ignored) {
+            }
+            activity.runOnUiThread(() -> {
+                if (!isAdded()) return;
+                testing = false;
+                binding.speed.setEnabled(true);
+                setType(0);
+            });
+        });
+    }
+
+    private long testSite(Site site) {
+        String url = site.getApi();
+        if (TextUtils.isEmpty(url) || !url.startsWith("http")) return -1;
+        try {
+            long start = System.currentTimeMillis();
+            Request request = new Request.Builder().url(url).head().build();
+            try (Response res = OkHttp.client(SPEED_TIMEOUT).newCall(request).execute()) {
+                return System.currentTimeMillis() - start;
+            }
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     private void setMode() {

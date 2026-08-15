@@ -36,11 +36,11 @@ public class SiteAdapter extends RecyclerView.Adapter<SiteAdapter.ViewHolder> {
     }
 
     public void selectAll() {
-        setEnable(type != 3);
+        setEnable(true);
     }
 
     public void cancelAll() {
-        setEnable(type == 3);
+        setEnable(false);
     }
 
     private void addAll() {
@@ -49,6 +49,12 @@ public class SiteAdapter extends RecyclerView.Adapter<SiteAdapter.ViewHolder> {
 
     public List<Site> getItems() {
         return mItems;
+    }
+
+    public List<Site> getSelectedItems() {
+        List<Site> items = new ArrayList<>();
+        for (Site site : mItems) if (site.isSelected()) items.add(site);
+        return items;
     }
 
     @Override
@@ -69,13 +75,23 @@ public class SiteAdapter extends RecyclerView.Adapter<SiteAdapter.ViewHolder> {
         holder.binding.check.setChecked(getChecked(item));
         holder.binding.card.setSelected(item.isSelected());
         holder.binding.check.setVisibility(type == 0 ? View.GONE : View.VISIBLE);
+        holder.binding.delay.setVisibility(showDelay(item) ? View.VISIBLE : View.GONE);
+        if (showDelay(item)) {
+            holder.binding.delay.setText(item.getDelayText());
+            holder.binding.delay.setTextColor(item.getDelayColor());
+        }
         holder.binding.card.setOnLongClickListener(v -> setLongListener(item));
         holder.binding.card.setOnClickListener(v -> setListener(item, position));
+    }
+
+    private boolean showDelay(Site item) {
+        return type == 3 || item.getDelay() != 0;
     }
 
     private boolean getChecked(Site item) {
         if (type == 1) return item.isSearchable();
         if (type == 2) return item.isChangeable();
+        if (type == 3) return item.isSelected();
         return false;
     }
 
@@ -83,18 +99,21 @@ public class SiteAdapter extends RecyclerView.Adapter<SiteAdapter.ViewHolder> {
         if (type == 0) listener.onItemClick(item);
         if (type == 1) item.setSearchable(!item.isSearchable()).save();
         if (type == 2) item.setChangeable(!item.isChangeable()).save();
+        if (type == 3) item.setSelected(!item.isSelected());
         if (type != 0) notifyItemChanged(position);
     }
 
     private boolean setLongListener(Site item) {
         if (type == 1) setEnable(!item.isSearchable());
         if (type == 2) setEnable(!item.isChangeable());
+        if (type == 3) setEnable(!item.isSelected());
         return true;
     }
 
     private void setEnable(boolean enable) {
         if (type == 1) for (Site site : mItems) site.setSearchable(enable).save();
         if (type == 2) for (Site site : mItems) site.setChangeable(enable).save();
+        if (type == 3) for (Site site : mItems) site.setSelected(enable);
         notifyItemRangeChanged(0, getItemCount());
     }
 
