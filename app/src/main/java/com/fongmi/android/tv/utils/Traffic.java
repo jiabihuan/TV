@@ -19,14 +19,19 @@ public class Traffic {
     private static long lastTimeStamp;
 
     public static void setSpeed(TextView view) {
-        if (TrafficStats.getUidRxBytes(UID) == TrafficStats.UNSUPPORTED) return;
+        if (getRxBytes() == TrafficStats.UNSUPPORTED) return;
         view.setVisibility(View.VISIBLE);
         view.setText(getSpeed());
     }
 
+    private static long getRxBytes() {
+        long uidBytes = TrafficStats.getUidRxBytes(UID);
+        return uidBytes == TrafficStats.UNSUPPORTED ? TrafficStats.getTotalRxBytes() : uidBytes;
+    }
+
     private static String getSpeed() {
         long nowTimeStamp = System.currentTimeMillis();
-        long nowTotalRxBytes = TrafficStats.getUidRxBytes(UID) / 1024;
+        long nowTotalRxBytes = getRxBytes() / 1024;
         long speed = (nowTotalRxBytes - lastTotalRxBytes) * 1000 / Math.max(nowTimeStamp - lastTimeStamp, 1);
         lastTimeStamp = nowTimeStamp;
         lastTotalRxBytes = nowTotalRxBytes;
@@ -34,7 +39,7 @@ public class Traffic {
     }
 
     public static void reset() {
-        lastTotalRxBytes = TrafficStats.getUidRxBytes(UID) / 1024;
+        lastTotalRxBytes = getRxBytes() / 1024;
         lastTimeStamp = System.currentTimeMillis();
     }
 }
