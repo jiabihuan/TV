@@ -22,6 +22,14 @@ buildscript {
   dependencies {
     classpath(libs.strict.version.matcher.plugin)
   }
+  configurations.all {
+    resolutionStrategy.eachDependency {
+      if (requested.group == "org.jetbrains" && requested.name == "annotations") {
+        useVersion("23.0.0")
+        because("kotlin-gradle-plugin:2.2.x transitively requires 23.0.0; relax the strict pin from Gradle's embedded kotlin-stdlib")
+      }
+    }
+  }
 }
 
 plugins {
