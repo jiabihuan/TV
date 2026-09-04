@@ -14,24 +14,19 @@
 import androidx.media3.buildlogic.Media3Modules
 import java.io.File
 
-buildscript {
-  repositories {
-    google()
-    mavenCentral()
-  }
-  dependencies {
-    // Use the legacy 'buildscript' classpath mechanism instead of the modern 'plugins' block
-    // because version 1.2.4 of the strict-version-matcher-plugin is currently only available
-    // as a Maven artifact (com.google.android.gms:strict-version-matcher-plugin) and is not
-    // yet published to the Gradle Plugin Portal in a compatible form (only 1.2.2 so far).
-    // If version 1.2.4 (or newer) becomes available on the Plugin Portal in the future,
-    // this can be safely migrated to a standard 'id(...) alias(...)' declaration.
-    // Naming mismatch reference:
-    // https://maven.google.com/web/index.html#com.google.android.gms:strict-version-matcher-plugin
-    // https://maven.google.com/web/index.html#com.google.android.gms.strict-version-matcher-plugin
-    classpath(libs.strict.version.matcher.plugin)
-  }
-}
+// NOTE: Removed the buildscript {} block that previously applied
+// `com.google.android.gms:strict-version-matcher-plugin:1.2.4`.
+// Reason: 1.2.4 transitively pulls in `org.jetbrains.kotlin:kotlin-stdlib:2.3.20`
+// (which requires `org.jetbrains:annotations:{strictly 13.0}`), but the media
+// build-logic uses `kotlin-gradle-plugin:2.2.10` which requires
+// `org.jetbrains:annotations:23.0.0`. The two constraints cannot both be
+// satisfied, so Gradle aborts with:
+//   "Cannot find a version of 'org.jetbrains:annotations' that satisfies
+//    the version constraints ... Pinned to the embedded Kotlin".
+// The strict-version-matcher-plugin is only needed when publishing to Google
+// Play; this fork is consumed via composite build and does not need it.
+// If the demos (cast/main) still need the plugin, they should declare it
+// locally via their own `buildscript` block.
 
 plugins {
   id("media3.android-application") apply false
