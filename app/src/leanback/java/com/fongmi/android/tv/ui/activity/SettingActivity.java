@@ -38,6 +38,7 @@ import com.fongmi.android.tv.ui.dialog.TmdbDialog;
 import com.fongmi.android.tv.ui.dialog.WebDavDialog;
 import com.fongmi.android.tv.ui.dialog.SiteDialog;
 import com.fongmi.android.tv.utils.FileUtil;
+import com.fongmi.android.tv.utils.FocusColor;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.PermissionUtil;
 import com.fongmi.android.tv.utils.ResUtil;
@@ -58,6 +59,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
     private String[] searchType;
     private String[] searchThread;
     private String[] homeStyle;
+    private String[] focusColor;
 
     public static void start(Activity activity) {
         activity.startActivity(new Intent(activity, SettingActivity.class));
@@ -102,6 +104,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.searchTypeText.setText((searchType = ResUtil.getStringArray(R.array.select_search_type))[Setting.getSearchType()]);
         mBinding.searchThreadText.setText((searchThread = ResUtil.getStringArray(R.array.select_search_thread))[getSearchThreadIndex()]);
         mBinding.homeStyleText.setText((homeStyle = ResUtil.getStringArray(R.array.select_home_style))[Setting.getHomeStyle()]);
+        mBinding.focusColorText.setText((focusColor = ResUtil.getStringArray(R.array.select_focus_color))[FocusColor.getIndex()]);
         mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary());
         setTmdbText();
     }
@@ -150,6 +153,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.searchType.setOnClickListener(this::setSearchType);
         mBinding.searchThread.setOnClickListener(this::setSearchThread);
         mBinding.homeStyle.setOnClickListener(this::setHomeStyle);
+        mBinding.focusColor.setOnClickListener(this::setFocusColor);
         mBinding.tmdbApi.setOnClickListener(this::setTmdbApi);
         mBinding.vodHistory.setOnClickListener(this::onVodHistory);
         mBinding.liveHistory.setOnClickListener(this::onLiveHistory);
@@ -336,6 +340,12 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         Intent intent = new Intent(this, Setting.isHomeCapsule() ? CinemaHomeActivity.class : HomeActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
+    }
+
+    private void setFocusColor(View view) {
+        int index = (FocusColor.getIndex() + 1) % focusColor.length;
+        mBinding.focusColorText.setText(focusColor[index]);
+        Setting.putFocusColor(index);
     }
 
     private void setTmdbApi(View view) {

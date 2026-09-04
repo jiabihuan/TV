@@ -44,6 +44,7 @@ import com.fongmi.android.tv.ui.adapter.CinemaCategoryAdapter;
 import com.fongmi.android.tv.ui.adapter.CinemaPosterAdapter;
 import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.utils.Clock;
+import com.fongmi.android.tv.utils.FocusColor;
 import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.KeyUtil;
 import com.fongmi.android.tv.utils.Notify;
@@ -80,6 +81,7 @@ public class CinemaHomeActivity extends BaseActivity implements
     private List<Class> mHomeTypes;
     private List<String> mCurrentBackdrops = new ArrayList<>();
     private int mCurrentBackdropIndex = 0;
+    private int mAppliedFocusColor = -1;
     private final Random mRandom = new Random();
     private final Handler mBackdropHandler = new Handler(Looper.getMainLooper());
     private Runnable mBackdropRunnable;
@@ -144,6 +146,7 @@ public class CinemaHomeActivity extends BaseActivity implements
         setCategoryAdapter();
         setViewModel();
         setHero();
+        applyFocusColor();
         initConfig();
         checkAction(getIntent());
     }
@@ -212,6 +215,22 @@ public class CinemaHomeActivity extends BaseActivity implements
                 mBinding.loadingProgress.setVisibility(View.GONE);
             }
         });
+    }
+
+    private void applyFocusColor() {
+        mBinding.siteName.setBackground(FocusColor.navBackground());
+        mBinding.search.setBackground(FocusColor.navBackground());
+        mBinding.live.setBackground(FocusColor.navBackground());
+        mBinding.keep.setBackground(FocusColor.navBackground());
+        mBinding.history.setBackground(FocusColor.navBackground());
+        mBinding.push.setBackground(FocusColor.navBackground());
+        mBinding.setting.setBackground(FocusColor.navBackground());
+        mBinding.net.setBackground(FocusColor.navBackground());
+        int color = FocusColor.getIndex();
+        if (color == mAppliedFocusColor) return;
+        mAppliedFocusColor = color;
+        if (mCategoryAdapter != null) mCategoryAdapter.notifyDataSetChanged();
+        if (mPosterAdapter != null) mPosterAdapter.notifyDataSetChanged();
     }
 
     private void setHero() {
@@ -369,11 +388,11 @@ public class CinemaHomeActivity extends BaseActivity implements
                 mCurrentBackdropIndex = nextIndex;
                 loadCoverBg(itemName, mCurrentBackdrops.get(mCurrentBackdropIndex));
                 if (mBackdropHandler != null) {
-                    mBackdropHandler.postDelayed(this, 6000);
+                    mBackdropHandler.postDelayed(this, 15000);
                 }
             }
         };
-        mBackdropHandler.postDelayed(mBackdropRunnable, 6000);
+        mBackdropHandler.postDelayed(mBackdropRunnable, 15000);
     }
 
     private void stopBackdropRotation() {
@@ -733,6 +752,7 @@ public class CinemaHomeActivity extends BaseActivity implements
     protected void onResume() {
         super.onResume();
         mClock.start();
+        applyFocusColor();
         registerReceiver(mNetworkReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
         updateNetworkState();
     }

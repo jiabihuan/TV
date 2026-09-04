@@ -159,6 +159,17 @@
     <string name="home_continue">Continue Watching</string>
     <string name="nav_download">Download</string>
     <string name="setting_home_style">Navigation Style</string>
+    <string name="setting_focus_color">Focus color</string>
+    <string-array name="select_focus_color">
+        <item>White</item>
+        <item>Gold</item>
+        <item>Cyan</item>
+        <item>Red</item>
+        <item>Green</item>
+        <item>Purple</item>
+        <item>Orange</item>
+        <item>Blue</item>
+    </string-array>
     <string name="setting_tmdb_api">TMDB API</string>
     <string name="setting_tmdb_api_url">API URL</string>
     <string name="setting_tmdb_api_url_hint">Default: https://api.tmdb.org/3</string>

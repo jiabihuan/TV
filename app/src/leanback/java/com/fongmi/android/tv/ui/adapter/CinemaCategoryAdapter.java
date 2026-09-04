@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.fongmi.android.tv.bean.Class;
 import com.fongmi.android.tv.databinding.AdapterCinemaCategoryBinding;
+import com.fongmi.android.tv.utils.FocusColor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -71,6 +72,7 @@ public class CinemaCategoryAdapter extends RecyclerView.Adapter<CinemaCategoryAd
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Class item = items.get(position);
+        holder.binding.text.setBackground(FocusColor.navBackground());
         holder.binding.text.setText(item.getTypeName());
         holder.binding.text.setSelected(position == selected);
     }

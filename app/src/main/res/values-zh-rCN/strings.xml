@@ -154,6 +154,17 @@
     <string name="home_continue">继续观看</string>
     <string name="nav_download">下载</string>
     <string name="setting_home_style">导航栏样式</string>
+    <string name="setting_focus_color">焦点颜色</string>
+    <string-array name="select_focus_color">
+        <item>白色</item>
+        <item>金色</item>
+        <item>青色</item>
+        <item>红色</item>
+        <item>绿色</item>
+        <item>紫色</item>
+        <item>橙色</item>
+        <item>蓝色</item>
+    </string-array>
     <string name="setting_tmdb_api">TMDB API</string>
     <string name="setting_tmdb_api_url">API 地址</string>
     <string name="setting_tmdb_api_url_hint">默认: https://api.tmdb.org/3</string>

@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.AdapterCinemaPosterBinding;
+import com.fongmi.android.tv.utils.FocusColor;
 import com.fongmi.android.tv.utils.ImgUtil;
 
 import java.util.ArrayList;
@@ -58,6 +59,7 @@ public class CinemaPosterAdapter extends RecyclerView.Adapter<CinemaPosterAdapte
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Vod item = items.get(position);
+        holder.binding.card.setForeground(FocusColor.posterForeground());
         holder.binding.name.setText(item.getName());
         ImgUtil.load(item.getName(), item.getPic(), holder.binding.image);
         String remarks = item.getRemarks();

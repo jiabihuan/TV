@@ -357,6 +357,14 @@ public class Setting {
         return getHomeStyle() == 1;
     }
 
+    public static int getFocusColor() {
+        return Prefers.getInt("focus_color", 0);
+    }
+
+    public static void putFocusColor(int value) {
+        Prefers.put("focus_color", value);
+    }
+
     public static String getIqiyiRecommends() {
         return Prefers.getString("iqiyi_recommends", "");
     }
