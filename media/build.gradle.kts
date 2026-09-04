@@ -22,13 +22,6 @@ buildscript {
   dependencies {
     classpath(libs.strict.version.matcher.plugin)
   }
-  configurations.all {
-    resolutionStrategy.eachDependency {
-      if (requested.group == "org.jetbrains" && requested.name == "annotations") {
-        useVersion("23.0.0")
-      }
-    }
-  }
 }
 
 plugins {

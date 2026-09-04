@@ -1,5 +1,5 @@
 [versions]
-agp = "8.12.3"
+agp = "9.4.0"
 python = "17.0.0"
 minSdk = "24"
 targetSdk = "28"
