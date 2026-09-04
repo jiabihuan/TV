@@ -43,7 +43,8 @@ public final class M2tsExtractor implements Extractor {
             new TimestampAdjuster(0),
             new DefaultTsPayloadReaderFactory(
                 DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS
-                    | DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM));
+                    | DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM),
+            TsExtractor.DEFAULT_TIMESTAMP_SEARCH_BYTES);
   }
 
   @Override
