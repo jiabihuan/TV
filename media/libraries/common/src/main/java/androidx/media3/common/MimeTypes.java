@@ -67,12 +67,16 @@ public final class MimeTypes {
   public static final String VIDEO_WMV1 = BASE_TYPE_VIDEO + "/x-ms-wmv1";
   public static final String VIDEO_WMV2 = BASE_TYPE_VIDEO + "/x-ms-wmv2";
   public static final String VIDEO_ISO = BASE_TYPE_VIDEO + "/x-iso";
-  public static final String VIDEO_MJPEG = BASE_TYPE_VIDEO + "/mjpeg";
-  public static final String VIDEO_MP42 = BASE_TYPE_VIDEO + "/mp42";
-  public static final String VIDEO_MP43 = BASE_TYPE_VIDEO + "/mp43";
-  @UnstableApi public static final String VIDEO_MV_HEVC = BASE_TYPE_VIDEO + "/mv-hevc";
-  @UnstableApi public static final String VIDEO_RAW = BASE_TYPE_VIDEO + "/raw";
-  @UnstableApi public static final String VIDEO_UNKNOWN = BASE_TYPE_VIDEO + "/x-unknown";
+   public static final String VIDEO_MJPEG = BASE_TYPE_VIDEO + "/mjpeg";
+   public static final String VIDEO_MP42 = BASE_TYPE_VIDEO + "/mp42";
+   public static final String VIDEO_MP43 = BASE_TYPE_VIDEO + "/mp43";
+   @UnstableApi public static final String VIDEO_MV_HEVC = BASE_TYPE_VIDEO + "/mv-hevc";
+   @UnstableApi public static final String VIDEO_RAW = BASE_TYPE_VIDEO + "/raw";
+   @UnstableApi public static final String VIDEO_UNKNOWN = BASE_TYPE_VIDEO + "/x-unknown";
+   @UnstableApi public static final String VIDEO_RV10 = BASE_TYPE_VIDEO + "/x-rv10";
+   @UnstableApi public static final String VIDEO_RV20 = BASE_TYPE_VIDEO + "/x-rv20";
+   @UnstableApi public static final String VIDEO_RV30 = BASE_TYPE_VIDEO + "/x-rv30";
+   @UnstableApi public static final String VIDEO_RV40 = BASE_TYPE_VIDEO + "/x-rv40";
 
   // audio/ MIME types
 
@@ -91,9 +95,14 @@ public final class MimeTypes {
   public static final String AUDIO_AC3 = BASE_TYPE_AUDIO + "/ac3";
   public static final String AUDIO_E_AC3 = BASE_TYPE_AUDIO + "/eac3";
   public static final String AUDIO_E_AC3_JOC = BASE_TYPE_AUDIO + "/eac3-joc";
-  public static final String AUDIO_AC4 = BASE_TYPE_AUDIO + "/ac4";
-  public static final String AUDIO_TRUEHD = BASE_TYPE_AUDIO + "/true-hd";
-  @UnstableApi public static final String AUDIO_DSD = BASE_TYPE_AUDIO + "/dsd";
+   public static final String AUDIO_AC4 = BASE_TYPE_AUDIO + "/ac4";
+   public static final String AUDIO_TRUEHD = BASE_TYPE_AUDIO + "/true-hd";
+   @UnstableApi public static final String AUDIO_DSD = BASE_TYPE_AUDIO + "/dsd";
+   @UnstableApi public static final String AUDIO_ATRAC3 = BASE_TYPE_AUDIO + "/atrac3";
+   @UnstableApi public static final String AUDIO_ATRAC3P = BASE_TYPE_AUDIO + "/atrac3p";
+   @UnstableApi public static final String AUDIO_COOK = BASE_TYPE_AUDIO + "/cook";
+   @UnstableApi public static final String AUDIO_RALF = BASE_TYPE_AUDIO + "/x-ralf";
+   @UnstableApi public static final String AUDIO_SIPR = BASE_TYPE_AUDIO + "/x-sipr";
   public static final String AUDIO_DSD_LSBF_PLANAR = BASE_TYPE_AUDIO + "/vnd.dsd-lsbf-planar";
   public static final String AUDIO_DSD_MSBF_PLANAR = BASE_TYPE_AUDIO + "/vnd.dsd-msbf-planar";
   public static final String AUDIO_DST = BASE_TYPE_AUDIO + "/vnd.dst";

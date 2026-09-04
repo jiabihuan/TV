@@ -37,4 +37,24 @@ public abstract class CacheDataReader {
    */
   public abstract int read(long position, byte[] buffer, int offset, int length)
       throws IOException;
+
+  /**
+   * Returns the total length of the data in bytes, or {@link C#LENGTH_UNSET} if unknown.
+   *
+   * @throws IOException if an I/O error occurs
+   */
+  public long length() throws IOException {
+    return C.LENGTH_UNSET;
+  }
+
+  /**
+   * Hints that a range of bytes will be needed soon. Default implementation is a no-op.
+   *
+   * @param position the start position of the range
+   * @param length the length of the range in bytes
+   * @throws IOException if an I/O error occurs
+   */
+  public void prefetchRange(long position, long length) throws IOException {
+    // No-op by default.
+  }
 }

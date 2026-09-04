@@ -51,7 +51,7 @@ public final class M2tsExtractor implements Extractor {
   public boolean sniff(ExtractorInput input) throws IOException {
     input.peekFully(sniffBuffer, 0, sniffBuffer.length);
     for (int i = 0; i < sniffBuffer.length; i += TS_PACKET_SIZE) {
-      if (sniffBuffer[i] == TsUtil.TS_SYNC_BYTE) {
+        if (sniffBuffer[i] == TsExtractor.TS_SYNC_BYTE) {
         return true;
       }
     }

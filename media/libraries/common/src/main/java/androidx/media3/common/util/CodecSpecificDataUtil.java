@@ -625,6 +625,19 @@ public final class CodecSpecificDataUtil {
     return dolbyVisionCsd;
   }
 
+  public static List<byte[]> setDolbyVisionCsd(@Nullable List<byte[]> initializationData, byte[] dvCsd) {
+    List<byte[]> result = initializationData != null ? new ArrayList<>(initializationData) : new ArrayList<>();
+    while (result.size() < 2) {
+      result.add(new byte[0]);
+    }
+    if (result.size() < 3) {
+      result.add(dvCsd);
+    } else {
+      result.set(2, dvCsd);
+    }
+    return result;
+  }
+
   /**
    * Returns initialization data for Opus according to <a
    * href="https://tools.ietf.org/html/rfc7845#section-5.1">RFC 7845: 5.1</a>.

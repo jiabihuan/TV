@@ -101,7 +101,7 @@ public final class TsExtractor implements Extractor {
   @Target(TYPE_USE)
   @IntDef(
       flag = true,
-      value = {FLAG_EMIT_RAW_SUBTITLE_DATA})
+      value = {FLAG_EMIT_RAW_SUBTITLE_DATA, FLAG_IGNORE_SECTION_CRC})
   public @interface Flags {}
 
   /**
@@ -109,6 +109,9 @@ public final class TsExtractor implements Extractor {
    * transcoded to {@link MimeTypes#APPLICATION_MEDIA3_CUES} during extraction.
    */
   public static final int FLAG_EMIT_RAW_SUBTITLE_DATA = 1;
+
+  /** Flag to skip CRC validation on section headers (used for Blu-ray/HDMV streams). */
+  public static final int FLAG_IGNORE_SECTION_CRC = 1 << 1;
 
   /**
    * @deprecated Use {@link #newFactory(SubtitleParser.Factory)} instead.
@@ -142,6 +145,17 @@ public final class TsExtractor implements Extractor {
   public static final int TS_STREAM_TYPE_DVBSUBS = 0x59;
   public static final int TS_STREAM_TYPE_DTS_HD = 0x88; // As per ATSC Code Point Registry
   public static final int TS_STREAM_TYPE_DTS_UHD = 0x8B;
+
+  // HDMV (Blu-ray) virtual stream types - remapped from real PTS values.
+  public static final int TS_STREAM_TYPE_HDMV_LPCM = 0x102;
+  public static final int TS_STREAM_TYPE_HDMV_DTS_AUTO = 0x103;
+  public static final int TS_STREAM_TYPE_HDMV_DTS_HD_MASTER = 0x104;
+  public static final int TS_STREAM_TYPE_HDMV_TRUE_HD = 0x83;
+  public static final int TS_STREAM_TYPE_HDMV_E_AC3 = 0x84;
+  public static final int TS_STREAM_TYPE_HDMV_DTS_HD_HRA = 0x85;
+  public static final int TS_STREAM_TYPE_HDMV_E_AC3_SEC = 0xA1;
+  public static final int TS_STREAM_TYPE_HDMV_DTS_EXPRESS_SEC = 0xA2;
+  public static final int TS_STREAM_TYPE_HDMV_VC1 = 0xEA;
 
   // Stream types that aren't defined by the MPEG-2 TS specification.
   public static final int TS_STREAM_TYPE_DC2_H262 = 0x80;
@@ -180,6 +194,8 @@ public final class TsExtractor implements Extractor {
   private boolean tracksEnded;
   private boolean hasOutputSeekMap;
   private boolean pendingSeekToStart;
+  private boolean pendingEnableNextVideoKeyFrame;
+  private long pendingSeekTimeUs = C.TIME_UNSET;
   @Nullable private TsPayloadReader id3Reader;
   private int bytesSinceLastSync;
   private int pcrPid;
@@ -411,6 +427,8 @@ public final class TsExtractor implements Extractor {
     }
     tsPacketBuffer.reset(/* limit= */ 0);
     continuityCounters.clear();
+    pendingSeekTimeUs = C.TIME_UNSET;
+    pendingEnableNextVideoKeyFrame = false;
     for (int i = 0; i < tsPayloadReaders.size(); i++) {
       tsPayloadReaders.valueAt(i).seek();
     }
@@ -605,243 +623,35 @@ public final class TsExtractor implements Extractor {
     return endOfPacket;
   }
 
-  private boolean shouldConsumePacketPayload(int packetPid) {
-    return mode == MODE_HLS
-        || tracksEnded
-        || !trackPids.get(packetPid, /* valueIfKeyNotFound= */ false); // It's a PSI packet
+  public void disableBinarySearchSeeking() {
+    hasOutputSeekMap = true;
+    durationReader.skipDurationReading();
   }
 
-  private void resetPayloadReaders() {
-    trackIds.clear();
-    tsPayloadReaders.clear();
-    SparseArray<TsPayloadReader> initialPayloadReaders =
-        payloadReaderFactory.createInitialPayloadReaders();
-    int initialPayloadReadersSize = initialPayloadReaders.size();
-    for (int i = 0; i < initialPayloadReadersSize; i++) {
-      tsPayloadReaders.put(initialPayloadReaders.keyAt(i), initialPayloadReaders.valueAt(i));
+  public void enableNextVideoKeyFrame(long seekTimeUs) {
+    if (!tracksEnded) {
+      pendingEnableNextVideoKeyFrame = true;
+      pendingSeekTimeUs = seekTimeUs;
+      return;
     }
-    tsPayloadReaders.put(TS_PAT_PID, new SectionReader(new PatReader()));
-    id3Reader = null;
-  }
-
-  /** Parses Program Association Table data. */
-  private class PatReader implements SectionPayloadReader {
-
-    private final ParsableBitArray patScratch;
-
-    public PatReader() {
-      patScratch = new ParsableBitArray(new byte[4]);
-    }
-
-    @Override
-    public void init(
-        TimestampAdjuster timestampAdjuster,
-        ExtractorOutput extractorOutput,
-        TrackIdGenerator idGenerator) {
-      // Do nothing.
-    }
-
-    @Override
-    public void consume(ParsableByteArray sectionData) {
-      int tableId = sectionData.readUnsignedByte();
-      if (tableId != 0x00 /* program_association_section */) {
-        // See ISO/IEC 13818-1, section 2.4.4.4 for more information on table id assignment.
-        return;
-      }
-      // section_syntax_indicator(1), '0'(1), reserved(2), section_length(4)
-      int secondHeaderByte = sectionData.readUnsignedByte();
-      if ((secondHeaderByte & 0x80) == 0) {
-        // section_syntax_indicator must be 1. See ISO/IEC 13818-1, section 2.4.4.5.
-        return;
-      }
-      // section_length(8), transport_stream_id (16), reserved (2), version_number (5),
-      // current_next_indicator (1), section_number (8), last_section_number (8)
-      sectionData.skipBytes(6);
-
-      int programCount = sectionData.bytesLeft() / 4;
-      for (int i = 0; i < programCount; i++) {
-        sectionData.readBytes(patScratch, 4);
-        int programNumber = patScratch.readBits(16);
-        patScratch.skipBits(3); // reserved (3)
-        if (programNumber == 0) {
-          patScratch.skipBits(13); // network_PID (13)
-        } else {
-          int pid = patScratch.readBits(13);
-          if (tsPayloadReaders.get(pid) == null) {
-            tsPayloadReaders.put(pid, new SectionReader(new PmtReader(pid)));
-            remainingPmts++;
-          }
-        }
-      }
-      if (mode != MODE_HLS) {
-        tsPayloadReaders.remove(TS_PAT_PID);
+    for (int i = 0; i < tsPayloadReaders.size(); i++) {
+      TsPayloadReader reader = tsPayloadReaders.valueAt(i);
+      if (reader instanceof PesReader) {
+        ((PesReader) reader).enableRandomAccessIndicator();
       }
     }
   }
 
-  /** Parses Program Map Table. */
-  private class PmtReader implements SectionPayloadReader {
-
-    private static final int TS_PMT_DESC_REGISTRATION = 0x05;
-    private static final int TS_PMT_DESC_ISO639_LANG = 0x0A;
-    private static final int TS_PMT_DESC_AC3 = 0x6A;
-    private static final int TS_PMT_DESC_AIT = 0x6F;
-    private static final int TS_PMT_DESC_EAC3 = 0x7A;
-    private static final int TS_PMT_DESC_DTS = 0x7B;
-    private static final int TS_PMT_DESC_DVB_EXT = 0x7F;
-    private static final int TS_PMT_DESC_DVBSUBS = 0x59;
-
-    private static final int TS_PMT_DESC_DVB_EXT_AC4 = 0x15;
-    private static final int TS_PMT_DESC_DVB_EXT_DTS_HD = 0x0E;
-    private static final int TS_PMT_DESC_DVB_EXT_DTS_UHD = 0x21;
-
-    private final ParsableBitArray pmtScratch;
-    private final SparseArray<@NullableType TsPayloadReader> trackIdToReaderScratch;
-    private final SparseIntArray trackIdToPidScratch;
-    private final int pid;
-
-    public PmtReader(int pid) {
-      pmtScratch = new ParsableBitArray(new byte[5]);
-      trackIdToReaderScratch = new SparseArray<>();
-      trackIdToPidScratch = new SparseIntArray();
-      this.pid = pid;
+  private void applyPendingVideoKeyFrame() {
+    if (pendingEnableNextVideoKeyFrame) {
+      pendingEnableNextVideoKeyFrame = false;
+      long seekTimeUs = pendingSeekTimeUs;
+      pendingSeekTimeUs = C.TIME_UNSET;
+      enableNextVideoKeyFrame(seekTimeUs);
     }
+  }
 
-    @Override
-    public void init(
-        TimestampAdjuster timestampAdjuster,
-        ExtractorOutput extractorOutput,
-        TrackIdGenerator idGenerator) {
-      // Do nothing.
-    }
-
-    @Override
-    public void consume(ParsableByteArray sectionData) {
-      int tableId = sectionData.readUnsignedByte();
-      if (tableId != 0x02 /* TS_program_map_section */) {
-        // See ISO/IEC 13818-1, section 2.4.4.4 for more information on table id assignment.
-        return;
-      }
-      // TimestampAdjuster assignment.
-      TimestampAdjuster timestampAdjuster;
-      if (mode == MODE_SINGLE_PMT || mode == MODE_HLS || remainingPmts == 1) {
-        timestampAdjuster = timestampAdjusters.get(0);
-      } else {
-        timestampAdjuster =
-            new TimestampAdjuster(timestampAdjusters.get(0).getFirstSampleTimestampUs());
-        timestampAdjusters.add(timestampAdjuster);
-      }
-
-      // section_syntax_indicator(1), '0'(1), reserved(2), section_length(4)
-      int secondHeaderByte = sectionData.readUnsignedByte();
-      if ((secondHeaderByte & 0x80) == 0) {
-        // section_syntax_indicator must be 1. See ISO/IEC 13818-1, section 2.4.4.9.
-        return;
-      }
-      // section_length(8)
-      sectionData.skipBytes(1);
-      int programNumber = sectionData.readUnsignedShort();
-
-      // Skip 3 bytes (24 bits), including:
-      // reserved (2), version_number (5), current_next_indicator (1), section_number (8),
-      // last_section_number (8)
-      sectionData.skipBytes(3);
-
-      sectionData.readBytes(pmtScratch, 2);
-      // reserved (3), PCR_PID (13)
-      pmtScratch.skipBits(3);
-      pcrPid = pmtScratch.readBits(13);
-
-      // Read program_info_length.
-      sectionData.readBytes(pmtScratch, 2);
-      pmtScratch.skipBits(4);
-      int programInfoLength = pmtScratch.readBits(12);
-
-      // Skip the descriptors.
-      sectionData.skipBytes(programInfoLength);
-
-      if (mode == MODE_HLS && id3Reader == null) {
-        // Setup an ID3 track regardless of whether there's a corresponding entry, in case one
-        // appears intermittently during playback. See [Internal: b/20261500].
-        EsInfo id3EsInfo =
-            new EsInfo(TS_STREAM_TYPE_ID3, null, AUDIO_TYPE_UNDEFINED, null, Util.EMPTY_BYTE_ARRAY);
-        id3Reader = payloadReaderFactory.createPayloadReader(TS_STREAM_TYPE_ID3, id3EsInfo);
-        if (id3Reader != null) {
-          id3Reader.init(
-              timestampAdjuster,
-              output,
-              new TrackIdGenerator(programNumber, TS_STREAM_TYPE_ID3, MAX_PID_PLUS_ONE));
-        }
-      }
-
-      trackIdToReaderScratch.clear();
-      trackIdToPidScratch.clear();
-      int remainingEntriesLength = sectionData.bytesLeft();
-      while (remainingEntriesLength > 0) {
-        sectionData.readBytes(pmtScratch, 5);
-        int streamType = pmtScratch.readBits(8);
-        pmtScratch.skipBits(3); // reserved
-        int elementaryPid = pmtScratch.readBits(13);
-        pmtScratch.skipBits(4); // reserved
-        int esInfoLength = pmtScratch.readBits(12); // ES_info_length.
-        EsInfo esInfo = readEsInfo(sectionData, esInfoLength);
-        if (streamType == 0x06 || streamType == 0x05) {
-          streamType = esInfo.streamType;
-        }
-        remainingEntriesLength -= esInfoLength + 5;
-
-        int trackId = mode == MODE_HLS ? streamType : elementaryPid;
-        if (trackIds.get(trackId)) {
-          continue;
-        }
-
-        @Nullable
-        TsPayloadReader reader =
-            mode == MODE_HLS && streamType == TS_STREAM_TYPE_ID3
-                ? id3Reader
-                : payloadReaderFactory.createPayloadReader(streamType, esInfo);
-        if (mode != MODE_HLS
-            || elementaryPid < trackIdToPidScratch.get(trackId, MAX_PID_PLUS_ONE)) {
-          trackIdToPidScratch.put(trackId, elementaryPid);
-          trackIdToReaderScratch.put(trackId, reader);
-        }
-      }
-
-      int trackIdCount = trackIdToPidScratch.size();
-      for (int i = 0; i < trackIdCount; i++) {
-        int trackId = trackIdToPidScratch.keyAt(i);
-        int trackPid = trackIdToPidScratch.valueAt(i);
-        trackIds.put(trackId, true);
-        trackPids.put(trackPid, true);
-        @Nullable TsPayloadReader reader = trackIdToReaderScratch.valueAt(i);
-        if (reader != null) {
-          if (reader != id3Reader) {
-            reader.init(
-                timestampAdjuster,
-                output,
-                new TrackIdGenerator(programNumber, trackId, MAX_PID_PLUS_ONE));
-          }
-          tsPayloadReaders.put(trackPid, reader);
-        }
-      }
-
-      if (mode == MODE_HLS) {
-        if (!tracksEnded) {
-          output.endTracks();
-          remainingPmts = 0;
-          tracksEnded = true;
-        }
-      } else {
-        tsPayloadReaders.remove(pid);
-        remainingPmts = mode == MODE_SINGLE_PMT ? 0 : remainingPmts - 1;
-        if (remainingPmts == 0) {
-          output.endTracks();
-          tracksEnded = true;
-        }
-      }
-    }
-
-    /**
+  /**
      * Returns the stream info read from the available descriptors. Sets {@code data}'s position to
      * the end of the descriptors.
      *
