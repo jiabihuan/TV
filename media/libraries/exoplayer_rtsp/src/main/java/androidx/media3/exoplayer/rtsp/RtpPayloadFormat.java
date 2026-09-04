@@ -54,7 +54,6 @@ public final class RtpPayloadFormat {
   public static final String RTP_MEDIA_PCM_L16 = "L16";
   public static final String RTP_MEDIA_PCMA = "PCMA";
   public static final String RTP_MEDIA_PCMU = "PCMU";
-  public static final String RTP_MEDIA_MP2T = "MP2T";
   public static final String RTP_MEDIA_VP8 = "VP8";
   public static final String RTP_MEDIA_VP9 = "VP9";
 
@@ -76,7 +75,6 @@ public final class RtpPayloadFormat {
       case RTP_MEDIA_PCM_L16:
       case RTP_MEDIA_PCMA:
       case RTP_MEDIA_PCMU:
-      case RTP_MEDIA_MP2T:
       case RTP_MEDIA_VP8:
       case RTP_MEDIA_VP9:
         return true;
@@ -123,8 +121,6 @@ public final class RtpPayloadFormat {
         return MimeTypes.VIDEO_MP4V;
       case RTP_MEDIA_VP8:
         return MimeTypes.VIDEO_VP8;
-      case RTP_MEDIA_MP2T:
-        return MimeTypes.VIDEO_MP2T;
       case RTP_MEDIA_VP9:
         return MimeTypes.VIDEO_VP9;
       default:

@@ -44,7 +44,6 @@ import androidx.media3.exoplayer.dash.manifest.SegmentBase.SegmentList;
 import androidx.media3.exoplayer.dash.manifest.SegmentBase.SegmentTemplate;
 import androidx.media3.exoplayer.dash.manifest.SegmentBase.SegmentTimelineElement;
 import androidx.media3.exoplayer.dash.manifest.SegmentBase.SingleSegmentBase;
-import androidx.media3.exoplayer.drm.ClearKeyUtil;
 import androidx.media3.exoplayer.upstream.ParsingLoadable;
 import androidx.media3.extractor.metadata.emsg.EventMessage;
 import androidx.media3.extractor.mp4.PsshAtomUtil;
@@ -68,6 +67,7 @@ import org.xmlpull.v1.XmlPullParserFactory;
 import org.xmlpull.v1.XmlSerializer;
 
 /** A parser of media presentation description files. */
+@SuppressWarnings("nullness") // TODO: b/78934030 - Add missing nullness checks to this class.
 @UnstableApi
 public class DashManifestParser extends DefaultHandler
     implements ParsingLoadable.Parser<DashManifest> {
@@ -155,13 +155,14 @@ public class DashManifestParser extends DefaultHandler
     long publishTimeMs = parseDateTime(xpp, "publishTime", C.TIME_UNSET);
     ProgramInformation programInformation = null;
     UtcTimingElement utcTiming = null;
-    Uri location = null;
+    List<Location> locations = new ArrayList<>();
     ServiceDescriptionElement serviceDescription = null;
     long baseUrlAvailabilityTimeOffsetUs = dynamic ? 0 : C.TIME_UNSET;
+    String documentBaseUriString = documentBaseUri.toString();
     BaseUrl documentBaseUrl =
         new BaseUrl(
-            documentBaseUri.toString(),
-            /* serviceLocation= */ documentBaseUri.toString(),
+            documentBaseUriString,
+            /* serviceLocation= */ documentBaseUriString,
             dvbProfileDeclared ? DEFAULT_DVB_PRIORITY : PRIORITY_UNSET,
             DEFAULT_WEIGHT);
     ArrayList<BaseUrl> parentBaseUrls = Lists.newArrayList(documentBaseUrl);
@@ -185,7 +186,13 @@ public class DashManifestParser extends DefaultHandler
       } else if (XmlPullParserUtil.isStartTag(xpp, "UTCTiming")) {
         utcTiming = parseUtcTiming(xpp);
       } else if (XmlPullParserUtil.isStartTag(xpp, "Location")) {
-        location = UriUtil.resolveToUri(documentBaseUri.toString(), xpp.nextText());
+        String serviceLocation = xpp.getAttributeValue(null, "serviceLocation");
+        String locationUrlString = xpp.nextText();
+        Uri resolvedUrl = Uri.parse(UriUtil.resolve(documentBaseUriString, locationUrlString));
+        locations.add(
+            serviceLocation != null
+                ? new Location(resolvedUrl, serviceLocation)
+                : new Location(resolvedUrl));
       } else if (XmlPullParserUtil.isStartTag(xpp, "ServiceDescription")) {
         serviceDescription = parseServiceDescription(xpp);
       } else if (XmlPullParserUtil.isStartTag(xpp, "Period") && !seenEarlyAccessPeriod) {
@@ -245,10 +252,16 @@ public class DashManifestParser extends DefaultHandler
         programInformation,
         utcTiming,
         serviceDescription,
-        location,
-        periods);
+        periods,
+        locations);
   }
 
+  /**
+   * @deprecated Use {@link #buildMediaPresentationDescription(long, long, long, boolean, long,
+   *     long, long, long, ProgramInformation, UtcTimingElement, ServiceDescriptionElement, List,
+   *     List)} instead.
+   */
+  @Deprecated
   protected DashManifest buildMediaPresentationDescription(
       long availabilityStartTime,
       long durationMs,
@@ -263,6 +276,36 @@ public class DashManifestParser extends DefaultHandler
       @Nullable ServiceDescriptionElement serviceDescription,
       @Nullable Uri location,
       List<Period> periods) {
+    return buildMediaPresentationDescription(
+        availabilityStartTime,
+        durationMs,
+        minBufferTimeMs,
+        dynamic,
+        minUpdateTimeMs,
+        timeShiftBufferDepthMs,
+        suggestedPresentationDelayMs,
+        publishTimeMs,
+        programInformation,
+        utcTiming,
+        serviceDescription,
+        periods,
+        location == null ? ImmutableList.of() : ImmutableList.of(new Location(location)));
+  }
+
+  protected DashManifest buildMediaPresentationDescription(
+      long availabilityStartTime,
+      long durationMs,
+      long minBufferTimeMs,
+      boolean dynamic,
+      long minUpdateTimeMs,
+      long timeShiftBufferDepthMs,
+      long suggestedPresentationDelayMs,
+      long publishTimeMs,
+      @Nullable ProgramInformation programInformation,
+      @Nullable UtcTimingElement utcTiming,
+      @Nullable ServiceDescriptionElement serviceDescription,
+      List<Period> periods,
+      List<Location> locations) {
     return new DashManifest(
         availabilityStartTime,
         durationMs,
@@ -275,8 +318,8 @@ public class DashManifestParser extends DefaultHandler
         programInformation,
         utcTiming,
         serviceDescription,
-        location,
-        periods);
+        periods,
+        locations);
   }
 
   protected UtcTimingElement parseUtcTiming(XmlPullParser xpp) {
@@ -612,9 +655,6 @@ public class DashManifestParser extends DefaultHandler
         case "urn:mpeg:dash:mp4protection:2011":
           schemeType = xpp.getAttributeValue(null, "value");
           String defaultKid = XmlPullParserUtil.getAttributeValueIgnorePrefix(xpp, "default_KID");
-          if (TextUtils.isEmpty(defaultKid) || defaultKid.length() < 36) {
-            defaultKid = UUID.randomUUID().toString();
-          }
           if (!TextUtils.isEmpty(defaultKid)
               && !"00000000-0000-0000-0000-000000000000".equals(defaultKid)) {
             String[] defaultKidStrings = defaultKid.split("\\s+");
@@ -820,6 +860,11 @@ public class DashManifestParser extends DefaultHandler
             essentialProperties,
             supplementalProperties);
     segmentBase = segmentBase != null ? segmentBase : new SingleSegmentBase();
+    if (isStandaloneTextRepresentation(format) && segmentBase.presentationTimeOffset != 0) {
+      // DASH-IF IOP "Standalone Text Timing": @presentationTimeOffset SHALL be ignored for
+      // standalone text. See https://dashif.org/Guidelines-TimingModel/#standalone-text-timing
+      segmentBase = segmentBase.copyWithPresentationTimeOffset(0);
+    }
 
     return new RepresentationInfo(
         format,
@@ -1789,10 +1834,6 @@ public class DashManifestParser extends DefaultHandler
       }
     }
     if (clearKeyLicenseServerUrl == null) {
-      byte[] data = ClearKeyUtil.buildClearKeyPssh(schemeDatas);
-      if (data != null) {
-        schemeDatas.add(new SchemeData(C.CLEARKEY_UUID, null, schemeDatas.get(0).mimeType, data));
-      }
       return;
     }
     // Fill in the ClearKey information into the existing PSSH schema data if applicable.
@@ -2004,7 +2045,7 @@ public class DashManifestParser extends DefaultHandler
 
   protected static long parseLong(XmlPullParser xpp, String name, long defaultValue) {
     String value = xpp.getAttributeValue(null, name);
-    return value == null ? defaultValue : Long.parseLong(value.replaceAll("[^0-9]", ""));
+    return value == null ? defaultValue : Long.parseLong(value);
   }
 
   protected static float parseFloat(XmlPullParser xpp, String name, float defaultValue) {
@@ -2189,6 +2230,10 @@ public class DashManifestParser extends DefaultHandler
       }
     }
     return false;
+  }
+
+  private static boolean isStandaloneTextRepresentation(Format format) {
+    return format.containerMimeType != null && MimeTypes.isText(format.containerMimeType);
   }
 
   /** A parsed Representation element. */

@@ -15,6 +15,7 @@
  */
 package androidx.media3.extractor.ts;
 
+import static androidx.media3.extractor.ts.TsPayloadReader.FLAG_DATA_ALIGNMENT_INDICATOR;
 import static com.google.common.base.Preconditions.checkState;
 
 import androidx.media3.common.C;
@@ -79,6 +80,9 @@ public final class DvbSubtitleReader implements ElementaryStreamReader {
 
   @Override
   public void packetStarted(long pesTimeUs, @TsPayloadReader.Flags int flags) {
+    if ((flags & FLAG_DATA_ALIGNMENT_INDICATOR) == 0) {
+      return;
+    }
     writingSample = true;
     sampleTimeUs = pesTimeUs;
     sampleBytesWritten = 0;
@@ -86,7 +90,7 @@ public final class DvbSubtitleReader implements ElementaryStreamReader {
   }
 
   @Override
-  public void packetFinished(boolean isEndOfInput) {
+  public void packetFinished() {
     if (writingSample) {
       // packetStarted method must be called before reading sample.
       checkState(sampleTimeUs != C.TIME_UNSET);

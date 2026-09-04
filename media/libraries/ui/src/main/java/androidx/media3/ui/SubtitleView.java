@@ -72,11 +72,7 @@ public final class SubtitleView extends FrameLayout {
         CaptionStyleCompat style,
         float defaultTextSize,
         @Cue.TextSizeType int defaultTextSizeType,
-        float bottomPaddingFraction,
-        float bottomPosition);
-
-    default void setVideoBounds(int left, int top, int right, int bottom) {
-    }
+        float bottomPaddingFraction);
   }
 
   /**
@@ -126,16 +122,12 @@ public final class SubtitleView extends FrameLayout {
   private @Cue.TextSizeType int defaultTextSizeType;
   private float defaultTextSize;
   private float bottomPaddingFraction;
-  private float bottomPosition;
   private boolean applyEmbeddedStyles;
   private boolean applyEmbeddedFontSizes;
 
   private @ViewType int viewType;
   private Output output;
   private View innerSubtitleView;
-
-  private static final long BITMAP_CUE_CLEAR_DELAY_MS = 100;
-  @Nullable private Runnable pendingClearRunnable;
 
   public SubtitleView(Context context) {
     this(context, null);
@@ -150,7 +142,6 @@ public final class SubtitleView extends FrameLayout {
     bottomPaddingFraction = DEFAULT_BOTTOM_PADDING_FRACTION;
     applyEmbeddedStyles = true;
     applyEmbeddedFontSizes = true;
-    bottomPosition = 0;
 
     CanvasSubtitleOutput canvasSubtitleOutput = new CanvasSubtitleOutput(context);
     output = canvasSubtitleOutput;
@@ -165,42 +156,8 @@ public final class SubtitleView extends FrameLayout {
    * @param cues The cues to display, or null to clear the cues.
    */
   public void setCues(@Nullable List<Cue> cues) {
-    List<Cue> newCues = cues != null ? cues : Collections.emptyList();
-    if (newCues.isEmpty() && containsBitmap(this.cues)) {
-      if (pendingClearRunnable == null) {
-        scheduleBitmapCueClear();
-      }
-      return;
-    }
-    cancelPendingBitmapCueClear();
-    this.cues = newCues;
+    this.cues = (cues != null ? cues : Collections.emptyList());
     updateOutput();
-  }
-
-  private boolean containsBitmap(List<Cue> cues) {
-    for (Cue cue : cues) {
-      if (cue.bitmap != null) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private void scheduleBitmapCueClear() {
-    postDelayed(pendingClearRunnable = this::onBitmapCueClearTimeout, BITMAP_CUE_CLEAR_DELAY_MS);
-  }
-
-  private void onBitmapCueClearTimeout() {
-    pendingClearRunnable = null;
-    cues = Collections.emptyList();
-    updateOutput();
-  }
-
-  private void cancelPendingBitmapCueClear() {
-    if (pendingClearRunnable != null) {
-      removeCallbacks(pendingClearRunnable);
-      pendingClearRunnable = null;
-    }
   }
 
   /**
@@ -360,11 +317,6 @@ public final class SubtitleView extends FrameLayout {
     updateOutput();
   }
 
-  public void setBottomPosition(float bottomPosition) {
-    this.bottomPosition = bottomPosition;
-    updateOutput();
-  }
-
   private float getUserCaptionFontScale() {
     if (isInEditMode()) {
       return 1f;
@@ -395,8 +347,7 @@ public final class SubtitleView extends FrameLayout {
         style,
         defaultTextSize,
         defaultTextSizeType,
-        bottomPaddingFraction,
-        bottomPosition);
+        bottomPaddingFraction);
   }
 
   /**
@@ -430,43 +381,5 @@ public final class SubtitleView extends FrameLayout {
       SubtitleViewUtils.removeEmbeddedFontSizes(strippedCue);
     }
     return strippedCue.build();
-  }
-
-  public float getTextSize() {
-    return defaultTextSize;
-  }
-
-  public void addTextSize(float value) {
-    defaultTextSize += value;
-    updateOutput();
-  }
-
-  public void subTextSize(float value) {
-    defaultTextSize -= value;
-    updateOutput();
-  }
-
-  public float getPosition() {
-    return bottomPosition;
-  }
-
-  public void addPosition(float value) {
-    bottomPosition += value;
-    updateOutput();
-  }
-
-  public void subPosition(float value) {
-    bottomPosition -= value;
-    updateOutput();
-  }
-
-  public void reset() {
-    this.bottomPosition = 0;
-    this.defaultTextSize = DEFAULT_TEXT_SIZE_FRACTION;
-    updateOutput();
-  }
-
-  public void setVideoBounds(int left, int top, int right, int bottom) {
-    output.setVideoBounds(left, top, right, bottom);
   }
 }

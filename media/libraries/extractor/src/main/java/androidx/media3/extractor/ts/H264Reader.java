@@ -126,10 +126,6 @@ public final class H264Reader implements ElementaryStreamReader {
     randomAccessIndicator |= (flags & FLAG_RANDOM_ACCESS_INDICATOR) != 0;
   }
 
-  public void enableRandomAccessIndicator() {
-    randomAccessIndicator = true;
-  }
-
   @Override
   public void consume(ParsableByteArray data) {
     assertTracksCreated();
@@ -187,15 +183,13 @@ public final class H264Reader implements ElementaryStreamReader {
   }
 
   @Override
-  public void packetFinished(boolean isEndOfInput) {
+  public void endOfInputReached() {
     assertTracksCreated();
-    if (isEndOfInput) {
-      seiReader.flush();
-      // Simulate end of current NAL unit and start an AUD one to trigger output of current sample
-      endNalUnit(totalBytesWritten, 0, 0, pesTimeUs);
-      startNalUnit(totalBytesWritten, NalUnitUtil.H264_NAL_UNIT_TYPE_AUD, pesTimeUs);
-      endNalUnit(totalBytesWritten, 0, 0, pesTimeUs);
-    }
+    seiReader.flush();
+    // Simulate end of current NAL unit and start an AUD one to trigger output of current sample
+    endNalUnit(totalBytesWritten, 0, 0, pesTimeUs);
+    startNalUnit(totalBytesWritten, NalUnitUtil.H264_NAL_UNIT_TYPE_AUD, pesTimeUs);
+    endNalUnit(totalBytesWritten, 0, 0, pesTimeUs);
   }
 
   @RequiresNonNull("sampleReader")

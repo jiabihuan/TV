@@ -41,13 +41,6 @@ import java.util.List;
   private float textSize;
   private CaptionStyleCompat style;
   private float bottomPaddingFraction;
-  private float bottomPosition;
-
-  private boolean hasVideoBounds;
-  private int videoBoundsLeft;
-  private int videoBoundsTop;
-  private int videoBoundsRight;
-  private int videoBoundsBottom;
 
   public CanvasSubtitleOutput(Context context) {
     this(context, /* attrs= */ null);
@@ -61,7 +54,6 @@ import java.util.List;
     textSize = DEFAULT_TEXT_SIZE_FRACTION;
     style = CaptionStyleCompat.DEFAULT;
     bottomPaddingFraction = DEFAULT_BOTTOM_PADDING_FRACTION;
-    bottomPosition = 0;
   }
 
   @Override
@@ -70,29 +62,17 @@ import java.util.List;
       CaptionStyleCompat style,
       float textSize,
       @Cue.TextSizeType int textSizeType,
-      float bottomPaddingFraction,
-      float bottomPosition) {
+      float bottomPaddingFraction) {
     this.cues = cues;
     this.style = style;
     this.textSize = textSize;
     this.textSizeType = textSizeType;
     this.bottomPaddingFraction = bottomPaddingFraction;
-    this.bottomPosition = bottomPosition;
     // Ensure we have sufficient painters.
     while (painters.size() < cues.size()) {
       painters.add(new SubtitlePainter(getContext()));
     }
     // Invalidate to trigger drawing.
-    invalidate();
-  }
-
-  @Override
-  public void setVideoBounds(int left, int top, int right, int bottom) {
-    hasVideoBounds = true;
-    videoBoundsLeft = left;
-    videoBoundsTop = top;
-    videoBoundsRight = right;
-    videoBoundsBottom = bottom;
     invalidate();
   }
 
@@ -134,23 +114,17 @@ import java.util.List;
           SubtitleViewUtils.resolveTextSize(
               cue.textSizeType, cue.textSize, rawViewHeight, viewHeightMinusPadding);
       SubtitlePainter painter = painters.get(i);
-      boolean isBitmapCue = cue.bitmap != null;
-      int cueBoxLeft = (isBitmapCue && hasVideoBounds) ? videoBoundsLeft : left;
-      int cueBoxTop = (isBitmapCue && hasVideoBounds) ? videoBoundsTop : top;
-      int cueBoxRight = (isBitmapCue && hasVideoBounds) ? videoBoundsRight : right;
-      int cueBoxBottom = (isBitmapCue && hasVideoBounds) ? videoBoundsBottom : bottom;
       painter.draw(
           cue,
           style,
           defaultViewTextSizePx,
           cueTextSizePx,
           bottomPaddingFraction,
-          bottomPosition,
           canvas,
-          cueBoxLeft,
-          cueBoxTop,
-          cueBoxRight,
-          cueBoxBottom);
+          left,
+          top,
+          right,
+          bottom);
     }
   }
 

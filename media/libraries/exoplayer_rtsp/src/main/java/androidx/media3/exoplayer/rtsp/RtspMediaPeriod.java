@@ -87,8 +87,6 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 
   private @MonotonicNonNull Callback callback;
   private @MonotonicNonNull ImmutableList<TrackGroup> trackGroups;
-  @Nullable private ImmutableList<RtspLoaderWrapper> flatWrappers;
-  @Nullable private ImmutableList<SampleQueue> flatSampleQueues;
   @Nullable private IOException preparationError;
   @Nullable private RtspPlaybackException playbackException;
 
@@ -99,7 +97,7 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
   private boolean notifyDiscontinuity;
   private boolean released;
   private boolean prepared;
-  private boolean setupRequested;
+  private boolean trackSelected;
   private int portBindingRetryCount;
   private boolean isUsingRtpTcp;
 
@@ -121,8 +119,7 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
       Listener listener,
       String userAgent,
       SocketFactory socketFactory,
-      boolean debugLoggingEnabled,
-      @Nullable String overrideRange) {
+      boolean debugLoggingEnabled) {
     this.allocator = allocator;
     this.rtpDataChannelFactory = rtpDataChannelFactory;
     this.listener = listener;
@@ -136,8 +133,7 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
             /* userAgent= */ userAgent,
             /* uri= */ uri,
             socketFactory,
-            debugLoggingEnabled,
-            overrideRange);
+            debugLoggingEnabled);
     rtspLoaderWrappers = new ArrayList<>();
     selectedLoadInfos = new ArrayList<>();
 
@@ -211,13 +207,7 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 
       TrackGroup trackGroup = selection.getTrackGroup();
       int trackGroupIndex = checkNotNull(trackGroups).indexOf(trackGroup);
-      if (trackGroupIndex == C.INDEX_UNSET) {
-        continue;
-      }
-      RtpLoadInfo loadInfo = checkNotNull(flatWrappers).get(trackGroupIndex).loadInfo;
-      if (!selectedLoadInfos.contains(loadInfo)) {
-        selectedLoadInfos.add(loadInfo);
-      }
+      selectedLoadInfos.add(checkNotNull(rtspLoaderWrappers.get(trackGroupIndex)).loadInfo);
 
       // Find the sampleStreamWrapper that contains this track group.
       if (trackGroups.contains(trackGroup)) {
@@ -237,6 +227,7 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
       }
     }
 
+    trackSelected = true;
     if (positionUs != 0) {
       // Track selection is performed only once in RTSP streams.
       requestedSeekPositionUs = positionUs;
@@ -257,9 +248,6 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
       RtspLoaderWrapper loaderWrapper = rtspLoaderWrappers.get(i);
       if (!loaderWrapper.canceled) {
         loaderWrapper.sampleQueue.discardTo(positionUs, toKeyframe, /* stopAtReadPosition= */ true);
-        for (int j = 0; j < loaderWrapper.extraSampleQueues.size(); j++) {
-          loaderWrapper.extraSampleQueues.get(j).discardTo(positionUs, toKeyframe, /* stopAtReadPosition= */ true);
-        }
       }
     }
   }
@@ -402,9 +390,7 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
   // SampleStream methods.
 
   /* package */ boolean isReady(int trackGroupIndex) {
-    ImmutableList<SampleQueue> queues = checkNotNull(flatSampleQueues);
-    ImmutableList<RtspLoaderWrapper> wrappers = checkNotNull(flatWrappers);
-    return !suppressRead() && queues.get(trackGroupIndex).isReady(wrappers.get(trackGroupIndex).canceled);
+    return !suppressRead() && rtspLoaderWrappers.get(trackGroupIndex).isSampleQueueReady();
   }
 
   @ReadDataResult
@@ -416,21 +402,14 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
     if (suppressRead()) {
       return C.RESULT_NOTHING_READ;
     }
-    ImmutableList<SampleQueue> queues = checkNotNull(flatSampleQueues);
-    ImmutableList<RtspLoaderWrapper> wrappers = checkNotNull(flatWrappers);
-    return queues.get(sampleQueueIndex).read(formatHolder, buffer, readFlags, wrappers.get(sampleQueueIndex).canceled);
+    return rtspLoaderWrappers.get(sampleQueueIndex).read(formatHolder, buffer, readFlags);
   }
 
   /* package */ int skipData(int sampleQueueIndex, long positionUs) {
     if (suppressRead()) {
       return C.RESULT_NOTHING_READ;
     }
-    ImmutableList<SampleQueue> queues = checkNotNull(flatSampleQueues);
-    ImmutableList<RtspLoaderWrapper> wrappers = checkNotNull(flatWrappers);
-    SampleQueue queue = queues.get(sampleQueueIndex);
-    int skipCount = queue.getSkipCount(positionUs, wrappers.get(sampleQueueIndex).canceled);
-    queue.skip(skipCount);
-    return skipCount;
+    return rtspLoaderWrappers.get(sampleQueueIndex).skipData(positionUs);
   }
 
   private boolean suppressRead() {
@@ -463,33 +442,13 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 
     // Make sure all sample queues have got format assigned.
     for (int i = 0; i < rtspLoaderWrappers.size(); i++) {
-      RtspLoaderWrapper w = rtspLoaderWrappers.get(i);
-      if (w.sampleQueue.getUpstreamFormat() == null) {
+      if (rtspLoaderWrappers.get(i).sampleQueue.getUpstreamFormat() == null) {
         return;
-      }
-      for (int j = 0; j < w.extraSampleQueues.size(); j++) {
-        if (w.extraSampleQueues.get(j).getUpstreamFormat() == null) {
-          return;
-        }
       }
     }
 
     prepared = true;
-    ImmutableList<RtspLoaderWrapper> wrapperSnapshot = ImmutableList.copyOf(rtspLoaderWrappers);
-    trackGroups = buildTrackGroups(wrapperSnapshot);
-    ImmutableList.Builder<SampleQueue> queuesBuilder = new ImmutableList.Builder<>();
-    ImmutableList.Builder<RtspLoaderWrapper> wrappersBuilder = new ImmutableList.Builder<>();
-    for (int i = 0; i < wrapperSnapshot.size(); i++) {
-      RtspLoaderWrapper w = wrapperSnapshot.get(i);
-      queuesBuilder.add(w.sampleQueue);
-      wrappersBuilder.add(w);
-      for (int j = 0; j < w.extraSampleQueues.size(); j++) {
-        queuesBuilder.add(w.extraSampleQueues.get(j));
-        wrappersBuilder.add(w);
-      }
-    }
-    flatSampleQueues = queuesBuilder.build();
-    flatWrappers = wrappersBuilder.build();
+    trackGroups = buildTrackGroups(ImmutableList.copyOf(rtspLoaderWrappers));
     checkNotNull(callback).onPrepared(/* mediaPeriod= */ this);
   }
 
@@ -506,29 +465,16 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
         return false;
       }
     }
-    for (int i = 0; i < rtspLoaderWrappers.size(); i++) {
-      List<SampleQueue> extras = rtspLoaderWrappers.get(i).extraSampleQueues;
-      for (int j = 0; j < extras.size(); j++) {
-        extras.get(j).seekTo(positionUs, /* allowTimeBeyondBuffer= */ true);
-      }
-    }
     return true;
   }
 
   private void maybeSetupTracks() {
-    if (setupRequested) {
-      return;
-    }
-    if (selectedLoadInfos.isEmpty()) {
-      return;
-    }
     boolean transportReady = true;
     for (int i = 0; i < selectedLoadInfos.size(); i++) {
       transportReady &= selectedLoadInfos.get(i).isTransportReady();
     }
 
-    if (transportReady) {
-      setupRequested = true;
+    if (transportReady && trackSelected) {
       rtspClient.setupSelectedTracks(selectedLoadInfos);
     }
   }
@@ -543,13 +489,12 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
   private static ImmutableList<TrackGroup> buildTrackGroups(
       ImmutableList<RtspLoaderWrapper> rtspLoaderWrappers) {
     ImmutableList.Builder<TrackGroup> listBuilder = new ImmutableList.Builder<>();
-    int groupId = 0;
+    SampleQueue sampleQueue;
     for (int i = 0; i < rtspLoaderWrappers.size(); i++) {
-      RtspLoaderWrapper w = rtspLoaderWrappers.get(i);
-      listBuilder.add(new TrackGroup(Integer.toString(groupId++), checkNotNull(w.sampleQueue.getUpstreamFormat())));
-      for (int j = 0; j < w.extraSampleQueues.size(); j++) {
-        listBuilder.add(new TrackGroup(Integer.toString(groupId++), checkNotNull(w.extraSampleQueues.get(j).getUpstreamFormat())));
-      }
+      sampleQueue = rtspLoaderWrappers.get(i).sampleQueue;
+      listBuilder.add(
+          new TrackGroup(
+              /* id= */ Integer.toString(i), checkNotNull(sampleQueue.getUpstreamFormat())));
     }
     return listBuilder.build();
   }
@@ -557,22 +502,15 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
   // All interactions are on the loading thread
   private final class ExtractorOutputImpl implements ExtractorOutput {
 
-    private final ExtraTrackOutputProvider extraProvider;
-    private final TrackOutput primaryOutput;
-    private boolean primaryGiven;
+    private final TrackOutput trackOutput;
 
-    ExtractorOutputImpl(TrackOutput primaryOutput, ExtraTrackOutputProvider extraProvider) {
-      this.primaryOutput = primaryOutput;
-      this.extraProvider = extraProvider;
+    private ExtractorOutputImpl(TrackOutput trackOutput) {
+      this.trackOutput = trackOutput;
     }
 
     @Override
     public TrackOutput track(int id, int type) {
-      if (!primaryGiven) {
-        primaryGiven = true;
-        return primaryOutput;
-      }
-      return extraProvider.requestTrack(type);
+      return trackOutput;
     }
 
     @Override
@@ -584,11 +522,6 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
     public void seekMap(SeekMap seekMap) {
       // RTSP does not support seek map.
     }
-  }
-
-  @FunctionalInterface
-  private interface ExtraTrackOutputProvider {
-    TrackOutput requestTrack(int trackType);
   }
 
   private final class InternalListener
@@ -635,23 +568,23 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
         long loadDurationMs,
         IOException error,
         int errorCount) {
+      boolean isBindException = error.getCause() instanceof BindException;
+      if (isBindException) {
+        // Allow for retry on RTP port open failure by catching BindException. Two ports are
+        // opened for each RTP stream, the first port number is auto assigned by the system, while
+        // the second is manually selected. It is thus possible that the second port fails to
+        // bind. Failing is more likely when running in a server-side testing environment, it is
+        // less likely on real devices.
+        if (portBindingRetryCount++ < PORT_BINDING_MAX_RETRY_COUNT) {
+          return Loader.RETRY;
+        }
+      }
+
       if (!prepared) {
         preparationError = error;
-      } else {
-        if (error.getCause() instanceof BindException) {
-          // Allow for retry on RTP port open failure by catching BindException. Two ports are
-          // opened for each RTP stream, the first port number is auto assigned by the system, while
-          // the second is manually selected. It is thus possible that the second port fails to
-          // bind. Failing is more likely when running in a server-side testing environment, it is
-          // less likely on real devices.
-          if (portBindingRetryCount++ < PORT_BINDING_MAX_RETRY_COUNT) {
-            return Loader.RETRY;
-          }
-        } else {
-          playbackException =
-              new RtspPlaybackException(
-                  /* message= */ loadable.rtspMediaTrack.uri.toString(), error);
-        }
+      } else if (!isBindException) {
+        playbackException =
+            new RtspPlaybackException(/* message= */ loadable.rtspMediaTrack.uri.toString(), error);
       }
       return Loader.DONT_RETRY;
     }
@@ -752,7 +685,6 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
         RtspLoaderWrapper loaderWrapper =
             new RtspLoaderWrapper(rtspMediaTrack, /* trackId= */ i, rtpDataChannelFactory);
         rtspLoaderWrappers.add(loaderWrapper);
-        selectedLoadInfos.add(loaderWrapper.loadInfo);
         loaderWrapper.startLoading();
       }
 
@@ -768,7 +700,6 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
   private void retryWithRtpTcp() {
     // Retry should only run once.
     isUsingRtpTcp = true;
-    setupRequested = false;
 
     rtspClient.retryWithRtpTcp();
 
@@ -855,7 +786,6 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 
     private final Loader loader;
     private final SampleQueue sampleQueue;
-    final List<SampleQueue> extraSampleQueues;
     private boolean canceled;
     private boolean released;
 
@@ -868,8 +798,7 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
         RtspMediaTrack mediaTrack, int trackId, RtpDataChannel.Factory rtpDataChannelFactory) {
       loader = new Loader("ExoPlayer:RtspMediaPeriod:RtspLoaderWrapper " + trackId);
       sampleQueue = SampleQueue.createWithoutDrm(allocator);
-      extraSampleQueues = new ArrayList<>();
-      loadInfo = new RtpLoadInfo(mediaTrack, trackId, sampleQueue, extraSampleQueues, rtpDataChannelFactory);
+      loadInfo = new RtpLoadInfo(mediaTrack, trackId, sampleQueue, rtpDataChannelFactory);
       sampleQueue.setUpstreamFormatChangeListener(internalListener);
     }
 
@@ -878,20 +807,28 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
      * has been queued.
      */
     public long getBufferedPositionUs() {
-      long pos = sampleQueue.getLargestQueuedTimestampUs();
-      for (int i = 0; i < extraSampleQueues.size(); i++) {
-        long extraPos = extraSampleQueues.get(i).getLargestQueuedTimestampUs();
-        if (extraPos != Long.MIN_VALUE) {
-          pos = (pos == Long.MIN_VALUE) ? extraPos : min(pos, extraPos);
-        }
-      }
-      return pos;
+      return sampleQueue.getLargestQueuedTimestampUs();
     }
 
     /** Starts loading. */
     public void startLoading() {
       loader.startLoading(
           loadInfo.loadable, /* callback= */ internalListener, /* defaultMinRetryCount= */ 0);
+    }
+
+    public boolean isSampleQueueReady() {
+      return sampleQueue.isReady(/* loadingFinished= */ canceled);
+    }
+
+    public @ReadDataResult int read(
+        FormatHolder formatHolder, DecoderInputBuffer buffer, @ReadFlags int readFlags) {
+      return sampleQueue.read(formatHolder, buffer, readFlags, /* loadingFinished= */ canceled);
+    }
+
+    public int skipData(long positionUs) {
+      int skipCount = sampleQueue.getSkipCount(positionUs, /* allowEndOfQueue= */ canceled);
+      sampleQueue.skip(skipCount);
+      return skipCount;
     }
 
     /** Cancels loading. */
@@ -919,10 +856,6 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
         loadInfo.loadable.resetForSeek();
         sampleQueue.reset();
         sampleQueue.setStartTimeUs(positionUs);
-        for (int i = 0; i < extraSampleQueues.size(); i++) {
-          extraSampleQueues.get(i).reset();
-          extraSampleQueues.get(i).setStartTimeUs(positionUs);
-        }
       }
     }
 
@@ -933,9 +866,6 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
       }
       loader.release();
       sampleQueue.release();
-      for (int i = 0; i < extraSampleQueues.size(); i++) {
-        extraSampleQueues.get(i).release();
-      }
       released = true;
     }
   }
@@ -953,8 +883,7 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
     public RtpLoadInfo(
         RtspMediaTrack mediaTrack,
         int trackId,
-        SampleQueue primaryQueue,
-        List<SampleQueue> extraSampleQueues,
+        TrackOutput trackOutput,
         RtpDataChannel.Factory rtpDataChannelFactory) {
       this.mediaTrack = mediaTrack;
 
@@ -974,19 +903,12 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
             maybeSetupTracks();
           };
 
-      ExtraTrackOutputProvider extraProvider = type -> {
-        SampleQueue extra = SampleQueue.createWithoutDrm(allocator);
-        extra.setUpstreamFormatChangeListener(internalListener);
-        extraSampleQueues.add(extra);
-        return extra;
-      };
-
       this.loadable =
           new RtpDataLoadable(
               trackId,
               mediaTrack,
               /* eventListener= */ transportEventListener,
-              /* output= */ new ExtractorOutputImpl(primaryQueue, extraProvider),
+              /* output= */ new ExtractorOutputImpl(trackOutput),
               rtpDataChannelFactory);
     }
 

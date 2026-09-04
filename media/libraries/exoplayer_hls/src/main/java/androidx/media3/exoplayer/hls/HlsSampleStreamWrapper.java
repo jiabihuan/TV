@@ -49,6 +49,7 @@ import androidx.media3.exoplayer.SeekParameters;
 import androidx.media3.exoplayer.drm.DrmSession;
 import androidx.media3.exoplayer.drm.DrmSessionEventListener;
 import androidx.media3.exoplayer.drm.DrmSessionManager;
+import androidx.media3.exoplayer.hls.playlist.HlsRedundantGroup;
 import androidx.media3.exoplayer.source.LoadEventInfo;
 import androidx.media3.exoplayer.source.MediaLoadData;
 import androidx.media3.exoplayer.source.MediaSourceEventListener;
@@ -130,7 +131,10 @@ import org.checkerframework.checker.nullness.qual.RequiresNonNull;
   public static final int SAMPLE_QUEUE_INDEX_NO_MAPPING_FATAL = -2;
   public static final int SAMPLE_QUEUE_INDEX_NO_MAPPING_NON_FATAL = -3;
 
-  private static final Set<Integer> MAPPABLE_TYPES = Collections.emptySet();
+  private static final Set<Integer> MAPPABLE_TYPES =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(C.TRACK_TYPE_AUDIO, C.TRACK_TYPE_VIDEO, C.TRACK_TYPE_METADATA)));
 
   private final String uid;
   private final @C.TrackType int trackType;
@@ -744,11 +748,19 @@ import org.checkerframework.checker.nullness.qual.RequiresNonNull;
    *     C#TIME_END_OF_SOURCE} to not set an end position.
    */
   public void setEndPositionUs(long endPositionUs) {
+    boolean continueLoadingNeeded =
+        loadingFinished
+            && this.endPositionUs != C.TIME_END_OF_SOURCE
+            && (endPositionUs == C.TIME_END_OF_SOURCE || endPositionUs > this.endPositionUs);
     this.endPositionUs = endPositionUs;
     if (sampleQueuesBuilt) {
       for (HlsSampleQueue sampleQueue : sampleQueues) {
         sampleQueue.setReadEndTimeUs(endPositionUs);
       }
+    }
+    if (continueLoadingNeeded) {
+      loadingFinished = false;
+      callback.onContinueLoadingRequested(this);
     }
   }
 
@@ -835,7 +847,11 @@ import org.checkerframework.checker.nullness.qual.RequiresNonNull;
     @Nullable Chunk loadable = nextChunkHolder.chunk;
     @Nullable Uri playlistUrlToLoad = nextChunkHolder.playlistUrl;
 
-    if (endOfStream) {
+    boolean nextChunkBeyondEndPositionUs =
+        loadable != null
+            && endPositionUs != C.TIME_END_OF_SOURCE
+            && loadable.startTimeUs >= endPositionUs;
+    if (endOfStream || nextChunkBeyondEndPositionUs) {
       pendingResetPositionUs = C.TIME_UNSET;
       loadingFinished = true;
       return true;
@@ -898,8 +914,14 @@ import org.checkerframework.checker.nullness.qual.RequiresNonNull;
     }
 
     if (loader.isLoading()) {
-      checkNotNull(loadingChunk);
-      if (chunkSource.shouldCancelLoad(positionUs, loadingChunk, readOnlyMediaChunks)) {
+      Chunk loadingChunk = checkNotNull(this.loadingChunk);
+      if (isMediaChunk(loadingChunk)
+          && !canDiscardUpstreamMediaChunksFromIndex(mediaChunks.size() - 1)) {
+        // Can't cancel anymore because the renderers have read from this chunk.
+        return;
+      }
+      if ((endPositionUs != C.TIME_END_OF_SOURCE && loadingChunk.startTimeUs >= endPositionUs)
+          || chunkSource.shouldCancelLoad(positionUs, loadingChunk, readOnlyMediaChunks)) {
         loader.cancelLoading();
       }
       return;
@@ -915,12 +937,22 @@ import org.checkerframework.checker.nullness.qual.RequiresNonNull;
       discardUpstream(newQueueSize);
     }
 
-    int preferredQueueSize = chunkSource.getPreferredQueueSize(positionUs, readOnlyMediaChunks);
+    int preferredQueueSize =
+        min(mediaChunks.size(), chunkSource.getPreferredQueueSize(positionUs, readOnlyMediaChunks));
+    boolean discardedDataBeyondEndPositionUs = false;
+    if (endPositionUs != C.TIME_END_OF_SOURCE) {
+      while (preferredQueueSize > 0
+          && mediaChunks.get(preferredQueueSize - 1).startTimeUs >= endPositionUs) {
+        preferredQueueSize--;
+        discardedDataBeyondEndPositionUs = true;
+      }
+    }
     if (preferredQueueSize < mediaChunks.size()) {
       discardUpstream(preferredQueueSize);
     }
 
-    if (haveSampleQueuesReachedEndTimeUs()) {
+    if (discardedDataBeyondEndPositionUs) {
+      pendingResetPositionUs = C.TIME_UNSET;
       loadingFinished = true;
     }
   }
@@ -930,19 +962,18 @@ import org.checkerframework.checker.nullness.qual.RequiresNonNull;
   @Override
   public void onLoadStarted(
       Chunk loadable, long elapsedRealtimeMs, long loadDurationMs, int retryCount) {
-    LoadEventInfo loadEventInfo =
-        retryCount == 0
-            ? new LoadEventInfo(loadable.loadTaskId, loadable.dataSpec, elapsedRealtimeMs)
-            : new LoadEventInfo(
-                loadable.loadTaskId,
-                loadable.dataSpec,
-                loadable.getUri(),
-                loadable.getResponseHeaders(),
-                elapsedRealtimeMs,
-                loadDurationMs,
-                loadable.bytesLoaded());
+    LoadEventInfo.Builder loadEventInfo =
+        new LoadEventInfo.Builder(loadable.loadTaskId, loadable.dataSpec, elapsedRealtimeMs)
+            .setSteeredPathwayId(loadable.steeredPathwayId);
+    if (retryCount != 0) {
+      loadEventInfo
+          .setUri(loadable.getUri())
+          .setResponseHeaders(loadable.getResponseHeaders())
+          .setLoadDurationMs(loadDurationMs)
+          .setBytesLoaded(loadable.bytesLoaded());
+    }
     mediaSourceEventDispatcher.loadStarted(
-        loadEventInfo,
+        loadEventInfo.build(),
         loadable.type,
         trackType,
         loadable.trackFormat,
@@ -958,14 +989,13 @@ import org.checkerframework.checker.nullness.qual.RequiresNonNull;
     loadingChunk = null;
     chunkSource.onChunkLoadCompleted(loadable);
     LoadEventInfo loadEventInfo =
-        new LoadEventInfo(
-            loadable.loadTaskId,
-            loadable.dataSpec,
-            loadable.getUri(),
-            loadable.getResponseHeaders(),
-            elapsedRealtimeMs,
-            loadDurationMs,
-            loadable.bytesLoaded());
+        new LoadEventInfo.Builder(loadable.loadTaskId, loadable.dataSpec, elapsedRealtimeMs)
+            .setUri(loadable.getUri())
+            .setSteeredPathwayId(loadable.steeredPathwayId)
+            .setResponseHeaders(loadable.getResponseHeaders())
+            .setLoadDurationMs(loadDurationMs)
+            .setBytesLoaded(loadable.bytesLoaded())
+            .build();
     loadErrorHandlingPolicy.onLoadTaskConcluded(loadable.loadTaskId);
     mediaSourceEventDispatcher.loadCompleted(
         loadEventInfo,
@@ -988,14 +1018,13 @@ import org.checkerframework.checker.nullness.qual.RequiresNonNull;
       Chunk loadable, long elapsedRealtimeMs, long loadDurationMs, boolean released) {
     loadingChunk = null;
     LoadEventInfo loadEventInfo =
-        new LoadEventInfo(
-            loadable.loadTaskId,
-            loadable.dataSpec,
-            loadable.getUri(),
-            loadable.getResponseHeaders(),
-            elapsedRealtimeMs,
-            loadDurationMs,
-            loadable.bytesLoaded());
+        new LoadEventInfo.Builder(loadable.loadTaskId, loadable.dataSpec, elapsedRealtimeMs)
+            .setUri(loadable.getUri())
+            .setSteeredPathwayId(loadable.steeredPathwayId)
+            .setResponseHeaders(loadable.getResponseHeaders())
+            .setLoadDurationMs(loadDurationMs)
+            .setBytesLoaded(loadable.bytesLoaded())
+            .build();
     loadErrorHandlingPolicy.onLoadTaskConcluded(loadable.loadTaskId);
     mediaSourceEventDispatcher.loadCanceled(
         loadEventInfo,
@@ -1037,14 +1066,13 @@ import org.checkerframework.checker.nullness.qual.RequiresNonNull;
     }
     long bytesLoaded = loadable.bytesLoaded();
     LoadEventInfo loadEventInfo =
-        new LoadEventInfo(
-            loadable.loadTaskId,
-            loadable.dataSpec,
-            loadable.getUri(),
-            loadable.getResponseHeaders(),
-            elapsedRealtimeMs,
-            loadDurationMs,
-            bytesLoaded);
+        new LoadEventInfo.Builder(loadable.loadTaskId, loadable.dataSpec, elapsedRealtimeMs)
+            .setUri(loadable.getUri())
+            .setSteeredPathwayId(loadable.steeredPathwayId)
+            .setResponseHeaders(loadable.getResponseHeaders())
+            .setLoadDurationMs(loadDurationMs)
+            .setBytesLoaded(bytesLoaded)
+            .build();
     MediaLoadData mediaLoadData =
         new MediaLoadData(
             loadable.type,
@@ -1136,21 +1164,6 @@ import org.checkerframework.checker.nullness.qual.RequiresNonNull;
     }
   }
 
-  private boolean haveSampleQueuesReachedEndTimeUs() {
-    if (!sampleQueuesBuilt || endPositionUs == C.TIME_END_OF_SOURCE) {
-      return false;
-    }
-    boolean endPositionReached = true;
-    for (int i = 0; i < sampleQueues.length; i++) {
-      // Ignore non-AV tracks, which may be sparse or poorly interleaved.
-      if (sampleQueuesEnabledStates[i]
-          && (sampleQueueIsAudioVideoFlags[i] || !haveAudioVideoSampleQueues)) {
-        endPositionReached &= sampleQueues[i].hasQueuedTimestampsUpToReadEndTimeUs();
-      }
-    }
-    return endPositionReached;
-  }
-
   private void discardUpstream(int preferredQueueSize) {
     checkState(!loader.isLoading());
 
@@ -1168,7 +1181,7 @@ import org.checkerframework.checker.nullness.qual.RequiresNonNull;
     long endTimeUs = getLastMediaChunk().endTimeUs;
     HlsMediaChunk firstRemovedChunk = discardUpstreamMediaChunksFromIndex(newQueueSize);
     if (mediaChunks.isEmpty()) {
-      pendingResetPositionUs = lastSeekPositionUs;
+      pendingResetPositionUs = max(lastSeekPositionUs, firstRemovedChunk.startTimeUs);
     } else {
       getLast(mediaChunks).invalidateExtractor();
     }
@@ -1348,6 +1361,11 @@ import org.checkerframework.checker.nullness.qual.RequiresNonNull;
         }
       }
     }
+  }
+
+  /** Returns the redundant groups for this sample stream wrapper. */
+  public ImmutableList<HlsRedundantGroup> getRedundantGroups() {
+    return chunkSource.getRedundantGroups();
   }
 
   // Internal methods.

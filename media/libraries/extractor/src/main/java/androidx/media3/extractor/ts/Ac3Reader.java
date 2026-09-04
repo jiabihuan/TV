@@ -16,6 +16,7 @@
 package androidx.media3.extractor.ts;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 import static java.lang.Math.min;
 import static java.lang.annotation.ElementType.TYPE_USE;
 
@@ -64,7 +65,6 @@ public final class Ac3Reader implements ElementaryStreamReader {
 
   private @MonotonicNonNull String formatId;
   private @MonotonicNonNull TrackOutput output;
-  private @MonotonicNonNull Format format;
 
   private @State int state;
   private int bytesRead;
@@ -74,14 +74,11 @@ public final class Ac3Reader implements ElementaryStreamReader {
 
   // Used when parsing the header.
   private long sampleDurationUs;
+  private @MonotonicNonNull Format format;
   private int sampleSize;
-  private @SyncFrameInfo.StreamType int currentStreamType;
 
   // Used when reading the samples.
   private long timeUs;
-  private int pendingTotalSampleSize;
-  private long pendingTimeUs;
-
 
   /**
    * Constructs a new reader for (E-)AC-3 elementary streams.
@@ -105,8 +102,6 @@ public final class Ac3Reader implements ElementaryStreamReader {
     headerScratchBytes = new ParsableByteArray(headerScratchBits.data);
     state = STATE_FINDING_SYNC;
     timeUs = C.TIME_UNSET;
-    currentStreamType = SyncFrameInfo.STREAM_TYPE_UNDEFINED;
-    pendingTimeUs = C.TIME_UNSET;
     this.language = language;
     this.roleFlags = roleFlags;
     this.containerMimeType = containerMimeType;
@@ -118,9 +113,6 @@ public final class Ac3Reader implements ElementaryStreamReader {
     bytesRead = 0;
     lastByteWas0B = false;
     timeUs = C.TIME_UNSET;
-    currentStreamType = SyncFrameInfo.STREAM_TYPE_UNDEFINED;
-    pendingTotalSampleSize = 0;
-    pendingTimeUs = C.TIME_UNSET;
   }
 
   @Override
@@ -132,9 +124,7 @@ public final class Ac3Reader implements ElementaryStreamReader {
 
   @Override
   public void packetStarted(long pesTimeUs, @TsPayloadReader.Flags int flags) {
-    if (pesTimeUs != C.TIME_UNSET) {
-      timeUs = pesTimeUs;
-    }
+    timeUs = pesTimeUs;
   }
 
   @Override
@@ -154,17 +144,9 @@ public final class Ac3Reader implements ElementaryStreamReader {
         case STATE_READING_HEADER:
           if (continueRead(data, headerScratchBytes.getData(), HEADER_SIZE)) {
             parseHeader();
-            if (sampleSize == C.LENGTH_UNSET) {
-              state = STATE_FINDING_SYNC;
-            } else {
-              if (currentStreamType != SyncFrameInfo.STREAM_TYPE_TYPE1 && pendingTotalSampleSize > 0) {
-                output.sampleMetadata(pendingTimeUs, C.BUFFER_FLAG_KEY_FRAME, pendingTotalSampleSize, 0, null);
-                pendingTotalSampleSize = 0;
-              }
-              headerScratchBytes.setPosition(0);
-              output.sampleData(headerScratchBytes, HEADER_SIZE);
-              state = STATE_READING_SAMPLE;
-            }
+            headerScratchBytes.setPosition(0);
+            output.sampleData(headerScratchBytes, HEADER_SIZE);
+            state = STATE_READING_SAMPLE;
           }
           break;
         case STATE_READING_SAMPLE:
@@ -172,32 +154,16 @@ public final class Ac3Reader implements ElementaryStreamReader {
           output.sampleData(data, bytesToRead);
           bytesRead += bytesToRead;
           if (bytesRead == sampleSize) {
-            if (currentStreamType == SyncFrameInfo.STREAM_TYPE_TYPE1) {
-              pendingTotalSampleSize += sampleSize;
-            } else {
-              if (timeUs == C.TIME_UNSET) {
-                pendingTotalSampleSize = 0;
-                state = STATE_FINDING_SYNC;
-                break;
-              }
-              pendingTimeUs = timeUs;
-              pendingTotalSampleSize = sampleSize;
-              timeUs += sampleDurationUs;
-            }
+            // packetStarted method must be called before reading samples.
+            checkState(timeUs != C.TIME_UNSET);
+            output.sampleMetadata(timeUs, C.BUFFER_FLAG_KEY_FRAME, sampleSize, 0, null);
+            timeUs += sampleDurationUs;
             state = STATE_FINDING_SYNC;
           }
           break;
         default:
           break;
       }
-    }
-  }
-
-  @Override
-  public void packetFinished(boolean isEndOfInput) {
-    if (isEndOfInput && pendingTotalSampleSize > 0) {
-      checkNotNull(output).sampleMetadata(pendingTimeUs, C.BUFFER_FLAG_KEY_FRAME, pendingTotalSampleSize, 0, null);
-      pendingTotalSampleSize = 0;
     }
   }
 
@@ -246,44 +212,30 @@ public final class Ac3Reader implements ElementaryStreamReader {
   private void parseHeader() {
     headerScratchBits.setPosition(0);
     SyncFrameInfo frameInfo = Ac3Util.parseAc3SyncframeInfo(headerScratchBits);
-    if (frameInfo.mimeType == null || frameInfo.frameSize == C.LENGTH_UNSET) {
-      sampleSize = C.LENGTH_UNSET;
-      return;
+    if (format == null
+        || frameInfo.channelCount != format.channelCount
+        || frameInfo.sampleRate != format.sampleRate
+        || !Objects.equals(frameInfo.mimeType, format.sampleMimeType)) {
+      Format.Builder formatBuilder =
+          new Format.Builder()
+              .setId(formatId)
+              .setContainerMimeType(containerMimeType)
+              .setSampleMimeType(frameInfo.mimeType)
+              .setChannelCount(frameInfo.channelCount)
+              .setSampleRate(frameInfo.sampleRate)
+              .setLanguage(language)
+              .setRoleFlags(roleFlags)
+              .setPeakBitrate(frameInfo.bitrate);
+      // AC3 has constant bitrate, so averageBitrate = peakBitrate
+      if (MimeTypes.AUDIO_AC3.equals(frameInfo.mimeType)) {
+        formatBuilder.setAverageBitrate(frameInfo.bitrate);
+      }
+      format = formatBuilder.build();
+      output.format(format);
     }
-    currentStreamType = frameInfo.streamType;
     sampleSize = frameInfo.frameSize;
-    if (currentStreamType == SyncFrameInfo.STREAM_TYPE_TYPE1 && pendingTotalSampleSize == 0) {
-      sampleSize = C.LENGTH_UNSET;
-      return;
-    }
-    String mimeType = frameInfo.mimeType;
-    if (format != null) {
-      String lockedMime = format.sampleMimeType;
-      if (MimeTypes.AUDIO_E_AC3_JOC.equals(lockedMime)) {
-        mimeType = MimeTypes.AUDIO_E_AC3_JOC;
-      } else if (MimeTypes.AUDIO_E_AC3.equals(lockedMime) && !MimeTypes.AUDIO_E_AC3_JOC.equals(mimeType)) {
-        mimeType = MimeTypes.AUDIO_E_AC3;
-      }
-    }
-    if (currentStreamType != SyncFrameInfo.STREAM_TYPE_TYPE1) {
-      if (format == null || frameInfo.channelCount != format.channelCount || frameInfo.sampleRate != format.sampleRate || !Objects.equals(mimeType, format.sampleMimeType)) {
-        Format.Builder formatBuilder =
-            new Format.Builder()
-                .setId(formatId)
-                .setContainerMimeType(containerMimeType)
-                .setSampleMimeType(mimeType)
-                .setChannelCount(frameInfo.channelCount)
-                .setSampleRate(frameInfo.sampleRate)
-                .setLanguage(language)
-                .setRoleFlags(roleFlags)
-                .setPeakBitrate(frameInfo.bitrate);
-        if (MimeTypes.AUDIO_AC3.equals(mimeType)) {
-          formatBuilder.setAverageBitrate(frameInfo.bitrate);
-        }
-        format = formatBuilder.build();
-        output.format(format);
-      }
-      sampleDurationUs = C.MICROS_PER_SECOND * frameInfo.sampleCount / format.sampleRate;
-    }
+    // In this class a sample is an access unit (syncframe in AC-3), but Format#sampleRate
+    // specifies the number of PCM audio samples per second.
+    sampleDurationUs = C.MICROS_PER_SECOND * frameInfo.sampleCount / format.sampleRate;
   }
 }

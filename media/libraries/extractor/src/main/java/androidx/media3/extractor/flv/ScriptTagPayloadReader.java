@@ -15,8 +15,6 @@
  */
 package androidx.media3.extractor.flv;
 
-import static java.lang.Math.min;
-
 import androidx.annotation.Nullable;
 import androidx.media3.common.C;
 import androidx.media3.common.util.ParsableByteArray;
@@ -41,12 +39,10 @@ import java.util.Map;
   private static final int AMF_TYPE_BOOLEAN = 1;
   private static final int AMF_TYPE_STRING = 2;
   private static final int AMF_TYPE_OBJECT = 3;
-  private static final int AMF_TYPE_REFERENCE = 7;
   private static final int AMF_TYPE_ECMA_ARRAY = 8;
   private static final int AMF_TYPE_END_MARKER = 9;
   private static final int AMF_TYPE_STRICT_ARRAY = 10;
   private static final int AMF_TYPE_DATE = 11;
-  private static final int AMF_TYPE_LONG_STRING = 12;
 
   private long durationUs;
   private long[] keyFrameTimesUs;
@@ -98,15 +94,11 @@ import java.util.Map;
       return false;
     }
     int type = readAmfType(data);
-    Map<String, Object> metadata;
-    if (type == AMF_TYPE_ECMA_ARRAY) {
-      metadata = readAmfEcmaArray(data);
-    } else if (type == AMF_TYPE_OBJECT) {
-      metadata = readAmfObject(data);
-    } else {
+    if (type != AMF_TYPE_ECMA_ARRAY) {
       // We're not interested in this metadata.
       return false;
     }
+    Map<String, Object> metadata = readAmfEcmaArray(data);
     // Set the duration to the value contained in the metadata, if present.
     @Nullable Object durationSecondsObj = metadata.get(KEY_DURATION);
     if (durationSecondsObj instanceof Double) {
@@ -176,26 +168,9 @@ import java.util.Map;
    */
   private static String readAmfString(ParsableByteArray data) {
     int size = data.readUnsignedShort();
-    if (size > data.bytesLeft()) {
-      size = data.bytesLeft();
-    }
-    return data.readString(size);
-  }
-
-  /**
-   * Read a long string (AMF type 0x0C) from an AMF encoded buffer. Long strings use a 4-byte
-   * length prefix rather than the 2-byte prefix used by regular strings. Mirroring FFmpeg
-   * flvdec.c which handles both variants.
-   *
-   * @param data The buffer from which to read.
-   * @return The value read from the buffer.
-   */
-  private static String readAmfLongString(ParsableByteArray data) {
-    int size = data.readUnsignedIntToInt();
-    if (size < 0 || size > data.bytesLeft()) {
-      size = data.bytesLeft();
-    }
-    return data.readString(size);
+    int position = data.getPosition();
+    data.skipBytes(size);
+    return new String(data.getData(), position, size);
   }
 
   /**
@@ -206,11 +181,8 @@ import java.util.Map;
    */
   private static ArrayList<Object> readAmfStrictArray(ParsableByteArray data) {
     int count = data.readUnsignedIntToInt();
-    ArrayList<Object> list = new ArrayList<>();
+    ArrayList<Object> list = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
-      if (data.bytesLeft() == 0) {
-        break;
-      }
       int type = readAmfType(data);
       Object value = readAmfData(data, type);
       if (value != null) {
@@ -228,11 +200,8 @@ import java.util.Map;
    */
   private static HashMap<String, Object> readAmfObject(ParsableByteArray data) {
     HashMap<String, Object> array = new HashMap<>();
-    while (data.bytesLeft() >= 3) {
+    while (true) {
       String key = readAmfString(data);
-      if (data.bytesLeft() == 0) {
-        break;
-      }
       int type = readAmfType(data);
       if (type == AMF_TYPE_END_MARKER) {
         break;
@@ -252,8 +221,17 @@ import java.util.Map;
    * @return The value read from the buffer.
    */
   private static HashMap<String, Object> readAmfEcmaArray(ParsableByteArray data) {
-    data.skipBytes(4);
-    return readAmfObject(data);
+    int count = data.readUnsignedIntToInt();
+    HashMap<String, Object> array = new HashMap<>(count);
+    for (int i = 0; i < count; i++) {
+      String key = readAmfString(data);
+      int type = readAmfType(data);
+      Object value = readAmfData(data, type);
+      if (value != null) {
+        array.put(key, value);
+      }
+    }
+    return array;
   }
 
   /**
@@ -285,11 +263,6 @@ import java.util.Map;
         return readAmfStrictArray(data);
       case AMF_TYPE_DATE:
         return readAmfDate(data);
-      case AMF_TYPE_LONG_STRING:
-        return readAmfLongString(data);
-      case AMF_TYPE_REFERENCE:
-        data.skipBytes(min(2, data.bytesLeft()));
-        return null;
       default:
         // We don't log a warning because there are types that we knowingly don't support.
         return null;

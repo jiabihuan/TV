@@ -39,6 +39,7 @@ import android.text.TextUtils;
 import androidx.annotation.IntDef;
 import androidx.annotation.IntRange;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresPermission;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.Player;
@@ -102,7 +103,7 @@ public abstract class MediaLibraryService extends MediaSessionService {
    * <tr>
    *   <td>
    *     {@code SDK_INT < 28}<br>
-   *     for {@link Callback#onConnect onConnect}<br>
+   *     for {@link Callback#onConnectAsync onConnectAsync}<br>
    *     and {@link Callback#onGetLibraryRoot onGetLibraryRoot}
    *   </td>
    *   <td>Actual package name via {@link Context#getPackageName()}</td>
@@ -559,8 +560,8 @@ public abstract class MediaLibraryService extends MediaSessionService {
        *
        * <p>Controllers that connect have the custom layout of the session available with the
        * initial connection result by default. A custom layout specific to a controller can be set
-       * when the controller {@linkplain MediaLibrarySession.Callback#onConnect connects} by using
-       * an {@link ConnectionResult.AcceptedResultBuilder}.
+       * when the controller {@linkplain MediaLibrarySession.Callback#onConnectAsync connects} by
+       * using an {@link ConnectionResult.AcceptedResultBuilder}.
        *
        * <p>On the controller side, {@link CommandButton#isEnabled} is overridden according to the
        * available commands of the controller.
@@ -581,7 +582,7 @@ public abstract class MediaLibraryService extends MediaSessionService {
       /**
        * Sets the media button preferences.
        *
-       * <p>The button are converted to custom actions in the platform media session playback state
+       * <p>The button is converted to custom actions in the platform media session playback state
        * for platform or legacy {@code android.support.v4.media.session.MediaControllerCompat}
        * controllers (see {@code
        * PlaybackStateCompat.Builder#addCustomAction(PlaybackStateCompat.CustomAction)}). When
@@ -590,11 +591,11 @@ public abstract class MediaLibraryService extends MediaSessionService {
        *
        * <p>Controllers that connect have the media button preferences of the session available with
        * the initial connection result by default. Media button preferences specific to a controller
-       * can be set when the controller {@linkplain MediaSession.Callback#onConnect connects} by
-       * using an {@link ConnectionResult.AcceptedResultBuilder}.
+       * can be set when the controller {@linkplain MediaSession.Callback#onConnectAsync connects}
+       * by using an {@link ConnectionResult.AcceptedResultBuilder}.
        *
        * <p>Use {@code MediaSession.setMediaButtonPreferences(..)} to update the media button
-       * preferences during the life time of the session.
+       * preferences during the lifetime of the session.
        *
        * <p>On the controller side, the {@linkplain CommandButton#isEnabled enabled} flag is set to
        * {@code false} if the available commands of a controller do not allow to use a button.
@@ -683,6 +684,26 @@ public abstract class MediaLibraryService extends MediaSessionService {
       }
 
       /**
+       * Overrides the package name of the session created.
+       *
+       * <p>This method must not be used if the provided {@code packageNameOverride} is same as the
+       * package name of the application creating the session.
+       *
+       * <p>Interoperability: The value set by this method is ignored on API levels below 37 for
+       * legacy sessions and controllers.
+       *
+       * @param packageNameOverride The package name override of the session when created.
+       * @return This builder.
+       */
+      @UnstableApi
+      @CanIgnoreReturnValue
+      @RequiresPermission("android.permission.OVERRIDE_MEDIA_SESSION_OWNER")
+      @Override
+      public Builder setPackageNameOverride(String packageNameOverride) {
+        return super.setPackageNameOverride(packageNameOverride);
+      }
+
+      /**
        * Builds a {@link MediaLibrarySession}.
        *
        * @return A new session.
@@ -708,7 +729,8 @@ public abstract class MediaLibraryService extends MediaSessionService {
             bitmapLoader,
             playIfSuppressed,
             isPeriodicPositionUpdateEnabled,
-            libraryErrorReplicationMode);
+            libraryErrorReplicationMode,
+            packageNameOverride);
       }
     }
 
@@ -726,7 +748,8 @@ public abstract class MediaLibraryService extends MediaSessionService {
         BitmapLoader bitmapLoader,
         boolean playIfSuppressed,
         boolean isPeriodicPositionUpdateEnabled,
-        @LibraryErrorReplicationMode int libraryErrorReplicationMode) {
+        @LibraryErrorReplicationMode int libraryErrorReplicationMode,
+        @Nullable String overridePackageName) {
       super(
           context,
           id,
@@ -742,7 +765,8 @@ public abstract class MediaLibraryService extends MediaSessionService {
           playIfSuppressed,
           isPeriodicPositionUpdateEnabled,
           libraryErrorReplicationMode,
-          /* useLegacySurfaceHandling= */ false);
+          /* useLegacySurfaceHandling= */ false,
+          overridePackageName);
     }
 
     @Override
@@ -761,7 +785,8 @@ public abstract class MediaLibraryService extends MediaSessionService {
         boolean playIfSuppressed,
         boolean isPeriodicPositionUpdateEnabled,
         @LibraryErrorReplicationMode int libraryErrorReplicationMode,
-        boolean useLegacySurfaceHandling) {
+        boolean useLegacySurfaceHandling,
+        @Nullable String overridePackageName) {
       return new MediaLibrarySessionImpl(
           this,
           context,
@@ -777,7 +802,8 @@ public abstract class MediaLibraryService extends MediaSessionService {
           bitmapLoader,
           playIfSuppressed,
           isPeriodicPositionUpdateEnabled,
-          libraryErrorReplicationMode);
+          libraryErrorReplicationMode,
+          overridePackageName);
     }
 
     @Override

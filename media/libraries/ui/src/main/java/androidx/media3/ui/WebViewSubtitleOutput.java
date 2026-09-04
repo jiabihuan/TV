@@ -114,8 +114,7 @@ import java.util.Map;
       CaptionStyleCompat style,
       float textSize,
       @Cue.TextSizeType int textSizeType,
-      float bottomPaddingFraction,
-      float bottomPosition) {
+      float bottomPaddingFraction) {
     this.style = style;
     this.defaultTextSize = textSize;
     this.defaultTextSizeType = textSizeType;
@@ -139,14 +138,9 @@ import java.util.Map;
       // position info will be used when we get non-empty cue data in a future update() call.
       updateWebView();
     }
-    canvasSubtitleOutput.update(bitmapCues, style, textSize, textSizeType, bottomPaddingFraction, bottomPosition);
+    canvasSubtitleOutput.update(bitmapCues, style, textSize, textSizeType, bottomPaddingFraction);
     // Invalidate to trigger canvasSubtitleOutput to draw.
     invalidate();
-  }
-
-  @Override
-  public void setVideoBounds(int left, int top, int right, int bottom) {
-    canvasSubtitleOutput.setVideoBounds(left, top, right, bottom);
   }
 
   @Override

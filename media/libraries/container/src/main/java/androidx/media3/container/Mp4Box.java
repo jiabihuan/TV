@@ -150,12 +150,6 @@ public abstract class Mp4Box {
   public static final int TYPE_mp4a = 0x6d703461;
 
   @SuppressWarnings("ConstantCaseForConstants")
-  public static final int TYPE_av3a = 0x61763361;
-
-  @SuppressWarnings("ConstantCaseForConstants")
-  public static final int TYPE_a3as = 0x61336173;
-
-  @SuppressWarnings("ConstantCaseForConstants")
   public static final int TYPE__mp2 = 0x2e6d7032;
 
   @SuppressWarnings("ConstantCaseForConstants")
@@ -232,6 +226,15 @@ public abstract class Mp4Box {
 
   @SuppressWarnings("ConstantCaseForConstants")
   public static final int TYPE_tfhd = 0x74666864;
+
+  @SuppressWarnings({"ConstantCaseForConstants", "IdentifierName"})
+  public static final int TYPE_tfra = 0x74667261;
+
+  @SuppressWarnings({"ConstantCaseForConstants", "IdentifierName"})
+  public static final int TYPE_mfro = 0x6d66726f;
+
+  @SuppressWarnings({"ConstantCaseForConstants", "IdentifierName"})
+  public static final int TYPE_mfra = 0x6d667261;
 
   @SuppressWarnings("ConstantCaseForConstants")
   public static final int TYPE_trex = 0x74726578;
@@ -410,6 +413,15 @@ public abstract class Mp4Box {
   @SuppressWarnings("ConstantCaseForConstants")
   public static final int TYPE_smta = 0x736d7461;
 
+  @SuppressWarnings({"ConstantCaseForConstants", "IdentifierName"})
+  public static final int TYPE_chpl = 0x6368706c;
+
+  @SuppressWarnings({"ConstantCaseForConstants", "IdentifierName"})
+  public static final int TYPE_tref = 0x74726566;
+
+  @SuppressWarnings({"ConstantCaseForConstants", "IdentifierName"})
+  public static final int TYPE_chap = 0x63686170;
+
   @SuppressWarnings("ConstantCaseForConstants")
   public static final int TYPE_saut = 0x73617574;
 
@@ -448,6 +460,9 @@ public abstract class Mp4Box {
 
   @SuppressWarnings("ConstantCaseForConstants")
   public static final int TYPE_mett = 0x6d657474;
+
+  @SuppressWarnings({"ConstantCaseForConstants", "IdentifierName"})
+  public static final int TYPE_it35 = 0x69743335;
 
   @SuppressWarnings("ConstantCaseForConstants")
   public static final int TYPE_alac = 0x616c6163;

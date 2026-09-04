@@ -117,8 +117,6 @@ public final class FfmpegLibrary {
   @Nullable
   /* package */ static String getCodecName(String mimeType) {
     switch (mimeType) {
-      case MimeTypes.AUDIO_AV3A:
-        return "libarcdav3a";
       case MimeTypes.AUDIO_AAC:
         return "aac";
       case MimeTypes.AUDIO_MPEG:
@@ -133,6 +131,7 @@ public final class FfmpegLibrary {
       case MimeTypes.AUDIO_TRUEHD:
         return "truehd";
       case MimeTypes.AUDIO_DTS:
+      case MimeTypes.AUDIO_DTS_EXPRESS:
       case MimeTypes.AUDIO_DTS_HD:
         return "dca";
       case MimeTypes.AUDIO_VORBIS:

@@ -215,7 +215,7 @@ public final class DefaultMediaSourceFactory implements MediaSourceFactory {
     liveMaxOffsetMs = C.TIME_UNSET;
     liveMinSpeed = C.RATE_UNSET;
     liveMaxSpeed = C.RATE_UNSET;
-    parseSubtitlesDuringExtraction = false;
+    parseSubtitlesDuringExtraction = true;
   }
 
   @CanIgnoreReturnValue
@@ -499,6 +499,23 @@ public final class DefaultMediaSourceFactory implements MediaSourceFactory {
   }
 
   /**
+   * Sets whether to enable experimental HAGC (ST 2094-50) metadata playback support. When enabled,
+   * the player will automatically merge HAGC metadata tracks with the associated video track and
+   * deliver the metadata out-of-band to the decoder on API 37+.
+   *
+   * <p>The default value is {@code true}.
+   *
+   * @param enableHagcPlayback Whether experimental HAGC metadata playback is enabled.
+   * @return This factory, for convenience.
+   */
+  @CanIgnoreReturnValue
+  @UnstableApi
+  public DefaultMediaSourceFactory setExperimentalEnableHagcPlayback(boolean enableHagcPlayback) {
+    delegateFactoryLoader.setExperimentalEnableHagcPlayback(enableHagcPlayback);
+    return this;
+  }
+
+  /**
    * Sets whether an experimental setting to delegate end position clipping to a wrapped {@link
    * MediaPeriod} is enabled.
    *
@@ -534,6 +551,10 @@ public final class DefaultMediaSourceFactory implements MediaSourceFactory {
   @Override
   public MediaSource createMediaSource(MediaItem mediaItem) {
     checkNotNull(mediaItem.localConfiguration);
+    int fileType = FileTypes.inferFileTypeFromUri(mediaItem.localConfiguration.uri);
+    if (fileType == FileTypes.ISO || MimeTypes.VIDEO_ISO.equals(mediaItem.localConfiguration.mimeType)) {
+      return new IsoMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem);
+    }
     @Nullable String scheme = mediaItem.localConfiguration.uri.getScheme();
     if (scheme != null && scheme.equals(C.SSAI_SCHEME)) {
       return checkNotNull(serverSideAdInsertionMediaSourceFactory).createMediaSource(mediaItem);
@@ -544,10 +565,6 @@ public final class DefaultMediaSourceFactory implements MediaSourceFactory {
               msToUs(mediaItem.localConfiguration.imageDurationMs),
               checkNotNull(externalImageLoader))
           .createMediaSource(mediaItem);
-    }
-    int fileType = FileTypes.inferFileTypeFromUri(mediaItem.localConfiguration.uri);
-    if (fileType == FileTypes.ISO || MimeTypes.VIDEO_ISO.equals(mediaItem.localConfiguration.mimeType)) {
-      return new IsoMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem);
     }
     @C.ContentType
     int type =
@@ -661,12 +678,7 @@ public final class DefaultMediaSourceFactory implements MediaSourceFactory {
       return mediaSource;
     }
     return new ClippingMediaSource.Builder(mediaSource)
-        .setStartPositionUs(mediaItem.clippingConfiguration.startPositionUs)
-        .setEndPositionUs(mediaItem.clippingConfiguration.endPositionUs)
-        .setEnableInitialDiscontinuity(!mediaItem.clippingConfiguration.startsAtKeyFrame)
-        .setAllowDynamicClippingUpdates(mediaItem.clippingConfiguration.relativeToLiveWindow)
-        .setRelativeToDefaultPosition(mediaItem.clippingConfiguration.relativeToDefaultPosition)
-        .setAllowUnseekableMedia(mediaItem.clippingConfiguration.allowUnseekableMedia)
+        .setClippingConfiguration(mediaItem.clippingConfiguration)
         .setEnableClippingInMediaPeriod(enableClippingInMediaPeriod)
         .build();
   }
@@ -717,6 +729,7 @@ public final class DefaultMediaSourceFactory implements MediaSourceFactory {
     private SubtitleParser.Factory subtitleParserFactory;
     private @C.VideoCodecFlags int codecsToParseWithinGopSampleDependencies;
     private boolean loadOnlySelectedTracks;
+    private boolean experimentalEnableHagcPlayback;
     @Nullable private CmcdConfiguration.Factory cmcdConfigurationFactory;
     @Nullable private DrmSessionManagerProvider drmSessionManagerProvider;
     @Nullable private LoadErrorHandlingPolicy loadErrorHandlingPolicy;
@@ -728,7 +741,8 @@ public final class DefaultMediaSourceFactory implements MediaSourceFactory {
       this.subtitleParserFactory = subtitleParserFactory;
       mediaSourceFactorySuppliers = new HashMap<>();
       mediaSourceFactories = new HashMap<>();
-      parseSubtitlesDuringExtraction = false;
+      parseSubtitlesDuringExtraction = true;
+      experimentalEnableHagcPlayback = true;
       codecsToParseWithinGopSampleDependencies = C.VIDEO_CODEC_FLAG_H264 | C.VIDEO_CODEC_FLAG_H265;
     }
 
@@ -832,6 +846,10 @@ public final class DefaultMediaSourceFactory implements MediaSourceFactory {
       this.loadOnlySelectedTracks = loadOnlySelectedTracks;
     }
 
+    private void setExperimentalEnableHagcPlayback(boolean experimentalEnableHagcPlayback) {
+      this.experimentalEnableHagcPlayback = experimentalEnableHagcPlayback;
+    }
+
     private void setHeifExtractorFlags(@HeifExtractor.Flags int flags) {
       if (this.extractorsFactory instanceof DefaultExtractorsFactory) {
         ((DefaultExtractorsFactory) this.extractorsFactory).setHeifExtractorFlags(flags);
@@ -905,7 +923,8 @@ public final class DefaultMediaSourceFactory implements MediaSourceFactory {
           mediaSourceFactorySupplier =
               () ->
                   new ProgressiveMediaSource.Factory(dataSourceFactory, extractorsFactory)
-                      .setLoadOnlySelectedTracks(loadOnlySelectedTracks);
+                      .setLoadOnlySelectedTracks(loadOnlySelectedTracks)
+                      .setExperimentalEnableHagcPlayback(experimentalEnableHagcPlayback);
           break;
         default:
           throw new IllegalArgumentException("Unrecognized contentType: " + contentType);

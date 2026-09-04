@@ -24,7 +24,6 @@ import static androidx.media3.common.C.TRACK_TYPE_VIDEO;
 import static androidx.media3.common.util.Util.castNonNull;
 import static androidx.media3.exoplayer.Renderer.MSG_SET_AUDIO_ATTRIBUTES;
 import static androidx.media3.exoplayer.Renderer.MSG_SET_AUDIO_OUTPUT_PROVIDER;
-import static androidx.media3.exoplayer.Renderer.MSG_SET_AUDIO_SESSION_ID;
 import static androidx.media3.exoplayer.Renderer.MSG_SET_AUX_EFFECT_INFO;
 import static androidx.media3.exoplayer.Renderer.MSG_SET_CAMERA_MOTION_LISTENER;
 import static androidx.media3.exoplayer.Renderer.MSG_SET_CHANGE_FRAME_RATE_STRATEGY;
@@ -112,12 +111,12 @@ import androidx.media3.exoplayer.image.ImageOutput;
 import androidx.media3.exoplayer.metadata.MetadataOutput;
 import androidx.media3.exoplayer.source.MaskingMediaSource;
 import androidx.media3.exoplayer.source.MediaSource;
-import androidx.media3.exoplayer.source.WrappingMediaSource;
-import androidx.media3.exoplayer.source.iso.IsoMediaSource;
 import androidx.media3.exoplayer.source.MediaSource.MediaPeriodId;
 import androidx.media3.exoplayer.source.ShuffleOrder;
 import androidx.media3.exoplayer.source.TimelineWithUpdatedMediaItem;
 import androidx.media3.exoplayer.source.TrackGroupArray;
+import androidx.media3.exoplayer.source.WrappingMediaSource;
+import androidx.media3.exoplayer.source.iso.IsoMediaSource;
 import androidx.media3.exoplayer.text.TextOutput;
 import androidx.media3.exoplayer.trackselection.ExoTrackSelection;
 import androidx.media3.exoplayer.trackselection.TrackSelectionArray;
@@ -137,6 +136,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -144,6 +144,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.IntConsumer;
 
 /** The default implementation of {@link ExoPlayer}. */
+@SuppressWarnings("nullness") // TODO: b/78934030 - Add missing nullness checks to this class.
 /* package */ final class ExoPlayerImpl extends BasePlayer implements ExoPlayer {
 
   static {
@@ -210,6 +211,7 @@ import java.util.function.IntConsumer;
   private ShuffleOrder shuffleOrder;
   private PreloadConfiguration preloadConfiguration;
   private boolean pauseAtEndOfMediaItems;
+  private boolean enforceAdPlaybackOnTimelineRefresh;
   private Commands availableCommands;
   private MediaMetadata mediaMetadata;
   private MediaMetadata playlistMetadata;
@@ -314,6 +316,7 @@ import java.util.function.IntConsumer;
       this.maxSeekToPreviousPositionMs = builder.maxSeekToPreviousPositionMs;
       this.scrubbingModeParameters = builder.scrubbingModeParameters;
       this.pauseAtEndOfMediaItems = builder.pauseAtEndOfMediaItems;
+      this.enforceAdPlaybackOnTimelineRefresh = builder.enforceAdPlaybackOnTimelineRefresh;
       this.applicationLooper = builder.looper;
       this.clock = builder.clock;
       this.wrappingPlayer = wrappingPlayer == null ? this : wrappingPlayer;
@@ -394,6 +397,7 @@ import java.util.function.IntConsumer;
               builder.releaseTimeoutMs,
               pauseAtEndOfMediaItems,
               builder.dynamicSchedulingEnabled,
+              builder.perStreamMediaProgressionEnabled,
               applicationLooper,
               clock,
               playbackInfoUpdateListener,
@@ -401,7 +405,7 @@ import java.util.function.IntConsumer;
               builder.playbackLooperProvider,
               preloadConfiguration,
               frameMetadataListener,
-              builder.avoidLoadingWhileEnded);
+              builder.enforceAdPlaybackOnTimelineRefresh);
       Looper playbackLooper = internalPlayer.getPlaybackLooper();
 
       volume = 1;
@@ -426,15 +430,22 @@ import java.util.function.IntConsumer;
 
       audioSessionIdState =
           new BackgroundThreadStateHandler<>(
-              AUDIO_SESSION_ID_UNSET,
-              playbackLooper,
-              applicationLooper,
+              /* initialState= */ AUDIO_SESSION_ID_UNSET,
+              /* backgroundLooper= */ playbackLooper,
+              /* foregroundLooper= */ applicationLooper,
               clock,
               /* onStateChanged= */ this::onAudioSessionIdChanged);
       audioSessionIdState.runInBackground(
-          () ->
-              audioSessionIdState.setStateInBackground(
-                  Util.generateAudioSessionIdV21(applicationContext)));
+          () -> {
+            int newAudioSessionId = Util.generateAudioSessionId(applicationContext);
+            if (audioSessionIdState.get() != newAudioSessionId) {
+              audioSessionIdState.setStateInBackground(newAudioSessionId);
+              // Provide the audio session ID to the renderers on playback thread to prevent race
+              // condition with player preparation.
+              internalPlayer.setAudioSessionId(
+                  newAudioSessionId, /* isInitialAudioSessionId= */ true);
+            }
+          });
       audioBecomingNoisyManager =
           new AudioBecomingNoisyManager(
               builder.context, playbackLooper, builder.looper, componentListener, clock);
@@ -862,6 +873,16 @@ import java.util.function.IntConsumer;
   }
 
   @Override
+  public void setEnforceAdPlaybackOnTimelineRefresh(boolean enforceAdPlaybackOnTimelineRefresh) {
+    verifyApplicationThread();
+    if (this.enforceAdPlaybackOnTimelineRefresh == enforceAdPlaybackOnTimelineRefresh) {
+      return;
+    }
+    this.enforceAdPlaybackOnTimelineRefresh = enforceAdPlaybackOnTimelineRefresh;
+    internalPlayer.setEnforceAdPlaybackOnTimelineRefresh(enforceAdPlaybackOnTimelineRefresh);
+  }
+
+  @Override
   public void setPlayWhenReady(boolean playWhenReady) {
     verifyApplicationThread();
     updatePlayWhenReady(playWhenReady, PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST);
@@ -1167,6 +1188,17 @@ import java.util.function.IntConsumer;
     }
     currentCueGroup = CueGroup.EMPTY_TIME_ZERO;
     playerReleased = true;
+    // TODO (b/494325148): Remove assertion.
+    if (!playbackInfo.timeline.isEmpty()) {
+      checkState(
+          playbackInfo.timeline.getIndexOfPeriod(playbackInfo.periodId.periodUid) != C.INDEX_UNSET,
+          String.format(
+              Locale.US,
+              "periodUid %s not found in timeline %s with size %d",
+              playbackInfo.periodId.periodUid,
+              playbackInfo.timeline.getClass().getName(),
+              playbackInfo.timeline.getWindowCount()));
+    }
   }
 
   @Override
@@ -1332,12 +1364,6 @@ import java.util.function.IntConsumer;
   }
 
   @Override
-  public List<MediaTitle> getCurrentMediaTitles() {
-    verifyApplicationThread();
-    return currentMediaTitles;
-  }
-
-  @Override
   public TrackSelectionParameters getTrackSelectionParameters() {
     verifyApplicationThread();
     TrackSelectionParameters parameters = trackSelector.getParameters();
@@ -1384,6 +1410,12 @@ import java.util.function.IntConsumer;
   public MediaMetadata getPlaylistMetadata() {
     verifyApplicationThread();
     return playlistMetadata;
+  }
+
+  @Override
+  public List<MediaTitle> getCurrentMediaTitles() {
+    verifyApplicationThread();
+    return currentMediaTitles;
   }
 
   @Override
@@ -1620,7 +1652,7 @@ import java.util.function.IntConsumer;
         /* backgroundStateUpdate= */ previousId ->
             audioSessionId != AUDIO_SESSION_ID_UNSET
                 ? audioSessionId
-                : Util.generateAudioSessionIdV21(applicationContext));
+                : Util.generateAudioSessionId(applicationContext));
   }
 
   @Override
@@ -2231,7 +2263,8 @@ import java.util.function.IntConsumer;
         boolean oldAndNewTimelineEmpty =
             playbackInfoUpdate.playbackInfo.timeline.isEmpty() && playbackInfo.timeline.isEmpty();
         boolean sameMediaPeriodId =
-            playbackInfoUpdate.playbackInfo.periodId.equals(playbackInfo.periodId);
+            playbackInfoUpdate.playbackInfo.periodId.equalsExceptNextAdGroupIndex(
+                playbackInfo.periodId);
         boolean samePositon =
             playbackInfoUpdate.playbackInfo.discontinuityStartPositionUs == playbackInfo.positionUs;
         positionDiscontinuity = !oldAndNewTimelineEmpty && (!sameMediaPeriodId || !samePositon);
@@ -2255,6 +2288,7 @@ import java.util.function.IntConsumer;
           discontinuityWindowStartPositionUs,
           oldMaskingMediaItemIndex,
           /* repeatCurrentMediaItem= */ false);
+      maybeUpdateMediaTitles(playbackInfoUpdate.playbackInfo);
     }
   }
 
@@ -2274,6 +2308,17 @@ import java.util.function.IntConsumer;
     PlaybackInfo previousPlaybackInfo = this.playbackInfo;
     PlaybackInfo newPlaybackInfo = playbackInfo;
     this.playbackInfo = playbackInfo;
+    // TODO (b/494325148): Remove assertion.
+    if (!playbackInfo.timeline.isEmpty()) {
+      checkState(
+          playbackInfo.timeline.getIndexOfPeriod(playbackInfo.periodId.periodUid) != C.INDEX_UNSET,
+          String.format(
+              Locale.US,
+              "periodUid %s not found in timeline %s with size %d",
+              playbackInfo.periodId.periodUid,
+              playbackInfo.timeline.getClass().getName(),
+              playbackInfo.timeline.getWindowCount()));
+    }
 
     boolean timelineChanged = !previousPlaybackInfo.timeline.equals(newPlaybackInfo.timeline);
     Pair<Boolean, Integer> mediaItemTransitionInfo =
@@ -2412,9 +2457,6 @@ import java.util.function.IntConsumer;
           Player.EVENT_PLAYBACK_PARAMETERS_CHANGED,
           listener -> listener.onPlaybackParametersChanged(newPlaybackInfo.playbackParameters));
     }
-    if (timelineChanged) {
-      maybeUpdateMediaTitles(newPlaybackInfo);
-    }
     updateAvailableCommands();
     listeners.flushEvents();
 
@@ -2423,53 +2465,6 @@ import java.util.function.IntConsumer;
         listener.onSleepingForOffloadChanged(newPlaybackInfo.sleepingForOffload);
       }
     }
-  }
-
-  private void maybeUpdateMediaTitles(PlaybackInfo playbackInfo) {
-    if (playbackInfo.timeline.isEmpty()) {
-      if (!currentMediaTitles.isEmpty()) {
-        currentMediaTitles = Collections.emptyList();
-      }
-      return;
-    }
-    int windowIndex = playbackInfo.timeline.getPeriodByUid(playbackInfo.periodId.periodUid, period).windowIndex;
-    if (windowIndex >= mediaSourceHolderSnapshots.size()) {
-      return;
-    }
-    MediaSource source = mediaSourceHolderSnapshots.get(windowIndex).mediaSource;
-    if (source instanceof WrappingMediaSource) {
-      source = ((WrappingMediaSource) source).getWrappedSource();
-    }
-    if (!(source instanceof IsoMediaSource)) {
-      if (!currentMediaTitles.isEmpty()) {
-        currentMediaTitles = Collections.emptyList();
-      }
-      return;
-    }
-    IsoMediaSource isoSource = (IsoMediaSource) source;
-    @Nullable List<MediaTitle> scanned = isoSource.getMediaTitles();
-    if (scanned == null && currentMediaTitles.isEmpty()) {
-      return;
-    }
-    List<MediaTitle> base = scanned != null ? scanned : currentMediaTitles;
-    List<MediaTitle> newList = applyTitleSelection(base, isoSource.getSelectedTitleIndex());
-    if (!newList.equals(currentMediaTitles)) {
-      currentMediaTitles = newList;
-      if (!newList.isEmpty()) {
-        listeners.queueEvent(Player.EVENT_MEDIA_TITLES_CHANGED, l -> l.onMediaTitlesChanged(newList));
-      }
-    }
-  }
-
-  private static List<MediaTitle> applyTitleSelection(List<MediaTitle> titles, int selectedIndex) {
-    if (selectedIndex < 0) {
-      return titles;
-    }
-    List<MediaTitle> result = new ArrayList<>(titles.size());
-    for (MediaTitle t : titles) {
-      result.add(t.index == selectedIndex ? t.withSelected(true) : t.withSelected(false));
-    }
-    return result;
   }
 
   private PositionInfo getPreviousPositionInfo(
@@ -3254,8 +3249,7 @@ import java.util.function.IntConsumer;
 
   private void onAudioSessionIdChanged(int oldAudioSessionId, int newAudioSessionId) {
     verifyApplicationThread();
-    sendRendererMessage(TRACK_TYPE_AUDIO, MSG_SET_AUDIO_SESSION_ID, newAudioSessionId);
-    sendRendererMessage(TRACK_TYPE_VIDEO, MSG_SET_AUDIO_SESSION_ID, newAudioSessionId);
+    internalPlayer.setAudioSessionId(newAudioSessionId, /* isInitialAudioSessionId= */ false);
     listeners.sendEvent(
         EVENT_AUDIO_SESSION_ID, listener -> listener.onAudioSessionIdChanged(newAudioSessionId));
   }
@@ -3820,5 +3814,55 @@ import java.util.function.IntConsumer;
       }
       sendRendererMessage(TRACK_TYPE_AUDIO, MSG_SET_VIRTUAL_DEVICE_ID, virtualDeviceId);
     }
+  }
+
+  private void maybeUpdateMediaTitles(PlaybackInfo playbackInfo) {
+    if (playbackInfo.timeline.isEmpty()) {
+      if (!currentMediaTitles.isEmpty()) {
+        currentMediaTitles = Collections.emptyList();
+      }
+      return;
+    }
+    Timeline.Period period = new Timeline.Period();
+    int windowIndex =
+        playbackInfo.timeline.getPeriodByUid(playbackInfo.periodId.periodUid, period).windowIndex;
+    if (windowIndex >= mediaSourceHolderSnapshots.size()) {
+      return;
+    }
+    MediaSource source = mediaSourceHolderSnapshots.get(windowIndex).mediaSource;
+    if (source instanceof WrappingMediaSource) {
+      source = ((WrappingMediaSource) source).getWrappedSource();
+    }
+    if (!(source instanceof IsoMediaSource)) {
+      if (!currentMediaTitles.isEmpty()) {
+        currentMediaTitles = Collections.emptyList();
+      }
+      return;
+    }
+    IsoMediaSource isoSource = (IsoMediaSource) source;
+    @Nullable List<MediaTitle> scanned = isoSource.getMediaTitles();
+    if (scanned == null && currentMediaTitles.isEmpty()) {
+      return;
+    }
+    List<MediaTitle> base = scanned != null ? scanned : currentMediaTitles;
+    List<MediaTitle> newList = applyTitleSelection(base, isoSource.getSelectedTitleIndex());
+    if (!newList.equals(currentMediaTitles)) {
+      currentMediaTitles = newList;
+      if (!newList.isEmpty()) {
+        listeners.queueEvent(
+            Player.EVENT_MEDIA_TITLES_CHANGED, listener -> listener.onMediaTitlesChanged(newList));
+      }
+    }
+  }
+
+  private static List<MediaTitle> applyTitleSelection(List<MediaTitle> titles, int selectedIndex) {
+    if (selectedIndex < 0) {
+      return titles;
+    }
+    List<MediaTitle> result = new ArrayList<>(titles.size());
+    for (MediaTitle t : titles) {
+      result.add(t.index == selectedIndex ? t.withSelected(true) : t.withSelected(false));
+    }
+    return result;
   }
 }

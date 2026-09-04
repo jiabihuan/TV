@@ -24,8 +24,6 @@ import androidx.media3.common.util.UnstableApi;
 @UnstableApi
 public final class TsUtil {
 
-  public static final int SNIFF_TS_PACKET_COUNT = 5;
-
   /**
    * Returns whether a TS packet starts at {@code searchPosition} according to the MPEG-TS
    * synchronization recommendations.
@@ -43,14 +41,9 @@ public final class TsUtil {
    * @return Whether a TS packet starts at {@code searchPosition}.
    */
   public static boolean isStartOfTsPacket(byte[] data, int start, int limit, int searchPosition) {
-    return isStartOfTsPacket(data, start, limit, searchPosition, TsExtractor.TS_PACKET_SIZE);
-  }
-
-  public static boolean isStartOfTsPacket(
-      byte[] data, int start, int limit, int searchPosition, int packetSize) {
     int consecutiveSyncByteCount = 0;
     for (int i = -4; i <= 4; i++) {
-      int currentPosition = searchPosition + i * packetSize;
+      int currentPosition = searchPosition + i * TsExtractor.TS_PACKET_SIZE;
       if (currentPosition < start
           || currentPosition >= limit
           || data[currentPosition] != TsExtractor.TS_SYNC_BYTE) {
@@ -72,26 +65,6 @@ public final class TsUtil {
       position++;
     }
     return position;
-  }
-
-  public static int tryToFindSyncBytePosition(byte[] data, int startPosition, int limitPosition, int packetSize) {
-    int max = limitPosition - (SNIFF_TS_PACKET_COUNT - 1) * packetSize;
-    for (int offset = startPosition; offset < max; offset++) {
-      if (data[offset] != TsExtractor.TS_SYNC_BYTE) {
-        continue;
-      }
-      boolean allMatch = true;
-      for (int i = 1; i < SNIFF_TS_PACKET_COUNT; i++) {
-        if (data[offset + i * packetSize] != TsExtractor.TS_SYNC_BYTE) {
-          allMatch = false;
-          break;
-        }
-      }
-      if (allMatch) {
-        return offset;
-      }
-    }
-    return limitPosition;
   }
 
   /**

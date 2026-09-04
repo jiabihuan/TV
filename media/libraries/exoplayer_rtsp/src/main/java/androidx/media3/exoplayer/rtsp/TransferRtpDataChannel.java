@@ -26,6 +26,7 @@ import androidx.media3.common.util.Util;
 import androidx.media3.datasource.BaseDataSource;
 import androidx.media3.datasource.DataSpec;
 import androidx.media3.exoplayer.rtsp.RtspMessageChannel.InterleavedBinaryDataListener;
+import java.util.Arrays;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /** An {@link RtpDataChannel} that transfers received data in-memory. */
@@ -35,14 +36,11 @@ import java.util.concurrent.LinkedBlockingQueue;
   private static final String DEFAULT_TCP_TRANSPORT_FORMAT =
       "RTP/AVP/TCP;unicast;interleaved=%d-%d";
 
-  private static final byte[] EMPTY = new byte[0];
-
   private final LinkedBlockingQueue<byte[]> packetQueue;
   private final long pollTimeoutMs;
 
   private byte[] unreadData;
   private int channelNumber;
-  private int unreadDataOffset;
 
   /**
    * Creates a new instance.
@@ -54,8 +52,7 @@ import java.util.concurrent.LinkedBlockingQueue;
     super(/* isNetwork= */ true);
     this.pollTimeoutMs = pollTimeoutMs;
     packetQueue = new LinkedBlockingQueue<>();
-    unreadData = EMPTY;
-    unreadDataOffset = 0;
+    unreadData = new byte[0];
     channelNumber = C.INDEX_UNSET;
   }
 
@@ -72,7 +69,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
   @Override
   public boolean needsClosingOnLoadCompletion() {
-    // TCP channel is managed by the RTSP message channel and does not need closing from here.
+    // TCP channel is managed by the RTSP mesasge channel and does not need closing from here.
     return false;
   }
 
@@ -103,15 +100,10 @@ import java.util.concurrent.LinkedBlockingQueue;
     }
 
     int bytesRead = 0;
-    int available = unreadData.length - unreadDataOffset;
-    int bytesToRead = min(length, available);
-    System.arraycopy(unreadData, unreadDataOffset, buffer, offset, bytesToRead);
+    int bytesToRead = min(length, unreadData.length);
+    System.arraycopy(unreadData, /* srcPos= */ 0, buffer, offset, bytesToRead);
     bytesRead += bytesToRead;
-    unreadDataOffset += bytesToRead;
-    if (unreadDataOffset >= unreadData.length) {
-      unreadData = EMPTY;
-      unreadDataOffset = 0;
-    }
+    unreadData = Arrays.copyOfRange(unreadData, bytesToRead, unreadData.length);
 
     if (bytesRead == length) {
       return bytesRead;
@@ -131,8 +123,7 @@ import java.util.concurrent.LinkedBlockingQueue;
     bytesToRead = min(length - bytesRead, data.length);
     System.arraycopy(data, /* srcPos= */ 0, buffer, offset + bytesRead, bytesToRead);
     if (bytesToRead < data.length) {
-      unreadData = data;
-      unreadDataOffset = bytesToRead;
+      unreadData = Arrays.copyOfRange(data, bytesToRead, data.length);
     }
     return bytesRead + bytesToRead;
   }

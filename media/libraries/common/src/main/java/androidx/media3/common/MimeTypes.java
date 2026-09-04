@@ -66,14 +66,10 @@ public final class MimeTypes {
   public static final String VIDEO_WMV = BASE_TYPE_VIDEO + "/x-ms-wmv";
   public static final String VIDEO_WMV1 = BASE_TYPE_VIDEO + "/x-ms-wmv1";
   public static final String VIDEO_WMV2 = BASE_TYPE_VIDEO + "/x-ms-wmv2";
+  public static final String VIDEO_ISO = BASE_TYPE_VIDEO + "/x-iso";
   public static final String VIDEO_MJPEG = BASE_TYPE_VIDEO + "/mjpeg";
   public static final String VIDEO_MP42 = BASE_TYPE_VIDEO + "/mp42";
   public static final String VIDEO_MP43 = BASE_TYPE_VIDEO + "/mp43";
-  public static final String VIDEO_RV10 = BASE_TYPE_VIDEO + "/x-rv10";
-  public static final String VIDEO_RV20 = BASE_TYPE_VIDEO + "/x-rv20";
-  public static final String VIDEO_RV30 = BASE_TYPE_VIDEO + "/x-rv30";
-  public static final String VIDEO_RV40 = BASE_TYPE_VIDEO + "/x-rv40";
-  public static final String VIDEO_ISO = BASE_TYPE_VIDEO + "/x-iso";
   @UnstableApi public static final String VIDEO_MV_HEVC = BASE_TYPE_VIDEO + "/mv-hevc";
   @UnstableApi public static final String VIDEO_RAW = BASE_TYPE_VIDEO + "/raw";
   @UnstableApi public static final String VIDEO_UNKNOWN = BASE_TYPE_VIDEO + "/x-unknown";
@@ -97,39 +93,39 @@ public final class MimeTypes {
   public static final String AUDIO_E_AC3_JOC = BASE_TYPE_AUDIO + "/eac3-joc";
   public static final String AUDIO_AC4 = BASE_TYPE_AUDIO + "/ac4";
   public static final String AUDIO_TRUEHD = BASE_TYPE_AUDIO + "/true-hd";
-  public static final String AUDIO_DTS = BASE_TYPE_AUDIO + "/vnd.dts";
-  public static final String AUDIO_DTS_X = BASE_TYPE_AUDIO + "/vnd.dts.x";
-  public static final String AUDIO_DTS_HD = BASE_TYPE_AUDIO + "/vnd.dts.hd";
-  public static final String AUDIO_DTS_MA = BASE_TYPE_AUDIO + "/vnd.dts.hd;profile=lossless";
-  public static final String AUDIO_DTS_EXPRESS = BASE_TYPE_AUDIO + "/vnd.dts.hd;profile=lbr";
-  public static final String AUDIO_DTS_UHD_P2 = BASE_TYPE_AUDIO + "/vnd.dts.uhd;profile=p2";
-  public static final String AUDIO_DSD = BASE_TYPE_AUDIO + "/vnd.dsd";
+  @UnstableApi public static final String AUDIO_DSD = BASE_TYPE_AUDIO + "/dsd";
   public static final String AUDIO_DSD_LSBF_PLANAR = BASE_TYPE_AUDIO + "/vnd.dsd-lsbf-planar";
   public static final String AUDIO_DSD_MSBF_PLANAR = BASE_TYPE_AUDIO + "/vnd.dsd-msbf-planar";
   public static final String AUDIO_DST = BASE_TYPE_AUDIO + "/vnd.dst";
+  public static final String AUDIO_DTS = BASE_TYPE_AUDIO + "/vnd.dts";
+  public static final String AUDIO_DTS_HD = BASE_TYPE_AUDIO + "/vnd.dts.hd";
+  public static final String AUDIO_DTS_EXPRESS = BASE_TYPE_AUDIO + "/vnd.dts.hd;profile=lbr";
+
+  @UnstableApi
+  public static final String AUDIO_DTS_UHD_P2 = BASE_TYPE_AUDIO + "/vnd.dts.uhd;profile=p2";
+
+  /**
+   * @deprecated Use {@link #AUDIO_DTS_UHD_P2} instead.
+   */
+  @Deprecated @UnstableApi public static final String AUDIO_DTS_X = AUDIO_DTS_UHD_P2;
+
   public static final String AUDIO_VORBIS = BASE_TYPE_AUDIO + "/vorbis";
   public static final String AUDIO_OPUS = BASE_TYPE_AUDIO + "/opus";
   public static final String AUDIO_AMR = BASE_TYPE_AUDIO + "/amr";
   public static final String AUDIO_AMR_NB = BASE_TYPE_AUDIO + "/3gpp";
   public static final String AUDIO_AMR_WB = BASE_TYPE_AUDIO + "/amr-wb";
-  public static final String AUDIO_FLAC = BASE_TYPE_AUDIO + "/flac";
-  public static final String AUDIO_ALAC = BASE_TYPE_AUDIO + "/alac";
-  public static final String AUDIO_MSGSM = BASE_TYPE_AUDIO + "/gsm";
-  public static final String AUDIO_OGG = BASE_TYPE_AUDIO + "/ogg";
-  public static final String AUDIO_WAV = BASE_TYPE_AUDIO + "/wav";
   public static final String AUDIO_WMA = BASE_TYPE_AUDIO + "/x-ms-wma";
   public static final String AUDIO_WMA1 = BASE_TYPE_AUDIO + "/x-ms-wmav1";
   public static final String AUDIO_WMA2 = BASE_TYPE_AUDIO + "/x-ms-wmav2";
   public static final String AUDIO_WMA_PRO = BASE_TYPE_AUDIO + "/x-ms-wmapro";
   public static final String AUDIO_WMA_VOICE = BASE_TYPE_AUDIO + "/x-ms-wmavoice";
   public static final String AUDIO_WMA_LOSSLESS = BASE_TYPE_AUDIO + "/x-ms-wmalossless";
+  public static final String AUDIO_FLAC = BASE_TYPE_AUDIO + "/flac";
+  public static final String AUDIO_ALAC = BASE_TYPE_AUDIO + "/alac";
+  public static final String AUDIO_MSGSM = BASE_TYPE_AUDIO + "/gsm";
+  public static final String AUDIO_OGG = BASE_TYPE_AUDIO + "/ogg";
+  public static final String AUDIO_WAV = BASE_TYPE_AUDIO + "/wav";
   public static final String AUDIO_MIDI = BASE_TYPE_AUDIO + "/midi";
-  public static final String AUDIO_AV3A = BASE_TYPE_AUDIO + "/av3a";
-  public static final String AUDIO_ATRAC3 = BASE_TYPE_AUDIO + "/atrac3";
-  public static final String AUDIO_ATRAC3P = BASE_TYPE_AUDIO + "/atrac3p";
-  public static final String AUDIO_COOK = BASE_TYPE_AUDIO + "/cook";
-  public static final String AUDIO_RALF = BASE_TYPE_AUDIO + "/x-ralf";
-  public static final String AUDIO_SIPR = BASE_TYPE_AUDIO + "/x-sipr";
   @UnstableApi public static final String AUDIO_IAMF = BASE_TYPE_AUDIO + "/iamf";
 
   @UnstableApi
@@ -150,10 +146,11 @@ public final class MimeTypes {
 
   public static final String APPLICATION_MATROSKA = BASE_TYPE_APPLICATION + "/x-matroska";
 
+  public static final String APPLICATION_RM = BASE_TYPE_APPLICATION + "/vnd.rn-realmedia";
+
   public static final String APPLICATION_MPD = BASE_TYPE_APPLICATION + "/dash+xml";
   public static final String APPLICATION_M3U8 = BASE_TYPE_APPLICATION + "/x-mpegURL";
   public static final String APPLICATION_SS = BASE_TYPE_APPLICATION + "/vnd.ms-sstr+xml";
-  public static final String APPLICATION_RM = BASE_TYPE_APPLICATION + "/vnd.rn-realmedia";
   public static final String APPLICATION_ID3 = BASE_TYPE_APPLICATION + "/id3";
   public static final String APPLICATION_CEA608 = BASE_TYPE_APPLICATION + "/cea-608";
   public static final String APPLICATION_CEA708 = BASE_TYPE_APPLICATION + "/cea-708";
@@ -162,7 +159,6 @@ public final class MimeTypes {
   public static final String APPLICATION_TX3G = BASE_TYPE_APPLICATION + "/x-quicktime-tx3g";
   public static final String APPLICATION_MP4VTT = BASE_TYPE_APPLICATION + "/x-mp4-vtt";
   public static final String APPLICATION_MP4CEA608 = BASE_TYPE_APPLICATION + "/x-mp4-cea-608";
-  public static final String APPLICATION_OCTET_STREAM = BASE_TYPE_APPLICATION + "/octet-stream";
 
   /**
    * @deprecated RawCC is a Google-internal subtitle format that isn't supported by this version of
@@ -733,9 +729,8 @@ public final class MimeTypes {
         return C.ENCODING_AC4;
       case MimeTypes.AUDIO_DTS:
         return C.ENCODING_DTS;
-      case MimeTypes.AUDIO_DTS_X:
       case MimeTypes.AUDIO_DTS_HD:
-      case MimeTypes.AUDIO_DTS_MA:
+        return C.ENCODING_DTS_HD;
       case MimeTypes.AUDIO_DTS_EXPRESS:
         return C.ENCODING_DTS_HD;
       case MimeTypes.AUDIO_DTS_UHD_P2:

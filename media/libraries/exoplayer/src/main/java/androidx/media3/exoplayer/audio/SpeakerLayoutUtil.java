@@ -90,15 +90,10 @@ final class SpeakerLayoutUtil {
     if (SDK_INT >= 36) {
       // New API in SDK level 36, backed by a new field in
       // media/aidl/android/media/audio/common/AudioPortDeviceExt.aidl
-      try {
-        int builtInChannelMask =
-            (int) AudioDeviceInfo.class.getMethod("getSpeakerLayoutChannelMask").invoke(audioDeviceInfo);
-        if (builtInChannelMask != AudioFormat.CHANNEL_INVALID
-            && builtInChannelMask != AudioFormat.CHANNEL_OUT_DEFAULT) {
-          return ImmutableList.of(builtInChannelMask);
-        }
-      } catch (ReflectiveOperationException e) {
-        // Fall back below.
+      int builtInChannelMask = audioDeviceInfo.getSpeakerLayoutChannelMask();
+      if (builtInChannelMask != AudioFormat.CHANNEL_INVALID
+          && builtInChannelMask != AudioFormat.CHANNEL_OUT_DEFAULT) {
+        return ImmutableList.of(builtInChannelMask);
       }
     }
     // If the manufacturer has not populated the field in the Audio HAL, fall back to stereo.

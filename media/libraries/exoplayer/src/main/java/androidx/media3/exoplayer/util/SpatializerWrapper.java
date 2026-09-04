@@ -161,7 +161,10 @@ public class SpatializerWrapper {
       linearChannelCount = format.channelCount;
     }
 
-    int channelConfig = Util.getAudioTrackChannelConfig(linearChannelCount);
+    int channelConfig =
+        (format.channelMask != Format.NO_VALUE && format.channelCount == linearChannelCount)
+            ? format.channelMask
+            : Util.getAudioTrackChannelConfig(linearChannelCount);
     if (channelConfig == AudioFormat.CHANNEL_INVALID) {
       return false;
     }
@@ -187,17 +190,7 @@ public class SpatializerWrapper {
       return ImmutableList.of();
     }
     if (SDK_INT >= 36) {
-      try {
-        @SuppressWarnings("unchecked")
-        List<Integer> spatializedChannelMasks =
-            (List<Integer>)
-                Spatializer.class
-                    .getMethod("getSpatializedChannelMasks")
-                    .invoke(checkNotNull(spatializer));
-        return spatializedChannelMasks;
-      } catch (ReflectiveOperationException e) {
-        return ImmutableList.of(AudioFormat.CHANNEL_OUT_5POINT1);
-      }
+      return checkNotNull(spatializer).getSpatializedChannelMasks();
     }
     return ImmutableList.of(AudioFormat.CHANNEL_OUT_5POINT1);
   }

@@ -38,12 +38,12 @@ import android.util.Pair;
 import android.util.SparseArray;
 import android.util.SparseBooleanArray;
 import android.view.accessibility.CaptioningManager;
-import androidx.annotation.GuardedBy;
 import androidx.annotation.IntDef;
 import androidx.annotation.Nullable;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
 import androidx.media3.common.C.RoleFlags;
+import androidx.media3.common.ColorInfo;
 import androidx.media3.common.Format;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.Timeline;
@@ -63,8 +63,10 @@ import androidx.media3.exoplayer.RendererCapabilities.AdaptiveSupport;
 import androidx.media3.exoplayer.RendererCapabilities.Capabilities;
 import androidx.media3.exoplayer.RendererConfiguration;
 import androidx.media3.exoplayer.audio.AudioSink;
+import androidx.media3.exoplayer.mediacodec.MediaCodecUtil;
 import androidx.media3.exoplayer.source.MediaSource.MediaPeriodId;
 import androidx.media3.exoplayer.source.TrackGroupArray;
+import androidx.media3.exoplayer.upstream.BandwidthMeter;
 import androidx.media3.exoplayer.util.SpatializerWrapper;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ComparisonChain;
@@ -2453,16 +2455,13 @@ public class DefaultTrackSelector extends MappingTrackSelector
                   ? (second == Format.NO_VALUE ? 0 : -1)
                   : (second == Format.NO_VALUE ? 1 : (first - second)));
 
-  private final Object lock;
   @Nullable public final Context context;
   private final ExoTrackSelection.Factory trackSelectionFactory;
 
-  @GuardedBy("lock")
-  private Parameters parameters;
+  private Parameters applicationParameters;
+  private Parameters playerParameters;
 
-  @GuardedBy("lock")
-  @Nullable
-  private Thread playbackThread;
+  @Nullable private volatile Thread playbackThread;
 
   @Nullable private SpatializerWrapper spatializer;
   private AudioAttributes audioAttributes;
@@ -2529,28 +2528,46 @@ public class DefaultTrackSelector extends MappingTrackSelector
       TrackSelectionParameters parameters,
       ExoTrackSelection.Factory trackSelectionFactory,
       @Nullable Context context) {
-    this.lock = new Object();
     this.context = context != null ? context.getApplicationContext() : null;
     this.trackSelectionFactory = trackSelectionFactory;
+    Parameters initialParameters;
     if (parameters instanceof Parameters) {
-      this.parameters = (Parameters) parameters;
+      initialParameters = (Parameters) parameters;
     } else {
-      this.parameters = Parameters.DEFAULT.buildUpon().set(parameters).build();
+      initialParameters = Parameters.DEFAULT.buildUpon().set(parameters).build();
     }
+    this.applicationParameters = initialParameters;
+    this.playerParameters = initialParameters;
     this.audioAttributes = AudioAttributes.DEFAULT;
-    if (this.parameters.constrainAudioChannelCountToDeviceCapabilities && context == null) {
+    if (initialParameters.constrainAudioChannelCountToDeviceCapabilities && context == null) {
       Log.w(TAG, AUDIO_CHANNEL_COUNT_CONSTRAINTS_WARN_MESSAGE);
     }
   }
 
   @Override
+  public void init(InvalidationListener listener, BandwidthMeter bandwidthMeter) {
+    super.init(listener, bandwidthMeter);
+    this.playerParameters = getParameters();
+  }
+
+  @Override
+  public void onParametersActivated(@Nullable TrackSelectionParameters parameters) {
+    if (parameters == null) {
+      return;
+    }
+    if (parameters instanceof Parameters) {
+      this.playerParameters = (Parameters) parameters;
+    } else {
+      this.playerParameters = new Parameters.Builder(this.playerParameters).set(parameters).build();
+    }
+  }
+
+  @Override
   public void release() {
-    synchronized (lock) {
-      if (playbackThread != null) {
-        checkState(
-            playbackThread == Thread.currentThread(),
-            "DefaultTrackSelector is accessed on the wrong thread.");
-      }
+    if (playbackThread != null) {
+      checkState(
+          Thread.currentThread().equals(playbackThread),
+          "DefaultTrackSelector is accessed on the wrong thread.");
     }
     if (SDK_INT >= 32 && spatializer != null) {
       spatializer.release();
@@ -2561,9 +2578,7 @@ public class DefaultTrackSelector extends MappingTrackSelector
 
   @Override
   public Parameters getParameters() {
-    synchronized (lock) {
-      return parameters;
-    }
+    return applicationParameters;
   }
 
   @Override
@@ -2620,17 +2635,14 @@ public class DefaultTrackSelector extends MappingTrackSelector
    */
   private void setParametersInternal(Parameters parameters) {
     checkNotNull(parameters);
-    boolean parametersChanged;
-    synchronized (lock) {
-      parametersChanged = !this.parameters.equals(parameters);
-      this.parameters = parameters;
-    }
+    boolean parametersChanged = !this.applicationParameters.equals(parameters);
+    this.applicationParameters = parameters;
 
     if (parametersChanged) {
       if (parameters.constrainAudioChannelCountToDeviceCapabilities && context == null) {
         Log.w(TAG, AUDIO_CHANNEL_COUNT_CONSTRAINTS_WARN_MESSAGE);
       }
-      invalidate();
+      invalidate(parameters);
     }
   }
 
@@ -2658,15 +2670,11 @@ public class DefaultTrackSelector extends MappingTrackSelector
           MediaPeriodId mediaPeriodId,
           Timeline timeline)
           throws ExoPlaybackException {
-    Parameters parameters;
-    synchronized (lock) {
-      playbackThread = Thread.currentThread();
-      parameters = this.parameters;
-    }
+    playbackThread = Thread.currentThread();
     if (deviceIsTV == null && context != null) {
       deviceIsTV = Util.isTv(context);
     }
-    if (parameters.constrainAudioChannelCountToDeviceCapabilities
+    if (playerParameters.constrainAudioChannelCountToDeviceCapabilities
         && SDK_INT >= 32
         && spatializer == null) {
       spatializer =
@@ -2679,9 +2687,9 @@ public class DefaultTrackSelector extends MappingTrackSelector
         new ExoTrackSelection.Definition[rendererCount];
 
     // Apply overrides once so that selectAllTracks is aware of the overridden tracks.
-    applyTrackSelectionOverrides(mappedTrackInfo, parameters, definitions);
-    applyLegacyRendererOverrides(mappedTrackInfo, parameters, definitions);
-    applyRendererDisableOverrides(mappedTrackInfo, parameters, definitions);
+    applyTrackSelectionOverrides(mappedTrackInfo, playerParameters, definitions);
+    applyLegacyRendererOverrides(mappedTrackInfo, playerParameters, definitions);
+    applyRendererDisableOverrides(mappedTrackInfo, playerParameters, definitions);
 
     // Select remaining tracks based on parameters.
     selectAllTracks(
@@ -2689,13 +2697,13 @@ public class DefaultTrackSelector extends MappingTrackSelector
         mappedTrackInfo,
         rendererFormatSupports,
         rendererMixedMimeTypeAdaptationSupport,
-        parameters);
+        playerParameters);
 
     // Re-apply overrides to enforce them in case selectAllTracks changed them or added additional
     // tracks that shouldn't be enabled according to the overrides.
-    applyTrackSelectionOverrides(mappedTrackInfo, parameters, definitions);
-    applyLegacyRendererOverrides(mappedTrackInfo, parameters, definitions);
-    applyRendererDisableOverrides(mappedTrackInfo, parameters, definitions);
+    applyTrackSelectionOverrides(mappedTrackInfo, playerParameters, definitions);
+    applyLegacyRendererOverrides(mappedTrackInfo, playerParameters, definitions);
+    applyRendererDisableOverrides(mappedTrackInfo, playerParameters, definitions);
 
     @NullableType
     ExoTrackSelection[] rendererTrackSelections =
@@ -2709,7 +2717,8 @@ public class DefaultTrackSelector extends MappingTrackSelector
     for (int i = 0; i < rendererCount; i++) {
       @C.TrackType int rendererType = mappedTrackInfo.getRendererType(i);
       boolean forceRendererDisabled =
-          parameters.getRendererDisabled(i) || parameters.disabledTrackTypes.contains(rendererType);
+          playerParameters.getRendererDisabled(i)
+              || playerParameters.disabledTrackTypes.contains(rendererType);
       boolean rendererEnabled =
           !forceRendererDisabled
               && (mappedTrackInfo.getRendererType(i) == C.TRACK_TYPE_NONE
@@ -2718,15 +2727,15 @@ public class DefaultTrackSelector extends MappingTrackSelector
     }
 
     // Configure audio and video renderers to use tunneling if appropriate.
-    if (parameters.tunnelingEnabled) {
+    if (playerParameters.tunnelingEnabled) {
       maybeConfigureRenderersForTunneling(
           mappedTrackInfo, rendererFormatSupports, rendererConfigurations, rendererTrackSelections);
     }
 
     // Configure audio renderer to use offload if appropriate.
-    if (parameters.audioOffloadPreferences.audioOffloadMode != AUDIO_OFFLOAD_MODE_DISABLED) {
+    if (playerParameters.audioOffloadPreferences.audioOffloadMode != AUDIO_OFFLOAD_MODE_DISABLED) {
       maybeConfigureRendererForOffload(
-          parameters,
+          playerParameters,
           mappedTrackInfo,
           rendererFormatSupports,
           rendererConfigurations,
@@ -3256,25 +3265,18 @@ public class DefaultTrackSelector extends MappingTrackSelector
   }
 
   private void maybeInvalidateForAudioChannelCountConstraints() {
-    boolean shouldInvalidate;
-    synchronized (lock) {
-      shouldInvalidate =
-          parameters.constrainAudioChannelCountToDeviceCapabilities
-              && SDK_INT >= 32
-              && spatializer != null
-              && spatializer.isSpatializationSupported();
-    }
+    boolean shouldInvalidate =
+        playerParameters.constrainAudioChannelCountToDeviceCapabilities
+            && SDK_INT >= 32
+            && spatializer != null
+            && spatializer.isSpatializationSupported();
     if (shouldInvalidate) {
-      invalidate();
+      invalidate(/* parameters= */ null);
     }
   }
 
   private void maybeInvalidateForRendererCapabilitiesChange(Renderer renderer) {
-    boolean shouldInvalidate;
-    synchronized (lock) {
-      shouldInvalidate = parameters.allowInvalidateSelectionsOnRendererCapabilitiesChange;
-    }
-    if (shouldInvalidate) {
+    if (playerParameters.allowInvalidateSelectionsOnRendererCapabilitiesChange) {
       invalidateForRendererCapabilitiesChange(renderer);
     }
   }
@@ -3833,9 +3835,12 @@ public class DefaultTrackSelector extends MappingTrackSelector
     private final int selectedAudioLanguageScore;
     private final boolean allowMixedMimeTypes;
     private final @SelectionEligibility int selectionEligibility;
+    private final boolean usesPrimaryOrFallbackDecoder;
     private final boolean usesPrimaryDecoder;
     private final boolean usesHardwareAcceleration;
     private final int codecPreferenceScore;
+    private final boolean isHdr;
+    @Nullable private final String resolvedMimeType;
 
     public VideoTrackInfo(
         int rendererIndex,
@@ -3902,23 +3907,37 @@ public class DefaultTrackSelector extends MappingTrackSelector
           normalizeUndeterminedLanguageToNull(selectedAudioLanguage) == null;
       selectedAudioLanguageScore =
           getFormatLanguageScore(format, selectedAudioLanguage, selectedAudioLanguageUndetermined);
+
+      String resolvedMimeType = format.sampleMimeType;
+      @RendererCapabilities.DecoderSupport
+      int decoderSupport = RendererCapabilities.getDecoderSupport(formatSupport);
+      if (decoderSupport == RendererCapabilities.DECODER_SUPPORT_FALLBACK_MIMETYPE) {
+        String fallbackMimeType = MediaCodecUtil.getAlternativeCodecMimeType(format);
+        if (fallbackMimeType != null) {
+          resolvedMimeType = fallbackMimeType;
+        }
+      }
+
       int bestMimeTypeMatchIndex = Integer.MAX_VALUE;
       for (int i = 0; i < parameters.preferredVideoMimeTypes.size(); i++) {
-        if (format.sampleMimeType != null
-            && format.sampleMimeType.equals(parameters.preferredVideoMimeTypes.get(i))) {
+        if (resolvedMimeType != null
+            && resolvedMimeType.equals(parameters.preferredVideoMimeTypes.get(i))) {
           bestMimeTypeMatchIndex = i;
           break;
         }
       }
       preferredMimeTypeMatchIndex = bestMimeTypeMatchIndex;
       preferredLabelMatchIndex = getBestLabelMatchIndex(format, parameters.preferredVideoLabels);
-      usesPrimaryDecoder =
-          RendererCapabilities.getDecoderSupport(formatSupport)
-              == RendererCapabilities.DECODER_SUPPORT_PRIMARY;
+      usesPrimaryOrFallbackDecoder =
+          decoderSupport == RendererCapabilities.DECODER_SUPPORT_PRIMARY
+              || decoderSupport == RendererCapabilities.DECODER_SUPPORT_FALLBACK_MIMETYPE;
+      usesPrimaryDecoder = decoderSupport == RendererCapabilities.DECODER_SUPPORT_PRIMARY;
       usesHardwareAcceleration =
           RendererCapabilities.getHardwareAccelerationSupport(formatSupport)
               == RendererCapabilities.HARDWARE_ACCELERATION_SUPPORTED;
-      codecPreferenceScore = getVideoCodecPreferenceScore(format.sampleMimeType);
+      this.resolvedMimeType = resolvedMimeType;
+      codecPreferenceScore = getVideoCodecPreferenceScore(resolvedMimeType);
+      isHdr = usesPrimaryDecoder && ColorInfo.isTransferHdr(format.colorInfo);
       selectionEligibility = evaluateSelectionEligibility(formatSupport, requiredAdaptiveSupport);
     }
 
@@ -3930,9 +3949,9 @@ public class DefaultTrackSelector extends MappingTrackSelector
     @Override
     public boolean isCompatibleForAdaptationWith(VideoTrackInfo otherTrack) {
       return (allowMixedMimeTypes
-              || Objects.equals(format.sampleMimeType, otherTrack.format.sampleMimeType))
+              || Objects.equals(this.resolvedMimeType, otherTrack.resolvedMimeType))
           && (parameters.allowVideoMixedDecoderSupportAdaptiveness
-              || (this.usesPrimaryDecoder == otherTrack.usesPrimaryDecoder
+              || (this.usesPrimaryOrFallbackDecoder == otherTrack.usesPrimaryOrFallbackDecoder
                   && this.usesHardwareAcceleration == otherTrack.usesHardwareAcceleration));
     }
 
@@ -3988,12 +4007,9 @@ public class DefaultTrackSelector extends MappingTrackSelector
                   info2.preferredMimeTypeMatchIndex,
                   Ordering.natural().reverse())
               // 5. Compare match with renderer capability preferences.
-              .compareFalseFirst(info1.usesPrimaryDecoder, info2.usesPrimaryDecoder)
+              .compareFalseFirst(
+                  info1.usesPrimaryOrFallbackDecoder, info2.usesPrimaryOrFallbackDecoder)
               .compareFalseFirst(info1.usesHardwareAcceleration, info2.usesHardwareAcceleration);
-
-      if (info1.usesPrimaryDecoder && info1.usesHardwareAcceleration) {
-        chain = chain.compare(info1.codecPreferenceScore, info2.codecPreferenceScore);
-      }
       return chain.result();
     }
 
@@ -4015,8 +4031,17 @@ public class DefaultTrackSelector extends MappingTrackSelector
         comparisonChain =
             comparisonChain.compare(info1.bitrate, info2.bitrate, FORMAT_VALUE_ORDERING.reverse());
       }
-      return comparisonChain
-          .compare(info1.pixelCount, info2.pixelCount, qualityOrdering)
+      ComparisonChain chain =
+          comparisonChain
+              .compareFalseFirst(info1.isHdr, info2.isHdr)
+              .compare(info1.pixelCount, info2.pixelCount, qualityOrdering);
+
+      if (info1.usesPrimaryOrFallbackDecoder && info1.usesHardwareAcceleration) {
+        chain = chain.compare(info1.codecPreferenceScore, info2.codecPreferenceScore);
+      }
+
+      return chain
+          .compareFalseFirst(info1.usesPrimaryDecoder, info2.usesPrimaryDecoder)
           .compare(info1.bitrate, info2.bitrate, qualityOrdering)
           .result();
     }

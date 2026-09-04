@@ -34,20 +34,18 @@ import androidx.media3.extractor.ExtractorOutput;
 import androidx.media3.extractor.IndexSeekMap;
 import androidx.media3.extractor.PositionHolder;
 import androidx.media3.extractor.TrackOutput;
-import com.google.common.base.Charsets;
 import com.google.common.primitives.Ints;
 import java.io.IOException;
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
-import org.mozilla.universalchardet.UniversalDetector;
 
 /** Generic extractor for extracting subtitles from various subtitle formats. */
 @UnstableApi
@@ -94,10 +92,11 @@ public class SubtitleExtractor implements Extractor {
   @Nullable private final Format format;
   private final List<Sample> samples;
   private final ParsableByteArray scratchSampleArray;
-  private final UniversalDetector detector;
 
   private byte[] subtitleData;
   private @MonotonicNonNull TrackOutput trackOutput;
+  private @MonotonicNonNull ExtractorOutput extractorOutput;
+  private @MonotonicNonNull IndexSeekMap seekMap;
   private int bytesRead;
   private @State int state;
   private long[] timestamps;
@@ -119,7 +118,6 @@ public class SubtitleExtractor implements Extractor {
     scratchSampleArray = new ParsableByteArray();
     // TODO: b/376693592 - Simplify this by taking the post-transformation Format as a parameter
     //  instead.
-    detector = new UniversalDetector(null);
     this.format =
         format != null
             ? format
@@ -146,15 +144,17 @@ public class SubtitleExtractor implements Extractor {
   @Override
   public void init(ExtractorOutput output) {
     checkState(state == STATE_CREATED);
+    this.extractorOutput = output;
     trackOutput = output.track(TRACK_ID, C.TRACK_TYPE_TEXT);
     if (format != null) {
       trackOutput.format(format);
       output.endTracks();
-      output.seekMap(
+      seekMap =
           new IndexSeekMap(
               /* positions= */ new long[] {0},
               /* timesUs= */ new long[] {0},
-              /* durationUs= */ C.TIME_UNSET));
+              /* durationUs= */ C.TIME_UNSET);
+      output.seekMap(seekMap);
     }
     state = STATE_INITIALIZED;
   }
@@ -176,7 +176,6 @@ public class SubtitleExtractor implements Extractor {
     if (state == STATE_EXTRACTING) {
       boolean inputFinished = readFromInput(input);
       if (inputFinished) {
-        convertToUtf8();
         parseAndWriteToOutput();
         state = STATE_FINISHED;
       }
@@ -254,6 +253,7 @@ public class SubtitleExtractor implements Extractor {
           seekTimeUs != C.TIME_UNSET
               ? SubtitleParser.OutputOptions.cuesAfterThenRemainingCuesBefore(seekTimeUs)
               : SubtitleParser.OutputOptions.allCues();
+      AtomicLong maxEndTimeUs = new AtomicLong(C.TIME_UNSET);
       subtitleParser.parse(
           subtitleData,
           /* offset= */ 0,
@@ -265,6 +265,12 @@ public class SubtitleExtractor implements Extractor {
                     cuesWithTiming.startTimeUs,
                     cueEncoder.encode(cuesWithTiming.cues, cuesWithTiming.durationUs));
             samples.add(sample);
+            if (cuesWithTiming.endTimeUs != C.TIME_UNSET) {
+              maxEndTimeUs.set(
+                  maxEndTimeUs.get() == C.TIME_UNSET
+                      ? cuesWithTiming.endTimeUs
+                      : Math.max(maxEndTimeUs.get(), cuesWithTiming.endTimeUs));
+            }
             if (seekTimeUs == C.TIME_UNSET || cuesWithTiming.endTimeUs >= seekTimeUs) {
               writeToOutput(sample);
             }
@@ -273,6 +279,14 @@ public class SubtitleExtractor implements Extractor {
       timestamps = new long[samples.size()];
       for (int i = 0; i < samples.size(); i++) {
         timestamps[i] = samples.get(i).timeUs;
+      }
+      // Duration is exact after parsing all subtitle cues.
+      if (maxEndTimeUs.get() != C.TIME_UNSET) {
+        checkNotNull(trackOutput).durationUs(maxEndTimeUs.get());
+        if (seekMap != null) {
+          seekMap.setDurationUs(maxEndTimeUs.get());
+          checkNotNull(extractorOutput).seekMap(seekMap);
+        }
       }
       subtitleData = Util.EMPTY_BYTE_ARRAY;
     } catch (RuntimeException e) {
@@ -302,22 +316,6 @@ public class SubtitleExtractor implements Extractor {
         /* size= */ size,
         /* offset= */ 0,
         /* cryptoData= */ null);
-  }
-
-  private void convertToUtf8() {
-    if (subtitleData.length != bytesRead) {
-      return;
-    }
-    detector.reset();
-    detector.handleData(subtitleData, 0, bytesRead);
-    detector.dataEnd();
-    if (detector.getDetectedCharset() == null) {
-      return;
-    }
-    if (!detector.getDetectedCharset().startsWith("UTF")) {
-      subtitleData = new String(subtitleData, Charset.forName(detector.getDetectedCharset())).getBytes(Charsets.UTF_8);
-    }
-    bytesRead = subtitleData.length;
   }
 
   private static class Sample implements Comparable<Sample> {

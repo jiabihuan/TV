@@ -17,7 +17,8 @@ package androidx.media3.inspector.frame;
 
 import static androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND;
 import static androidx.media3.exoplayer.SeekParameters.CLOSEST_SYNC;
-import static androidx.media3.test.utils.AssetInfo.MP4_ASSET;
+import static androidx.media3.test.utils.AssetInfo.MP3_ASSET;
+import static androidx.media3.test.utils.AssetInfo.MP4_ADVANCED_ASSET;
 import static androidx.media3.test.utils.AssetInfo.MP4_ONLY_PREROLL_SYNC_SAMPLE_EDIT_LIST;
 import static androidx.media3.test.utils.AssetInfo.MP4_TRIM_OPTIMIZATION_270;
 import static androidx.media3.test.utils.BitmapPixelTestUtil.maybeSaveTestBitmap;
@@ -436,19 +437,19 @@ public class FrameExtractorTest {
   @Test
   public void extractFrame_changeMediaItem_extractsFrameFromTheCorrectItem() throws Exception {
     Frame frameFirstItem;
+    Frame frameSecondItem;
     try (FrameExtractor frameExtractor =
         new FrameExtractor.Builder(context, MediaItem.fromUri(MP4_TRIM_OPTIMIZATION_270.uri))
             .build()) {
       ListenableFuture<Frame> frameFutureFirstItem = frameExtractor.getFrame(/* positionMs= */ 0);
       frameFirstItem = frameFutureFirstItem.get(TIMEOUT_SECONDS, SECONDS);
-    }
 
-    Frame frameSecondItem;
-    try (FrameExtractor frameExtractor =
-        new FrameExtractor.Builder(context, MediaItem.fromUri(FILE_PATH)).build()) {
-      ListenableFuture<Frame> frameFutureSecondItem =
-          frameExtractor.getFrame(/* positionMs= */ 8_500);
-      frameSecondItem = frameFutureSecondItem.get(TIMEOUT_SECONDS, SECONDS);
+      try (FrameExtractor nestedFrameExtractor =
+          new FrameExtractor.Builder(context, MediaItem.fromUri(FILE_PATH)).build()) {
+        ListenableFuture<Frame> frameFutureSecondItem =
+            nestedFrameExtractor.getFrame(/* positionMs= */ 8_500);
+        frameSecondItem = frameFutureSecondItem.get(TIMEOUT_SECONDS, SECONDS);
+      }
     }
 
     Bitmap actualBitmapFirstItem = frameFirstItem.bitmap;
@@ -475,9 +476,12 @@ public class FrameExtractorTest {
   @Test
   public void extractFrame_oneFrame_decodesReferenceFramesOnly() throws Exception {
     assumeFormatsSupported(
-        context, testId, /* inputFormat= */ MP4_ASSET.videoFormat, /* outputFormat= */ null);
+        context,
+        testId,
+        /* inputFormat= */ MP4_ADVANCED_ASSET.videoFormat,
+        /* outputFormat= */ null);
     try (FrameExtractor frameExtractor =
-        new FrameExtractor.Builder(context, MediaItem.fromUri(MP4_ASSET.uri)).build()) {
+        new FrameExtractor.Builder(context, MediaItem.fromUri(MP4_ADVANCED_ASSET.uri)).build()) {
       DecoderCounters initialCounters =
           frameExtractor.getDecoderCounters().get(TIMEOUT_SECONDS, SECONDS);
       int initialSkippedInputBufferCount =
@@ -608,9 +612,12 @@ public class FrameExtractorTest {
   public void extractThumbnail_whenThumbnailMetadataTimestampIsZero_returnsCorrectFrame()
       throws Exception {
     assumeFormatsSupported(
-        context, testId, /* inputFormat= */ MP4_ASSET.videoFormat, /* outputFormat= */ null);
+        context,
+        testId,
+        /* inputFormat= */ MP4_ADVANCED_ASSET.videoFormat,
+        /* outputFormat= */ null);
     try (FrameExtractor frameExtractor =
-        new FrameExtractor.Builder(context, MediaItem.fromUri(MP4_ASSET.uri)).build()) {
+        new FrameExtractor.Builder(context, MediaItem.fromUri(MP4_ADVANCED_ASSET.uri)).build()) {
       DecoderCounters initialCounters =
           frameExtractor.getDecoderCounters().get(TIMEOUT_SECONDS, SECONDS);
       int initialRenderedOutputBufferCount =
@@ -714,7 +721,93 @@ public class FrameExtractorTest {
                 frameExtractor.getFrame(/* positionMs= */ 0).get(TIMEOUT_SECONDS, SECONDS);
               }
             });
-
     assertThat(thrown).hasCauseThat().isInstanceOf(ExoPlaybackException.class);
+  }
+
+  @Test
+  public void extractFrame_audioOnlyMedia_reportsErrorViaFuture() {
+    try (FrameExtractor frameExtractor =
+        new FrameExtractor.Builder(context, MediaItem.fromUri(MP3_ASSET.uri)).build()) {
+      ExecutionException thrown =
+          assertThrows(
+              ExecutionException.class,
+              () -> frameExtractor.getFrame(/* positionMs= */ 0).get(TIMEOUT_SECONDS, SECONDS));
+
+      assertThat(thrown).hasCauseThat().isInstanceOf(IllegalArgumentException.class);
+      assertThat(thrown)
+          .hasCauseThat()
+          .hasMessageThat()
+          .isEqualTo("Media item does not contain any video tracks.");
+    }
+  }
+
+  @Test
+  public void extractFrame_audioOnlyMedia_consecutiveCallsReportErrorViaFuture() {
+    try (FrameExtractor frameExtractor =
+        new FrameExtractor.Builder(context, MediaItem.fromUri(MP3_ASSET.uri)).build()) {
+      ExecutionException thrown1 =
+          assertThrows(
+              ExecutionException.class,
+              () -> frameExtractor.getFrame(/* positionMs= */ 0).get(TIMEOUT_SECONDS, SECONDS));
+
+      assertThat(thrown1).hasCauseThat().isInstanceOf(IllegalArgumentException.class);
+      assertThat(thrown1)
+          .hasCauseThat()
+          .hasMessageThat()
+          .isEqualTo("Media item does not contain any video tracks.");
+
+      ExecutionException thrown2 =
+          assertThrows(
+              ExecutionException.class,
+              () -> frameExtractor.getFrame(/* positionMs= */ 1000).get(TIMEOUT_SECONDS, SECONDS));
+
+      assertThat(thrown2).hasCauseThat().isInstanceOf(IllegalArgumentException.class);
+      assertThat(thrown2)
+          .hasCauseThat()
+          .hasMessageThat()
+          .isEqualTo("Media item does not contain any video tracks.");
+    }
+  }
+
+  @Test
+  public void extractFrame_zeroDurationVideo_reportsErrorViaFuture() {
+    // Simulate an empty video track by clipping to zero duration, triggering STATE_ENDED.
+    MediaItem mediaItem =
+        new MediaItem.Builder()
+            .setUri(FILE_PATH)
+            .setClippingConfiguration(
+                new MediaItem.ClippingConfiguration.Builder().setEndPositionMs(0).build())
+            .build();
+    try (FrameExtractor frameExtractor = new FrameExtractor.Builder(context, mediaItem).build()) {
+      ExecutionException thrown =
+          assertThrows(
+              ExecutionException.class,
+              () -> frameExtractor.getFrame(/* positionMs= */ 0).get(TIMEOUT_SECONDS, SECONDS));
+
+      assertThat(thrown).hasCauseThat().isInstanceOf(IllegalStateException.class);
+      assertThat(thrown)
+          .hasCauseThat()
+          .hasMessageThat()
+          .isEqualTo("Reached end of stream without extracting a frame.");
+    }
+  }
+
+  @Test
+  public void extractFrame_drmProtectedMedia_reportsErrorViaFuture() {
+    try (FrameExtractor frameExtractor =
+        new FrameExtractor.Builder(
+                context, MediaItem.fromUri("asset:///media/drm/sample_fragmented_widevine.mp4"))
+            .build()) {
+      ExecutionException thrown =
+          assertThrows(
+              ExecutionException.class,
+              () -> frameExtractor.getFrame(/* positionMs= */ 0).get(TIMEOUT_SECONDS, SECONDS));
+
+      assertThat(thrown).hasCauseThat().isInstanceOf(UnsupportedOperationException.class);
+      assertThat(thrown)
+          .hasCauseThat()
+          .hasMessageThat()
+          .isEqualTo("Frame extraction from DRM-protected media is not supported.");
+    }
   }
 }

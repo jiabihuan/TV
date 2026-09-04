@@ -58,6 +58,7 @@ import java.util.List;
     private final Supplier<HandlerThread> queueingThreadSupplier;
 
     private boolean enableSynchronousBufferQueueingWithAsyncCryptoFlag;
+    private boolean enableAsyncCryptoSynchronization;
 
     /**
      * Creates an factory for {@link AsynchronousMediaCodecAdapter} instances.
@@ -90,15 +91,27 @@ import java.util.List;
     }
 
     /**
-     * Sets whether to enable {@link MediaCodec#CONFIGURE_FLAG_USE_CRYPTO_ASYNC} on API 34 and
-     * above.
-     *
-     * <p>This method is experimental. Its default value may change, or it may be renamed or removed
-     * in a future release.
+     * Sets whether to enable {@link MediaCodec#CONFIGURE_FLAG_USE_CRYPTO_ASYNC} on API 36 and
+     * above. The default is {@code true}.
      */
-    @ExperimentalApi // TODO: b/470368123 - Remove method once flag usage once safe.
-    public void experimentalSetAsyncCryptoFlagEnabled(boolean enableAsyncCryptoFlag) {
+    public void setAsyncCryptoFlagEnabled(boolean enableAsyncCryptoFlag) {
       enableSynchronousBufferQueueingWithAsyncCryptoFlag = enableAsyncCryptoFlag;
+    }
+
+    /**
+     * Sets whether to force synchronization for queuing input buffers on API 31 and above for
+     * {@link AsynchronousMediaCodecAdapter} instances.
+     *
+     * <p>A known bug in the Android framework (b/149908061) prior to API 31 can cause garbled video
+     * when audio and video are sharing the same DRM session. A workaround was implemented that
+     * forces synchronization for queuing input buffers. This workaround is disabled for devices
+     * with API level &gt;= 31 but can be enabled using this method.
+     *
+     * <p>The default is {@code false}.
+     */
+    @ExperimentalApi // TODO: b/502930657 - Remove this method.
+    public void setAsyncCryptoSynchronizationEnabled(boolean enableAsyncCryptoSynchronization) {
+      this.enableAsyncCryptoSynchronization = enableAsyncCryptoSynchronization;
     }
 
     @Override
@@ -118,7 +131,8 @@ import java.util.List;
           flags |= MediaCodec.CONFIGURE_FLAG_USE_CRYPTO_ASYNC;
         } else {
           bufferEnqueuer =
-              new AsynchronousMediaCodecBufferEnqueuer(codec, queueingThreadSupplier.get());
+              new AsynchronousMediaCodecBufferEnqueuer(
+                  codec, queueingThreadSupplier.get(), enableAsyncCryptoSynchronization);
         }
         codecAdapter =
             new AsynchronousMediaCodecAdapter(

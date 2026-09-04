@@ -431,8 +431,6 @@ public final class HlsMediaSource extends BaseMediaSource
               ? null
               : cmcdConfigurationFactory.createCmcdConfiguration(mediaItem);
 
-      playlistParserFactory.setAdblock(mediaItem.adblock);
-
       return new HlsMediaSource(
           mediaItem,
           hlsDataSourceFactory,
@@ -506,7 +504,7 @@ public final class HlsMediaSource extends BaseMediaSource
     this.loadErrorHandlingPolicy = loadErrorHandlingPolicy;
     this.playlistTracker = playlistTracker;
     this.elapsedRealTimeOffsetMs = elapsedRealTimeOffsetMs;
-    this.allowChunklessPreparation = mediaItem.decode == 1;
+    this.allowChunklessPreparation = allowChunklessPreparation;
     this.metadataType = metadataType;
     this.useSessionKeys = useSessionKeys;
     this.timestampAdjusterInitializationTimeoutMs = timestampAdjusterInitializationTimeoutMs;
@@ -547,7 +545,8 @@ public final class HlsMediaSource extends BaseMediaSource
     playlistTracker.start(
         checkNotNull(getMediaItem().localConfiguration).uri,
         eventDispatcher,
-        /* primaryPlaylistListener= */ this);
+        /* primaryPlaylistListener= */ this,
+        getBandwidthMeter());
   }
 
   @Override

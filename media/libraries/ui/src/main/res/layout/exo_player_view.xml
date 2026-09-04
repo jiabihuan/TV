@@ -39,6 +39,10 @@
       android:scaleType="fitXY"
       android:contentDescription="@null"/>
 
+    <androidx.media3.ui.SubtitleView android:id="@id/exo_subtitles"
+      android:layout_width="match_parent"
+      android:layout_height="match_parent"/>
+
     <ProgressBar android:id="@id/exo_buffering"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
@@ -60,14 +64,6 @@
       android:paddingBottom="@dimen/exo_error_message_text_padding_vertical"/>
 
   </androidx.media3.ui.AspectRatioFrameLayout>
-
-  <androidx.media3.ui.danmaku.DanmakuView android:id="@id/exo_danmaku"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"/>
-
-  <androidx.media3.ui.SubtitleView android:id="@id/exo_subtitles"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"/>
 
   <FrameLayout android:id="@id/exo_ad_overlay"
     android:layout_width="match_parent"

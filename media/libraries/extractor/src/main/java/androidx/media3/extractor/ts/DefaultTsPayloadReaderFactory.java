@@ -166,24 +166,18 @@ public final class DefaultTsPayloadReaderFactory implements TsPayloadReader.Fact
                 new LatmReader(esInfo.language, esInfo.getRoleFlags(), MimeTypes.VIDEO_MP2T));
       case TsExtractor.TS_STREAM_TYPE_AC3:
       case TsExtractor.TS_STREAM_TYPE_E_AC3:
-      case TsExtractor.TS_STREAM_TYPE_HDMV_E_AC3:
-      case TsExtractor.TS_STREAM_TYPE_HDMV_E_AC3_SEC:
         return new PesReader(
             new Ac3Reader(esInfo.language, esInfo.getRoleFlags(), MimeTypes.VIDEO_MP2T));
       case TsExtractor.TS_STREAM_TYPE_AC4:
         return new PesReader(
             new Ac4Reader(esInfo.language, esInfo.getRoleFlags(), MimeTypes.VIDEO_MP2T));
       case TsExtractor.TS_STREAM_TYPE_HDMV_DTS:
-      case TsExtractor.TS_STREAM_TYPE_HDMV_DTS_AUTO:
-        if (!isSet(FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS) && streamType != TsExtractor.TS_STREAM_TYPE_HDMV_DTS_AUTO) {
+        if (!isSet(FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS)) {
           return null;
         }
       // Fall through.
       case TsExtractor.TS_STREAM_TYPE_DTS:
       case TsExtractor.TS_STREAM_TYPE_DTS_HD:
-      case TsExtractor.TS_STREAM_TYPE_HDMV_DTS_HD_HRA:
-      case TsExtractor.TS_STREAM_TYPE_HDMV_DTS_HD_MASTER:
-      case TsExtractor.TS_STREAM_TYPE_HDMV_DTS_EXPRESS_SEC:
         return new PesReader(
             new DtsReader(
                 esInfo.language,
@@ -197,12 +191,6 @@ public final class DefaultTsPayloadReaderFactory implements TsPayloadReader.Fact
                 esInfo.getRoleFlags(),
                 DtsReader.FTOC_MAX_HEADER_SIZE,
                 MimeTypes.VIDEO_MP2T));
-      case TsExtractor.TS_STREAM_TYPE_HDMV_LPCM:
-        return new PesReader(new LpcmReader(esInfo.language, MimeTypes.VIDEO_MP2T));
-      case TsExtractor.TS_STREAM_TYPE_HDMV_TRUE_HD:
-        return new PesReader(new TrueHdReader(esInfo.language, MimeTypes.VIDEO_MP2T));
-      case TsExtractor.TS_STREAM_TYPE_HDMV_VC1:
-        return new PesReader(new Vc1Reader(MimeTypes.VIDEO_MP2T));
       case TsExtractor.TS_STREAM_TYPE_H262:
       case TsExtractor.TS_STREAM_TYPE_DC2_H262:
         return new PesReader(new H262Reader(buildUserDataReader(esInfo), MimeTypes.VIDEO_MP2T));
@@ -237,10 +225,6 @@ public final class DefaultTsPayloadReaderFactory implements TsPayloadReader.Fact
                 /* containerMimeType= */ MimeTypes.VIDEO_MP2T));
       case TsExtractor.TS_STREAM_TYPE_MHAS:
         return new PesReader(new MpeghReader(MimeTypes.VIDEO_MP2T));
-      case TsExtractor.TS_STREAM_TYPE_PGS:
-        return new PesReader(new PgsReader(esInfo.language, MimeTypes.VIDEO_MP2T));
-      case TsExtractor.TS_STREAM_TYPE_AV3A:
-        return new PesReader(new Av3aReader(esInfo.language, esInfo.getRoleFlags()));
       default:
         return null;
     }

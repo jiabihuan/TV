@@ -326,7 +326,10 @@ public class OkHttpDataSource extends BaseDataSource implements HttpDataSource {
     if (dataSpec.length != C.LENGTH_UNSET) {
       bytesToRead = dataSpec.length;
     } else {
-      long contentLength = responseBody.contentLength();
+      long contentLength =
+          HttpUtil.getContentLength(
+              response.header(HttpHeaders.CONTENT_LENGTH),
+              response.header(HttpHeaders.CONTENT_RANGE));
       bytesToRead = contentLength != -1 ? (contentLength - bytesToSkip) : C.LENGTH_UNSET;
     }
 
@@ -397,16 +400,15 @@ public class OkHttpDataSource extends BaseDataSource implements HttpDataSource {
       builder.header(header.getKey(), header.getValue());
     }
 
-    boolean force = Util.inferContentType(dataSpec.uri) == C.CONTENT_TYPE_OTHER;
-    @Nullable String rangeHeader = buildRangeRequestHeader(position, length, force);
+    @Nullable String rangeHeader = buildRangeRequestHeader(position, length);
     if (rangeHeader != null) {
-      builder.header(HttpHeaders.RANGE, rangeHeader);
+      builder.addHeader(HttpHeaders.RANGE, rangeHeader);
     }
     if (userAgent != null) {
-      builder.header(HttpHeaders.USER_AGENT, userAgent);
+      builder.addHeader(HttpHeaders.USER_AGENT, userAgent);
     }
     if (!dataSpec.isFlagSet(DataSpec.FLAG_ALLOW_GZIP)) {
-      builder.header(HttpHeaders.ACCEPT_ENCODING, "identity");
+      builder.addHeader(HttpHeaders.ACCEPT_ENCODING, "identity");
     }
 
     @Nullable RequestBody requestBody = null;
@@ -479,6 +481,7 @@ public class OkHttpDataSource extends BaseDataSource implements HttpDataSource {
         bytesToSkip -= read;
         bytesTransferred(read);
       }
+      return;
     } catch (IOException e) {
       if (e instanceof HttpDataSourceException) {
         throw (HttpDataSourceException) e;

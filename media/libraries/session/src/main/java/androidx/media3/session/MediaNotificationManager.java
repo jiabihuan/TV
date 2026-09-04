@@ -21,6 +21,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import android.annotation.SuppressLint;
+import android.app.ForegroundServiceStartNotAllowedException;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -33,10 +34,12 @@ import android.os.Looper;
 import android.os.Message;
 import android.util.Pair;
 import androidx.annotation.Nullable;
+import androidx.concurrent.futures.CallbackToFutureAdapter;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import androidx.media3.common.Player;
 import androidx.media3.common.util.Log;
+import androidx.media3.common.util.NullableType;
 import androidx.media3.common.util.Util;
 import androidx.media3.session.MediaNotification.Provider.NotificationChannelInfo;
 import androidx.media3.session.MediaSessionService.ShowNotificationForIdlePlayerMode;
@@ -163,7 +166,7 @@ import java.util.concurrent.TimeoutException;
     }
     // Let the notification provider handle the command first before forwarding it directly.
     Util.postOrRun(
-        new Handler(session.getPlayer().getApplicationLooper()),
+        session.getImpl().getApplicationHandler(),
         () -> {
           if (!mediaNotificationProvider.handleCustomCommand(session, action, extras)) {
             mainExecutor.execute(
@@ -187,34 +190,54 @@ import java.util.concurrent.TimeoutException;
    * @param session A session that needs notification update.
    * @param startInForegroundRequired Whether the service is required to start in the foreground.
    */
-  public void updateNotification(MediaSession session, boolean startInForegroundRequired) {
-    if (!mediaSessionService.isSessionAdded(session) || !shouldShowNotification(session)) {
-      removeNotification();
-      return;
-    }
+  public ListenableFuture<@NullableType Void> updateNotification(
+      MediaSession session, boolean startInForegroundRequired) {
+    return CallbackToFutureAdapter.getFuture(
+        completer -> {
+          if (!mediaSessionService.isSessionAdded(session) || !shouldShowNotification(session)) {
+            removeNotification();
+            completer.set(null);
+            return "notificationRemoved";
+          }
+          int notificationSequence = ++totalNotificationCount;
+          ImmutableList<CommandButton> mediaButtonPreferences =
+              checkNotNull(getConnectedControllerForSession(session)).getMediaButtonPreferences();
+          MediaNotification.Provider.Callback callback =
+              notification ->
+                  mainExecutor.execute(
+                      () -> onNotificationUpdated(notificationSequence, session, notification));
 
-    int notificationSequence = ++totalNotificationCount;
-    ImmutableList<CommandButton> mediaButtonPreferences =
-        checkNotNull(getConnectedControllerForSession(session)).getMediaButtonPreferences();
-    MediaNotification.Provider.Callback callback =
-        notification ->
-            mainExecutor.execute(
-                () -> onNotificationUpdated(notificationSequence, session, notification));
-    Util.postOrRun(
-        new Handler(session.getPlayer().getApplicationLooper()),
-        () -> {
-          MediaNotification mediaNotification =
-              this.mediaNotificationProvider.createNotification(
-                  session, mediaButtonPreferences, actionFactory, callback);
-          checkState(
-              /* expression= */ mediaNotification.notificationId != SHUTDOWN_NOTIFICATION_ID,
-              /* errorMessage= */ "notification ID "
-                  + SHUTDOWN_NOTIFICATION_ID
-                  + " is already used internally.");
-          mainExecutor.execute(
-              () ->
-                  updateNotificationInternal(
-                      session, mediaNotification, startInForegroundRequired));
+          Util.postOrRun(
+              session.getImpl().getApplicationHandler(),
+              () -> {
+                try {
+                  MediaNotification mediaNotification =
+                      this.mediaNotificationProvider.createNotification(
+                          session, mediaButtonPreferences, actionFactory, callback);
+                  checkState(
+                      /* expression= */ mediaNotification.notificationId
+                          != SHUTDOWN_NOTIFICATION_ID,
+                      /* errorMessage= */ "notification ID "
+                          + SHUTDOWN_NOTIFICATION_ID
+                          + " is already used internally.");
+                  mainExecutor.execute(
+                      () -> {
+                        try {
+                          updateNotificationInternal(
+                              session, mediaNotification, startInForegroundRequired);
+                          completer.set(null);
+                        } catch (IllegalStateException e) {
+                          // Re-throw exception thrown in the main thread caused by not being
+                          // allowed to start a service into the foreground from the background.
+                          completer.setException(e);
+                        }
+                      });
+                } catch (RuntimeException e) {
+                  // Re-throw exception thrown in the app thread caused by programming errors.
+                  completer.setException(e);
+                }
+              });
+          return "notificationUpdated";
         });
   }
 
@@ -297,7 +320,15 @@ import java.util.concurrent.TimeoutException;
     if (notificationSequence == totalNotificationCount) {
       boolean startInForegroundRequired =
           shouldRunInForeground(/* startInForegroundWhenPaused= */ false);
-      updateNotificationInternal(session, mediaNotification, startInForegroundRequired);
+      try {
+        updateNotificationInternal(session, mediaNotification, startInForegroundRequired);
+      } catch (IllegalStateException e) {
+        if (SDK_INT >= 31 && e instanceof ForegroundServiceStartNotAllowedException) {
+          mediaSessionService.onForegroundServiceStartNotAllowedException();
+        } else {
+          throw e;
+        }
+      }
     }
   }
 

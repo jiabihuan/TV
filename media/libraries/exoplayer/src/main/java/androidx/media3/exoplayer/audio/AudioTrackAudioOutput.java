@@ -34,6 +34,7 @@ import androidx.annotation.GuardedBy;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.media3.common.C;
+import androidx.media3.common.MediaLibraryInfo;
 import androidx.media3.common.PlaybackParameters;
 import androidx.media3.common.util.BackgroundExecutor;
 import androidx.media3.common.util.Clock;
@@ -52,7 +53,8 @@ import java.util.concurrent.ScheduledExecutorService;
 public final class AudioTrackAudioOutput implements AudioOutput {
 
   /** Listener for potential capability change events. */
-  /* package */ interface CapabilityChangeListener {
+  @UnstableApi
+  public interface CapabilityChangeListener {
 
     /** The audio device routing changed. */
     void onRoutedDeviceChanged(AudioDeviceInfo routedDevice);
@@ -209,7 +211,7 @@ public final class AudioTrackAudioOutput implements AudioOutput {
 
   @Override
   public long getPositionUs() {
-    return audioTrackPositionTracker.getCurrentPositionUs();
+    return audioTrackPositionTracker.getCurrentPositionUs(getWrittenFrames());
   }
 
   @Override
@@ -537,7 +539,7 @@ public final class AudioTrackAudioOutput implements AudioOutput {
               + ", "
               + getWrittenFrames();
 
-      if (AudioTrackAudioOutputProvider.failOnSpuriousAudioTimestamp) {
+      if (!MediaLibraryInfo.enableWorkarounds()) {
         throw new InvalidAudioTrackTimestampException(message);
       }
       Log.w(TAG, message);
@@ -561,7 +563,7 @@ public final class AudioTrackAudioOutput implements AudioOutput {
               + ", "
               + getWrittenFrames();
 
-      if (AudioTrackAudioOutputProvider.failOnSpuriousAudioTimestamp) {
+      if (!MediaLibraryInfo.enableWorkarounds()) {
         throw new InvalidAudioTrackTimestampException(message);
       }
       Log.w(TAG, message);
@@ -582,7 +584,7 @@ public final class AudioTrackAudioOutput implements AudioOutput {
 
   /**
    * Thrown when the audio track has provided a spurious timestamp, if {@link
-   * AudioTrackAudioOutputProvider#failOnSpuriousAudioTimestamp} is set.
+   * MediaLibraryInfo#enableWorkarounds()} is false.
    */
   @UnstableApi
   public static final class InvalidAudioTrackTimestampException extends RuntimeException {
