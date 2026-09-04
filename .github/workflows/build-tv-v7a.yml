@@ -55,19 +55,22 @@ jobs:
         if: success()
         run: |
           mkdir -p Release/apk
-          find app/build/outputs/apk -name '*.apk' -exec cp {} Release/apk/ \; 2>/dev/null || true
-          ls -la Release/apk/ || echo "No APK found in Release/apk"
-          find . -name "*.apk" -not -path "*/.gradle/*" 2>/dev/null | head -10
+          # Find and copy APK files
+          find app/build/outputs/apk -name "*.apk" -type f 2>/dev/null | while read f; do
+            cp "$f" Release/apk/
+            echo "Copied: $f"
+          done
+          # Also check for any APK in the project
+          find . -name "*.apk" -type f -not -path "*/.gradle/*" 2>/dev/null | head -10
+          ls -la Release/apk/ 2>/dev/null || echo "Release/apk is empty"
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: leanback-armeabi-v7a-release-apk
-          path: |
-            app/build/outputs/apk/*/release/*.apk
-            Release/apk/*.apk
-          if-no-files-found: error
+          path: Release/apk/*.apk
+          if-no-files-found: warn
 
       - name: Upload build log on failure
         if: failure()
