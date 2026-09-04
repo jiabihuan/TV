@@ -55,8 +55,9 @@ jobs:
         if: success()
         run: |
           mkdir -p Release/apk
-          find app/build/outputs/apk -name '*.apk' -not -path '*/.gradle/*' -exec cp {} Release/apk/ \;
-          find Release/apk -name '*.apk' -maxdepth 1 -type f
+          find app/build/outputs/apk -name '*.apk' -exec cp {} Release/apk/ \; 2>/dev/null || true
+          ls -la Release/apk/ || echo "No APK found in Release/apk"
+          find . -name "*.apk" -not -path "*/.gradle/*" 2>/dev/null | head -10
 
       - name: Upload APK
         if: success()
