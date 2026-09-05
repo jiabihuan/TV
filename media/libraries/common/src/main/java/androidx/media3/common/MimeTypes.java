@@ -153,6 +153,7 @@ public final class MimeTypes {
 
   public static final String APPLICATION_MP4 = BASE_TYPE_APPLICATION + "/mp4";
   public static final String APPLICATION_WEBM = BASE_TYPE_APPLICATION + "/webm";
+  public static final String APPLICATION_OCTET_STREAM = BASE_TYPE_APPLICATION + "/octet-stream";
 
   public static final String APPLICATION_MATROSKA = BASE_TYPE_APPLICATION + "/x-matroska";
 
