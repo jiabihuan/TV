@@ -108,6 +108,7 @@ public final class MimeTypes {
   public static final String AUDIO_DST = BASE_TYPE_AUDIO + "/vnd.dst";
   public static final String AUDIO_DTS = BASE_TYPE_AUDIO + "/vnd.dts";
   public static final String AUDIO_DTS_HD = BASE_TYPE_AUDIO + "/vnd.dts.hd";
+  public static final String AUDIO_DTS_MA = BASE_TYPE_AUDIO + "/vnd.dts.hd;profile=ma";
   public static final String AUDIO_DTS_EXPRESS = BASE_TYPE_AUDIO + "/vnd.dts.hd;profile=lbr";
 
   @UnstableApi

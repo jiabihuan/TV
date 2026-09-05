@@ -66,6 +66,13 @@ public final class PesReader implements TsPayloadReader {
     state = STATE_FINDING_HEADER;
   }
 
+  /**
+   * Enables the random access indicator for keyframe seeking.
+   */
+  public void enableRandomAccessIndicator() {
+    // No-op by default.
+  }
+
   @Override
   public void init(
       TimestampAdjuster timestampAdjuster,

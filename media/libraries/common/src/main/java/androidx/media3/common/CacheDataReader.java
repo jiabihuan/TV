@@ -57,4 +57,14 @@ public abstract class CacheDataReader {
   public void prefetchRange(long position, long length) throws IOException {
     // No-op by default.
   }
+
+  /**
+   * Hints that data at the given position will be needed soon. Default implementation is a no-op.
+   *
+   * @param position the byte position to prefetch
+   * @throws IOException if an I/O error occurs
+   */
+  public void prefetch(long position) throws IOException {
+    // No-op by default.
+  }
 }
