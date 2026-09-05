@@ -388,7 +388,7 @@ final class BdmvSourceHelper {
       try { isoReader.prefetchRange(minOffset, maxEnd); } catch (IOException e) { }
     } else {
       for (IsoFileEntry e : entries) {
-        isoReader.prefetchRange(e.byteOffset, e.byteOffset + e.length);
+        try { isoReader.prefetchRange(e.byteOffset, e.byteOffset + e.length); } catch (IOException ex) { }
       }
     }
   }
