@@ -21,7 +21,7 @@ import androidx.media3.common.C;
 import androidx.media3.common.CacheDataReader;
 import androidx.media3.common.MediaItem;
 import androidx.media3.datasource.DataSource;
-import androidx.media3.datasource.IsoDataSource;
+
 import androidx.media3.exoplayer.source.ConcatenatingMediaSource2;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
@@ -105,7 +105,7 @@ final class BdmvSourceHelper {
       endM2ts = Math.min(m2tsEntry.length, Util.ceilDivide(endM2ts, BdmvConstants.M2TS_PACKET_SIZE) * BdmvConstants.M2TS_PACKET_SIZE);
       long clipByteOffset = m2tsEntry.byteOffset + startM2ts;
       long clipByteLength = endM2ts - startM2ts;
-      IsoDataSource.Factory clipFactory = new IsoDataSource.Factory(dataSourceFactory, clipByteOffset, clipByteLength, true);
+      DataSource.Factory clipFactory = new DataSource.Factory(dataSourceFactory, clipByteOffset, clipByteLength, true);
       final long capturedStartM2ts = startM2ts;
       final long capturedInTimeTicks = item.inTimeTicks;
       final long capturedDurationUs = durationUs;

@@ -22,7 +22,7 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaTitle;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.datasource.DataSource;
-import androidx.media3.datasource.IsoDataSource;
+
 import androidx.media3.exoplayer.source.ConcatenatingMediaSource2;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
@@ -57,7 +57,7 @@ final class SacdSourceHelper {
       final int channelCount = area.channelCount;
       final String mimeType = (area.audioEncoding == SacdArea.ENCODING_DST) ? MimeTypes.AUDIO_DST : MimeTypes.AUDIO_DSD;
       final long trackLengthLsn = track.lengthLsn;
-      IsoDataSource.Factory clipFactory = new IsoDataSource.Factory(dataSourceFactory, byteOffset, byteLength, false, false);
+      DataSource.Factory clipFactory = new DataSource.Factory(dataSourceFactory, byteOffset, byteLength, false, false);
       ProgressiveMediaSource.Factory pmFactory = new ProgressiveMediaSource.Factory(clipFactory, () -> new Extractor[]{new DsdExtractor(channelCount, durationUs, mimeType, trackLengthLsn)});
       MediaItem trackItem = new MediaItem.Builder().setUri(isoUri).setCustomCacheKey("sacd_t" + track.trackNumber + "_" + byteOffset).build();
       builder.add(pmFactory.createMediaSource(trackItem), durationUs / 1000);
