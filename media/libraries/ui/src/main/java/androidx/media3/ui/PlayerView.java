@@ -79,6 +79,7 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.media3.ui.AspectRatioFrameLayout.ResizeMode;
 import androidx.media3.ui.danmaku.DanmakuConfig;
 import androidx.media3.ui.danmaku.DanmakuController;
+import androidx.media3.ui.danmaku.DanmakuPlayerViewController;
 import androidx.media3.ui.danmaku.DanmakuView;
 import android.net.Uri;
 import okhttp3.OkHttpClient;
@@ -318,6 +319,7 @@ public class PlayerView extends FrameLayout implements AdViewProvider {
   @Nullable private final FrameLayout overlayFrameLayout;
   @Nullable private final DanmakuView danmakuView;
   private final DanmakuController danmakuController;
+  private final DanmakuPlayerViewController danmakuPlayerController;
   private final Handler mainLooperHandler;
   @Nullable private final Class<?> exoPlayerClazz;
   @Nullable private final Method setImageOutputMethod;
@@ -381,6 +383,7 @@ public class PlayerView extends FrameLayout implements AdViewProvider {
       overlayFrameLayout = null;
       danmakuView = null;
       danmakuController = new DanmakuController();
+      danmakuPlayerController = new DanmakuPlayerViewController();
       exoPlayerClazz = null;
       setImageOutputMethod = null;
       imageOutput = null;
@@ -2104,6 +2107,11 @@ public class PlayerView extends FrameLayout implements AdViewProvider {
   @UnstableApi
   public DanmakuController getDanmakuController() {
     return danmakuController;
+  }
+
+  @UnstableApi
+  public DanmakuPlayerViewController getDanmakuPlayerViewController() {
+    return danmakuPlayerController;
   }
 
   @UnstableApi

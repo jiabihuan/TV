@@ -18,6 +18,7 @@ import androidx.media3.common.Tracks;
 import androidx.media3.common.VideoSize;
 import androidx.media3.ui.danmaku.DanmakuConfig;
 import androidx.media3.ui.danmaku.DanmakuController;
+import androidx.media3.ui.danmaku.DanmakuPlayerViewController;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Constant;
@@ -245,6 +246,27 @@ public class PlayerManager implements ParseCallback {
     public void setDanmakuController(DanmakuController controller) {
         releaseDanmakuController();
         danmakuController = controller;
+        if (danmakuController == null) return;
+        danmakuController.setOkHttpClient(OkHttp.player());
+        danmakuController.setConfig(DanmakuSetting.getConfig());
+        danmakuController.setListener(new DanmakuController.Listener() {
+            @Override
+            public void onLoadCompleted(Uri uri, int count) {
+                logDanmakuLoad("completed", uri, count, null);
+                finishDanmakuLoad(uri);
+            }
+
+            @Override
+            public void onLoadError(Uri uri, IOException error) {
+                logDanmakuLoad("error", uri, -1, error);
+                finishDanmakuLoad(uri);
+            }
+        });
+    }
+
+    public void setDanmakuPlayerViewController(DanmakuPlayerViewController controller) {
+        releaseDanmakuController();
+        danmakuController = controller == null ? null : controller.getInternalController();
         if (danmakuController == null) return;
         danmakuController.setOkHttpClient(OkHttp.player());
         danmakuController.setConfig(DanmakuSetting.getConfig());

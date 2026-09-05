@@ -87,7 +87,7 @@ public class CastActivity extends PlaybackActivity implements CustomKeyDownVod.L
 
     @Override
     protected void onServiceConnected() {
-        player().setDanmakuController(mBinding.exo.getDanmakuController());
+        player().setDanmakuPlayerViewController(mBinding.exo.getDanmakuPlayerViewController());
         mBinding.control.action.decode.setText(player().getDecodeText());
         mBinding.control.action.speed.setText(player().getSpeedText());
         setAction(getIntent());
