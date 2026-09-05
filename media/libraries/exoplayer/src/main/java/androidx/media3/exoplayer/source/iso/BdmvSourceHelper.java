@@ -385,7 +385,7 @@ final class BdmvSourceHelper {
     }
     long span = maxEnd - minOffset;
     if (span > 0 && span <= BATCH_PREFETCH_MAX_SPAN) {
-      isoReader.prefetchRange(minOffset, maxEnd);
+      try { isoReader.prefetchRange(minOffset, maxEnd); } catch (IOException e) { }
     } else {
       for (IsoFileEntry e : entries) {
         isoReader.prefetchRange(e.byteOffset, e.byteOffset + e.length);
