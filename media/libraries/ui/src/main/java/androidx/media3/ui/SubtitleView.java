@@ -122,6 +122,8 @@ public final class SubtitleView extends FrameLayout {
   private @Cue.TextSizeType int defaultTextSizeType;
   private float defaultTextSize;
   private float bottomPaddingFraction;
+  private float bitmapSizeScale = 1.0f;
+  private float bottomPosition;
   private boolean applyEmbeddedStyles;
   private boolean applyEmbeddedFontSizes;
 
@@ -314,6 +316,46 @@ public final class SubtitleView extends FrameLayout {
    */
   public void setBottomPaddingFraction(float bottomPaddingFraction) {
     this.bottomPaddingFraction = bottomPaddingFraction;
+    updateOutput();
+  }
+
+  public void setBottomPosition(float bottomPosition) {
+    this.bottomPosition = bottomPosition;
+    updateOutput();
+  }
+
+  public float getTextSize() {
+    return defaultTextSize;
+  }
+
+  public void addTextSize(float value) {
+    defaultTextSize += value;
+    updateOutput();
+  }
+
+  public void subTextSize(float value) {
+    defaultTextSize -= value;
+    updateOutput();
+  }
+
+  public float getPosition() {
+    return bottomPosition;
+  }
+
+  public void addPosition(float value) {
+    bottomPosition += value;
+    updateOutput();
+  }
+
+  public void subPosition(float value) {
+    bottomPosition -= value;
+    updateOutput();
+  }
+
+  public void reset() {
+    defaultTextSize = DEFAULT_TEXT_SIZE_FRACTION;
+    bitmapSizeScale = 1.0f;
+    bottomPosition = 0;
     updateOutput();
   }
 

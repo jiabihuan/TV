@@ -297,9 +297,9 @@ public class PlayerView extends FrameLayout implements AdViewProvider {
   // LINT.ThenChange(../../../../res/values/attrs.xml)
 
   private final ComponentListener componentListener;
-  @Nullable private final AspectRatioFrameLayout contentFrame;
+  @Nullable private AspectRatioFrameLayout contentFrame;
   @Nullable private final View shutterView;
-  @Nullable private final View surfaceView;
+  @Nullable private View surfaceView;
   private final boolean surfaceViewIgnoresVideoAspectRatio;
   @Nullable private final SurfaceSyncGroupCompatV34 surfaceSyncGroupV34;
   @Nullable private final ImageView imageView;
@@ -2031,5 +2031,37 @@ public class PlayerView extends FrameLayout implements AdViewProvider {
         surfaceSyncGroup = null;
       }
     }
+  }
+
+  public void setRender(int render) {
+    checkState(Looper.myLooper() == Looper.getMainLooper());
+    if (contentFrame == null
+        || (render == 1 && surfaceView instanceof TextureView)
+        || (render != 1 && surfaceView instanceof SurfaceView && !(surfaceView instanceof GLSurfaceView))) {
+      return;
+    }
+    @Nullable View oldSurfaceView = surfaceView;
+    if (render == 1) {
+      surfaceView = new TextureView(getContext());
+    } else {
+      SurfaceView view = new SurfaceView(getContext());
+      if (Build.VERSION.SDK_INT >= 34) {
+        Api34.setSurfaceLifecycleToFollowsAttachment(view);
+      }
+      surfaceView = view;
+    }
+    surfaceView.setOnClickListener(componentListener);
+    surfaceView.setClickable(false);
+    if (oldSurfaceView != null) {
+      contentFrame.removeView(oldSurfaceView);
+    }
+    contentFrame.addView(surfaceView, 0);
+  }
+
+  public int getRender() {
+    if (surfaceView instanceof TextureView) {
+      return 1;
+    }
+    return 0;
   }
 }
