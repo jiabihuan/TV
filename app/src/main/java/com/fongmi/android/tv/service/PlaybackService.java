@@ -42,6 +42,11 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
+import android.net.Uri;
+
+import androidx.annotation.Nullable;
+import androidx.media3.ui.danmaku.DanmakuConfig;
+
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
@@ -522,6 +527,26 @@ public class PlaybackService extends MediaLibraryService implements MediaLibrary
         }
     }
 
+    @Override
+    public void onDanmakuSourceChanged(@Nullable Uri uri) {
+        playerCallbacks.forEach(callback -> callback.onDanmakuSourceChanged(uri));
+    }
+
+    @Override
+    public void onDanmakuConfigChanged(DanmakuConfig config) {
+        playerCallbacks.forEach(callback -> callback.onDanmakuConfigChanged(config));
+    }
+
+    @Override
+    public void onDanmakuEnabledChanged(boolean enabled) {
+        playerCallbacks.forEach(callback -> callback.onDanmakuEnabledChanged(enabled));
+    }
+
+    @Override
+    public void onDanmakuSent(String text) {
+        playerCallbacks.forEach(callback -> callback.onDanmakuSent(text));
+    }
+
     private final Player.Listener listener = new Player.Listener() {
         @Override
         public void onPlaybackStateChanged(int state) {
@@ -596,6 +621,18 @@ public class PlaybackService extends MediaLibraryService implements MediaLibrary
         }
 
         default void onPlayerRebuild(Player player) {
+        }
+
+        default void onDanmakuSourceChanged(@Nullable Uri uri) {
+        }
+
+        default void onDanmakuConfigChanged(DanmakuConfig config) {
+        }
+
+        default void onDanmakuEnabledChanged(boolean enabled) {
+        }
+
+        default void onDanmakuSent(String text) {
         }
     }
 

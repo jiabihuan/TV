@@ -251,7 +251,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     @Override
     protected void onServiceConnected() {
-        player().setDanmakuController(mBinding.player.getDanmakuController());
         player().setDanmakuEnabled(DanmakuSetting.isShow());
         checkId();
     }

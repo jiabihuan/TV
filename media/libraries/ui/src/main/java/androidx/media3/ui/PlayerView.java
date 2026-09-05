@@ -57,6 +57,7 @@ import android.widget.TextView;
 import android.window.SurfaceSyncGroup;
 import androidx.annotation.ColorInt;
 import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
@@ -77,8 +78,6 @@ import androidx.media3.common.text.CueGroup;
 import androidx.media3.common.util.RepeatModeUtil;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.ui.AspectRatioFrameLayout.ResizeMode;
-import androidx.media3.ui.danmaku.DanmakuController;
-import androidx.media3.ui.danmaku.DanmakuView;
 import com.google.common.collect.ImmutableList;
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
@@ -313,7 +312,6 @@ public class PlayerView extends FrameLayout implements AdViewProvider {
   @Nullable private final PlayerControlView controller;
   @Nullable private final FrameLayout adOverlayFrameLayout;
   @Nullable private final FrameLayout overlayFrameLayout;
-  @Nullable private final DanmakuController danmakuController;
   private final Handler mainLooperHandler;
   @Nullable private final Class<?> exoPlayerClazz;
   @Nullable private final Method setImageOutputMethod;
@@ -375,7 +373,6 @@ public class PlayerView extends FrameLayout implements AdViewProvider {
       controller = null;
       adOverlayFrameLayout = null;
       overlayFrameLayout = null;
-      danmakuController = null;
       exoPlayerClazz = null;
       setImageOutputMethod = null;
       imageOutput = null;
@@ -511,19 +508,6 @@ public class PlayerView extends FrameLayout implements AdViewProvider {
 
     // Overlay frame layout.
     overlayFrameLayout = findViewById(R.id.exo_overlay);
-
-    // Danmaku overlay layer.
-    if (overlayFrameLayout != null) {
-      DanmakuView danmakuView = new DanmakuView(context);
-      danmakuController = new DanmakuController();
-      danmakuController.setView(danmakuView);
-      overlayFrameLayout.addView(
-          danmakuView,
-          new FrameLayout.LayoutParams(
-              FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-    } else {
-      danmakuController = null;
-    }
 
     // Image view.
     imageView = findViewById(R.id.exo_image);
@@ -686,9 +670,6 @@ public class PlayerView extends FrameLayout implements AdViewProvider {
       subtitleView.setCues(null);
     }
     this.player = player;
-    if (danmakuController != null) {
-      danmakuController.setPlayer(player);
-    }
     if (useController()) {
       controller.setPlayer(player);
     }
@@ -844,21 +825,23 @@ public class PlayerView extends FrameLayout implements AdViewProvider {
   }
 
   /**
-   * Returns the {@link DanmakuController} bound to this view, or {@code null} if no danmaku layer
-   * is available.
+   * Adds the given view (intended to host the danmaku layer) to this player view, preferring the
+   * overlay {@link FrameLayout} so it stays below the playback controls.
    */
-  @Nullable
-  public DanmakuController getDanmakuController() {
-    return danmakuController;
+  public void addDanmakuLayer(@NonNull View view, @NonNull FrameLayout.LayoutParams params) {
+    if (overlayFrameLayout != null) {
+      overlayFrameLayout.addView(view, params);
+    } else {
+      addView(view, params);
+    }
   }
 
-  /** Sets a {@link DanmakuController} to be used for the danmaku layer of this view. */
-  public void setDanmakuController(@Nullable DanmakuController danmakuController) {
-    if (this.danmakuController != null && this.danmakuController != danmakuController) {
-      this.danmakuController.setView(null);
-    }
-    if (danmakuController != null) {
-      danmakuController.setPlayer(player);
+  /** Removes a previously added danmaku layer view from this player view. */
+  public void removeDanmakuLayer(@NonNull View view) {
+    if (overlayFrameLayout != null) {
+      overlayFrameLayout.removeView(view);
+    } else {
+      removeView(view);
     }
   }
 

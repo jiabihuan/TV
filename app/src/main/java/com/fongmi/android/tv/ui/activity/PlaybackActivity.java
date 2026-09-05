@@ -29,7 +29,18 @@ import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.ui.custom.CustomSeekView;
 import com.fongmi.android.tv.utils.ResUtil;
+import com.fongmi.android.tv.player.DanmakuPlayerViewController;
+import com.fongmi.android.tv.setting.DanmakuSetting;
+import com.github.catvod.net.OkHttp;
 import com.google.common.util.concurrent.ListenableFuture;
+
+import android.net.Uri;
+
+import androidx.annotation.Nullable;
+import androidx.media3.ui.danmaku.DanmakuConfig;
+import androidx.media3.ui.danmaku.DanmakuController;
+
+import java.io.IOException;
 
 public abstract class PlaybackActivity extends BaseActivity implements MediaController.Listener, Player.Listener, ServiceConnection {
 
@@ -41,6 +52,8 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
     private boolean bound;
     private boolean stop;
     private boolean lock;
+
+    private final DanmakuPlayerViewController danmakuController = new DanmakuPlayerViewController();
 
     protected MediaController controller() {
         return mController;
@@ -223,6 +236,7 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
 
     private void attachSurface() {
         if (mService != null && getExoView().getPlayer() == null) getExoView().setPlayer(player().getPlayer());
+        if (player().getPlayer() != null) danmakuController.setPlayer(player().getPlayer());
     }
 
     private void detachSurface() {
@@ -302,12 +316,55 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
         public void onPlayerRebuild(Player player) {
             if (isOwner()) setRender();
         }
+
+        @Override
+        public void onDanmakuSourceChanged(@Nullable Uri uri) {
+            if (isOwner()) danmakuController.setDataSource(uri);
+        }
+
+        @Override
+        public void onDanmakuConfigChanged(DanmakuConfig config) {
+            if (isOwner()) danmakuController.setConfig(config);
+        }
+
+        @Override
+        public void onDanmakuEnabledChanged(boolean enabled) {
+            if (isOwner()) danmakuController.setEnabled(enabled);
+        }
+
+        @Override
+        public void onDanmakuSent(String text) {
+            if (isOwner()) danmakuController.sendNow(text);
+        }
     };
 
     @Override
     protected void initView(Bundle savedInstanceState) {
         super.initView(savedInstanceState);
         ExoUtil.setPlayerView(getExoView());
+        danmakuController.bind(getExoView());
+        danmakuController.setOkHttpClient(OkHttp.player());
+        danmakuController.setEnabled(DanmakuSetting.isShow());
+        danmakuController.setConfig(DanmakuSetting.getConfig());
+        danmakuController.setListener(new DanmakuController.Listener() {
+            @Override
+            public void onLoadCompleted(Uri uri, int count) {
+                PlayerManager pm = player();
+                if (pm != null) {
+                    pm.logDanmakuLoad("completed", uri, count, null);
+                    pm.finishDanmakuLoad(uri);
+                }
+            }
+
+            @Override
+            public void onLoadError(Uri uri, IOException error) {
+                PlayerManager pm = player();
+                if (pm != null) {
+                    pm.logDanmakuLoad("error", uri, -1, error);
+                    pm.finishDanmakuLoad(uri);
+                }
+            }
+        });
         bindPlaybackService();
     }
 
@@ -384,6 +441,7 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        danmakuController.close();
         releasePlaybackService();
     }
 }
