@@ -65,6 +65,11 @@ jobs:
           find . -name "*.apk" -type f -not -path "*/.gradle/*" -not -path "*/Release/*" 2>/dev/null
           echo "=== Release/apk contents ==="
           ls -la Release/apk/ 2>/dev/null || echo "Release/apk is empty"
+          # Append to build log for debugging
+          echo "" >> build.log
+          echo "=== APK Collection Results ===" >> build.log
+          find . -name "*.apk" -type f -not -path "*/.gradle/*" -not -path "*/Release/*" 2>/dev/null >> build.log
+          ls -la Release/apk/ >> build.log 2>&1
 
       - name: Upload APK
         if: success()
