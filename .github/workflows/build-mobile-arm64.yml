@@ -52,11 +52,13 @@ jobs:
           set -o pipefail
           ./gradlew :app:assembleMobileArm64_v8aRelease --no-daemon --no-build-cache --stacktrace 2>&1 | tee build.log
 
+      # FIX: 不再按 "mobile*.apk" 文件名前缀匹配（AGP 9 产物默认名为 app-mobile-...-release.apk），
+      # 改为递归收集 app/build/outputs/apk 目录下所有 .apk，避免 Release/apk 为空导致上传失败。
       - name: Collect APK
         if: success()
         run: |
           mkdir -p Release/apk
-          find app/build/outputs/apk -name '*.apk' -not -path '*/.gradle/*' -exec cp {} Release/apk/ \;
+          find app/build/outputs/apk -name '*.apk' -type f -not -path '*/.gradle/*' -exec cp {} Release/apk/ \;
           find Release/apk -name '*.apk' -maxdepth 1 -type f
 
       - name: Upload APK
@@ -64,9 +66,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mobile-arm64-v8a-release-apk
-          path: |
-            app/build/outputs/apk/*/release/*.apk
-            Release/apk/*.apk
+          path: Release/apk/*.apk
           if-no-files-found: error
 
       - name: Upload build log on failure
