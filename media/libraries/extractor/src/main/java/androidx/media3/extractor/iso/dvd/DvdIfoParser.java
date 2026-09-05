@@ -465,6 +465,8 @@ public final class DvdIfoParser {
         exec.execute(() -> {
           try {
             reader.prefetch(offset);
+          } catch (IOException e) {
+            // Ignore prefetch errors
           } finally {
             latch.countDown();
           }
