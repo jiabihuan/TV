@@ -206,7 +206,11 @@ public final class UdfFileSystem {
 
   private long[] scanVds(long location, long lengthBytes) {
     long sectors = Math.max(1, Util.ceilDivide(lengthBytes, SECTOR_SIZE));
-    reader.prefetchRange(location * SECTOR_SIZE, (location + sectors) * SECTOR_SIZE);
+    try {
+      reader.prefetchRange(location * SECTOR_SIZE, (location + sectors) * SECTOR_SIZE);
+    } catch (IOException e) {
+      // Ignore prefetch errors
+    }
     long partitionStart = 0;
     long metaFileLoc = -1;
     for (long s = location; s < location + sectors; s++) {
@@ -229,7 +233,11 @@ public final class UdfFileSystem {
   }
 
   private long scanForTag(long start, int count) {
-    reader.prefetchRange(start * SECTOR_SIZE, (start + count) * SECTOR_SIZE);
+    try {
+      reader.prefetchRange(start * SECTOR_SIZE, (start + count) * SECTOR_SIZE);
+    } catch (IOException e) {
+      // Ignore prefetch errors
+    }
     for (long s = start; s < start + count; s++) {
       if (tryReadSector(s) && readTag() == TAG_FSD) {
         return s;
