@@ -179,6 +179,9 @@ public final class TsExtractor implements Extractor {
   private static final long HEVC_FORMAT_IDENTIFIER = 0x48455643;
   private static final long HDMV_FORMAT_IDENTIFIER = 0x48444D56; // "HDMV"
 
+  private static final int BUFFER_SIZE = TS_PACKET_SIZE * 50;
+  private static final int SNIFF_TS_PACKET_COUNT = 5;
+
   private final @Mode int mode;
   private final @Flags int extractorFlags;
   private final int timestampSearchBytes;
@@ -389,7 +392,7 @@ public final class TsExtractor implements Extractor {
     trackPids = new SparseBooleanArray();
     tsPayloadReaders = new SparseArray<>();
     continuityCounters = new SparseIntArray();
-    durationReader = new TsDurationReader(timestampSearchBytes, packetSize);
+    durationReader = new TsDurationReader(timestampSearchBytes);
     ignoreSectionCrc = (extractorFlags & FLAG_IGNORE_SECTION_CRC) != 0;
     output = ExtractorOutput.PLACEHOLDER;
     pcrPid = -1;
@@ -401,12 +404,20 @@ public final class TsExtractor implements Extractor {
   @Override
   public boolean sniff(ExtractorInput input) throws IOException {
     byte[] buffer = tsPacketBuffer.getData();
-    int peekLength = TS_PACKET_SIZE * (TsUtil.SNIFF_TS_PACKET_COUNT + 3);
-    input.peekFully(buffer, 0, peekLength);
-    int syncOffset = TsUtil.tryToFindSyncBytePosition(buffer, 0, peekLength, TS_PACKET_SIZE);
-    if (syncOffset < peekLength) {
-      input.skipFully(syncOffset);
-      return true;
+    input.peekFully(buffer, 0, TS_PACKET_SIZE * SNIFF_TS_PACKET_COUNT);
+    for (int startPosCandidate = 0; startPosCandidate < TS_PACKET_SIZE; startPosCandidate++) {
+      // Try to identify at least SNIFF_TS_PACKET_COUNT packets starting with TS_SYNC_BYTE.
+      boolean isSyncBytePatternCorrect = true;
+      for (int i = 0; i < SNIFF_TS_PACKET_COUNT; i++) {
+        if (buffer[startPosCandidate + i * TS_PACKET_SIZE] != TS_SYNC_BYTE) {
+          isSyncBytePatternCorrect = false;
+          break;
+        }
+      }
+      if (isSyncBytePatternCorrect) {
+        input.skipFully(startPosCandidate);
+        return true;
+      }
     }
     return false;
   }
@@ -615,14 +626,13 @@ public final class TsExtractor implements Extractor {
           int bitrate = (int) (inputLength * 8_000_000L / durationUs);
           output.seekMap(new ConstantBitrateSeekMap(inputLength, 0, bitrate, packetSize));
         } else {
-          tsBinarySearchSeeker =
-              new TsBinarySearchSeeker(
-                  durationReader.getPcrTimestampAdjuster(),
-                  durationUs,
-                  inputLength,
-                  pcrPid,
-                  timestampSearchBytes,
-                  packetSize);
+           tsBinarySearchSeeker =
+               new TsBinarySearchSeeker(
+                   durationReader.getPcrTimestampAdjuster(),
+                   durationUs,
+                   inputLength,
+                   pcrPid,
+                   timestampSearchBytes);
           output.seekMap(tsBinarySearchSeeker.getSeekMap());
         }
       } else {
@@ -692,7 +702,7 @@ public final class TsExtractor implements Extractor {
     for (int i = 0; i < initialPayloadReadersSize; i++) {
       tsPayloadReaders.put(initialPayloadReaders.keyAt(i), initialPayloadReaders.valueAt(i));
     }
-    tsPayloadReaders.put(TS_PAT_PID, new SectionReader(new PatReader(), ignoreSectionCrc));
+    tsPayloadReaders.put(TS_PAT_PID, new SectionReader(new PatReader()));
     id3Reader = null;
   }
 
@@ -740,7 +750,7 @@ public final class TsExtractor implements Extractor {
         } else {
           int pid = patScratch.readBits(13);
           if (tsPayloadReaders.get(pid) == null) {
-            tsPayloadReaders.put(pid, new SectionReader(new PmtReader(pid), ignoreSectionCrc));
+            tsPayloadReaders.put(pid, new SectionReader(new PmtReader(pid)));
             remainingPmts++;
           }
         }
