@@ -51,29 +51,24 @@ jobs:
         run: |
           ./gradlew :app:assembleLeanbackArmeabi_v7aRelease --no-daemon --no-build-cache --stacktrace 2>&1 | tee build.log
 
+      - name: Debug APK search
+        if: always()
+        run: |
+          echo "=== Searching for APK files ==="
+          find . -name "*.apk" -type f -not -path "*/.gradle/*" 2>/dev/null | head -20
+          echo "--- Build outputs ---"
+          find . -path "*/build/outputs/apk" -type d 2>/dev/null | head -10
+
       - name: Collect APK
         if: success()
         run: |
           mkdir -p Release/apk
-          # Debug: show all possible output directories
-          echo "=== Searching for APK files ==="
-          echo "--- All build output directories ---"
-          find . -type d -name "outputs" -not -path "*/.gradle/*" -not -path "*/node_modules/*" 2>/dev/null | head -20
-          echo "--- APK files found ---"
-          find . -name "*.apk" -type f -not -path "*/.gradle/*" -not -path "*/node_modules/*" 2>/dev/null | while read f; do
-            cp "$f" Release/apk/
-            echo "Copied: $f"
-          done
+          find . -name "leanback*.apk" -type f -not -path "*/.gradle/*" -exec cp {} Release/apk/ \;
           echo "--- Files in Release/apk ---"
           ls -la Release/apk/ 2>/dev/null || echo "Release/apk is empty"
-          # Also check for Android App Bundle (AAB) outputs
-          echo "--- AAB files found ---"
-          find . -name "*.aab" -type f -not -path "*/.gradle/*" -not -path "*/node_modules/*" 2>/dev/null | head -10
-          # Append to build log for debugging
           echo "" >> build.log
           echo "=== APK Collection Results ===" >> build.log
-          find . -name "*.apk" -type f -not -path "*/.gradle/*" -not -path "*/node_modules/*" >> build.log 2>&1
-          ls -la Release/apk/ >> build.log 2>&1
+          find . -name "leanback*.apk" -type f -not -path "*/.gradle/*" >> build.log 2>&1
 
       - name: Upload APK
         if: success()
