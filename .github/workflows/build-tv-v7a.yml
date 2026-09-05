@@ -55,20 +55,24 @@ jobs:
         if: success()
         run: |
           mkdir -p Release/apk
-          # Find APK files in all possible locations
-          find . -name "*.apk" -type f \( -path "*/app/build/outputs/apk/*" -o -path "*/build/outputs/apk/*" \) -not -path "*/.gradle/*" 2>/dev/null | while read f; do
+          # Debug: show all possible output directories
+          echo "=== Searching for APK files ==="
+          echo "--- All build output directories ---"
+          find . -type d -name "outputs" -not -path "*/.gradle/*" -not -path "*/node_modules/*" 2>/dev/null | head -20
+          echo "--- APK files found ---"
+          find . -name "*.apk" -type f -not -path "*/.gradle/*" -not -path "*/node_modules/*" 2>/dev/null | while read f; do
             cp "$f" Release/apk/
             echo "Copied: $f"
           done
-          # List all APK files found
-          echo "=== APK files found ==="
-          find . -name "*.apk" -type f -not -path "*/.gradle/*" -not -path "*/Release/*" 2>/dev/null
-          echo "=== Release/apk contents ==="
+          echo "--- Files in Release/apk ---"
           ls -la Release/apk/ 2>/dev/null || echo "Release/apk is empty"
+          # Also check for Android App Bundle (AAB) outputs
+          echo "--- AAB files found ---"
+          find . -name "*.aab" -type f -not -path "*/.gradle/*" -not -path "*/node_modules/*" 2>/dev/null | head -10
           # Append to build log for debugging
           echo "" >> build.log
           echo "=== APK Collection Results ===" >> build.log
-          find . -name "*.apk" -type f -not -path "*/.gradle/*" -not -path "*/Release/*" 2>/dev/null >> build.log
+          find . -name "*.apk" -type f -not -path "*/.gradle/*" -not -path "*/node_modules/*" >> build.log 2>&1
           ls -la Release/apk/ >> build.log 2>&1
 
       - name: Upload APK
@@ -77,7 +81,7 @@ jobs:
         with:
           name: leanback-armeabi-v7a-release-apk
           path: Release/apk/*.apk
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - name: Upload build log on failure
         if: failure()
