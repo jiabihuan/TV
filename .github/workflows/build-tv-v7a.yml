@@ -55,22 +55,22 @@ jobs:
         if: always()
         run: |
           echo "=== Searching for APK files ==="
-          find app/build/outputs/apk -name "*.apk" -type f 2>/dev/null | head -20
-          echo "--- Build outputs ---"
-          find . -path "*/build/outputs/apk" -type d 2>/dev/null | head -10
+          find . -name "*.apk" -type f -not -path "*/.gradle/*" 2>/dev/null | head -20
+          echo "--- Build outputs dirs ---"
+          find . -type d -path "*/build/outputs/*" 2>/dev/null | head -10
 
-      # FIX: 不再按 "leanback*.apk" 文件名前缀匹配（AGP 9 产物默认名为 app-leanback-...-release.apk），
-      # 改为递归收集 app/build/outputs/apk 目录下所有 .apk，避免 Release/apk 为空导致上传失败。
+      # FIX: 不再假定产物目录/按 "leanback*" 文件名前缀匹配（AGP 9 默认命名 app-leanback-...-release.apk，
+      # 且输出目录可能不再是 app/build/outputs/apk）。直接全项目递归收集所有 .apk，避免收集为空导致上传失败。
       - name: Collect APK
         if: success()
         run: |
           mkdir -p Release/apk
-          find app/build/outputs/apk -name "*.apk" -type f -not -path "*/.gradle/*" -exec cp {} Release/apk/ \;
+          find . -name "*.apk" -type f -not -path "*/.gradle/*" -not -path "*/Release/apk/*" -exec cp {} Release/apk/ \;
           echo "--- Files in Release/apk ---"
           ls -la Release/apk/ 2>/dev/null || echo "Release/apk is empty"
           echo "" >> build.log
           echo "=== APK Collection Results ===" >> build.log
-          find app/build/outputs/apk -name "*.apk" -type f -not -path "*/.gradle/*" >> build.log 2>&1
+          find . -name "*.apk" -type f -not -path "*/.gradle/*" -not -path "*/Release/apk/*" >> build.log 2>&1
 
       - name: Upload APK
         if: success()
