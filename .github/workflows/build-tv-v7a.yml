@@ -55,13 +55,15 @@ jobs:
         if: success()
         run: |
           mkdir -p Release/apk
-          # Find and copy APK files
-          find app/build/outputs/apk -name "*.apk" -type f 2>/dev/null | while read f; do
+          # Find APK files in all possible locations
+          find . -name "*.apk" -type f \( -path "*/app/build/outputs/apk/*" -o -path "*/build/outputs/apk/*" \) -not -path "*/.gradle/*" 2>/dev/null | while read f; do
             cp "$f" Release/apk/
             echo "Copied: $f"
           done
-          # Also check for any APK in the project
-          find . -name "*.apk" -type f -not -path "*/.gradle/*" 2>/dev/null | head -10
+          # List all APK files found
+          echo "=== APK files found ==="
+          find . -name "*.apk" -type f -not -path "*/.gradle/*" -not -path "*/Release/*" 2>/dev/null
+          echo "=== Release/apk contents ==="
           ls -la Release/apk/ 2>/dev/null || echo "Release/apk is empty"
 
       - name: Upload APK
