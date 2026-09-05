@@ -3831,7 +3831,7 @@ import java.util.function.IntConsumer;
     }
     MediaSource source = mediaSourceHolderSnapshots.get(windowIndex).mediaSource;
     if (source instanceof WrappingMediaSource) {
-      source = ((WrappingMediaSource) source).getWrappedSource();
+      // source = ((WrappingMediaSource) source).getWrappedSource(); // Disabled: method not available
     }
     if (!(source instanceof IsoMediaSource)) {
       if (!currentMediaTitles.isEmpty()) {

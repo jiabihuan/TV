@@ -57,7 +57,7 @@ final class SacdSourceHelper {
       final int channelCount = area.channelCount;
       final String mimeType = (area.audioEncoding == SacdArea.ENCODING_DST) ? MimeTypes.AUDIO_DST : MimeTypes.AUDIO_DSD;
       final long trackLengthLsn = track.lengthLsn;
-      DataSource.Factory clipFactory = new DataSource.Factory(dataSourceFactory, byteOffset, byteLength, false, false);
+      DataSource.Factory clipFactory = new DataSource.Factory() { @Override public DataSource createDataSource() { return dataSourceFactory.createDataSource(); } };
       ProgressiveMediaSource.Factory pmFactory = new ProgressiveMediaSource.Factory(clipFactory, () -> new Extractor[]{new DsdExtractor(channelCount, durationUs, mimeType, trackLengthLsn)});
       MediaItem trackItem = new MediaItem.Builder().setUri(isoUri).setCustomCacheKey("sacd_t" + track.trackNumber + "_" + byteOffset).build();
       builder.add(pmFactory.createMediaSource(trackItem), durationUs / 1000);

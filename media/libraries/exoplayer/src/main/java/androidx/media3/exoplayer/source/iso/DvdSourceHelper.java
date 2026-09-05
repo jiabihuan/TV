@@ -31,10 +31,6 @@ final class DvdSourceHelper {
   }
 
   static MediaSource buildSource(MediaItem mediaItem, DataSource.Factory dataSourceFactory, Uri isoUri, CacheDataReader isoReader, UdfFileSystem udf, int titleIndex) throws IOException {
-    DvdStructure dvd = parseStructure(isoReader, udf);
-    DvdStructure.DvdTitle main = titleIndex >= 0 && titleIndex < dvd.titles.size()
-        ? dvd.titles.get(titleIndex)
-        : dvd.mainTitle;
     // TODO: Implement DVD source building with available APIs
     throw new UnsupportedOperationException("DVD source building not yet implemented for Media3 1.11");
   }

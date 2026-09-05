@@ -105,7 +105,7 @@ final class BdmvSourceHelper {
       endM2ts = Math.min(m2tsEntry.length, Util.ceilDivide(endM2ts, BdmvConstants.M2TS_PACKET_SIZE) * BdmvConstants.M2TS_PACKET_SIZE);
       long clipByteOffset = m2tsEntry.byteOffset + startM2ts;
       long clipByteLength = endM2ts - startM2ts;
-      DataSource.Factory clipFactory = new DataSource.Factory(dataSourceFactory, clipByteOffset, clipByteLength, true);
+      DataSource.Factory clipFactory = new DataSource.Factory() { @Override public DataSource createDataSource() { return dataSourceFactory.createDataSource(); } };
       final long capturedStartM2ts = startM2ts;
       final long capturedInTimeTicks = item.inTimeTicks;
       final long capturedDurationUs = durationUs;
