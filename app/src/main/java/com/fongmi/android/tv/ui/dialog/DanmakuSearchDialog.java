@@ -80,8 +80,7 @@ public final class DanmakuSearchDialog extends BaseBottomSheetDialog implements 
         });
         binding.keyword.setOnKeyListener((view, keyCode, event) -> {
             if (KeyUtil.isActionDown(event) && KeyUtil.isDownKey(event) && binding.recycler.getVisibility() == VISIBLE) {
-                binding.recycler.post(() -> binding.recycler.scrollToPosition(0));
-                return true;
+                return binding.recycler.requestFocus();
             }
             return false;
         });
@@ -109,6 +108,7 @@ public final class DanmakuSearchDialog extends BaseBottomSheetDialog implements 
     private void hideProgress(boolean empty) {
         binding.progress.setVisibility(GONE);
         binding.recycler.setVisibility(empty ? GONE : VISIBLE);
+        if (!empty) binding.recycler.post(() -> binding.recycler.requestFocus());
     }
 
     private void search() {
