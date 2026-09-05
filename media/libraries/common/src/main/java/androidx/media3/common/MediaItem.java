@@ -88,6 +88,8 @@ public final class MediaItem {
     // are removed.
     private LiveConfiguration.Builder liveConfiguration;
     private RequestMetadata requestMetadata;
+    private boolean adblock;
+    private int decode;
 
     /** Creates a builder. */
     @SuppressWarnings("deprecation") // Temporarily uses DrmConfiguration.Builder() constructor.
@@ -110,6 +112,8 @@ public final class MediaItem {
       mediaMetadata = mediaItem.mediaMetadata;
       liveConfiguration = mediaItem.liveConfiguration.buildUpon();
       requestMetadata = mediaItem.requestMetadata;
+      adblock = mediaItem.adblock;
+      decode = mediaItem.decode;
       @Nullable LocalConfiguration localConfiguration = mediaItem.localConfiguration;
       if (localConfiguration != null) {
         customCacheKey = localConfiguration.customCacheKey;
@@ -604,6 +608,20 @@ public final class MediaItem {
       return this;
     }
 
+    /** Sets whether ad blocking is enabled for this media item. */
+    @CanIgnoreReturnValue
+    public Builder setAdblock(boolean adblock) {
+      this.adblock = adblock;
+      return this;
+    }
+
+    /** Sets the decoder type for this media item (0 = software, 1 = hardware). */
+    @CanIgnoreReturnValue
+    public Builder setDecode(int decode) {
+      this.decode = decode;
+      return this;
+    }
+
     /** Returns a new {@link MediaItem} instance with the current builder values. */
     @SuppressWarnings("deprecation") // Building deprecated ClippingProperties type
     public MediaItem build() {
@@ -630,7 +648,9 @@ public final class MediaItem {
           localConfiguration,
           liveConfiguration.build(),
           mediaMetadata != null ? mediaMetadata : MediaMetadata.EMPTY,
-          requestMetadata);
+          requestMetadata,
+          adblock,
+          decode);
     }
   }
 
@@ -2334,6 +2354,12 @@ public final class MediaItem {
   /** The media {@link RequestMetadata}. */
   public final RequestMetadata requestMetadata;
 
+  /** Whether ad blocking is enabled for this media item. */
+  public final boolean adblock;
+
+  /** The decoder type for this media item (0 = software, 1 = hardware). */
+  public final int decode;
+
   // Using ClippingProperties until they're deleted.
   @SuppressWarnings("deprecation")
   private MediaItem(
@@ -2343,6 +2369,19 @@ public final class MediaItem {
       LiveConfiguration liveConfiguration,
       MediaMetadata mediaMetadata,
       RequestMetadata requestMetadata) {
+    this(mediaId, clippingConfiguration, localConfiguration, liveConfiguration, mediaMetadata, requestMetadata, /* adblock= */ false, /* decode= */ 0);
+  }
+
+  @SuppressWarnings("deprecation")
+  private MediaItem(
+      String mediaId,
+      ClippingProperties clippingConfiguration,
+      @Nullable LocalConfiguration localConfiguration,
+      LiveConfiguration liveConfiguration,
+      MediaMetadata mediaMetadata,
+      RequestMetadata requestMetadata,
+      boolean adblock,
+      int decode) {
     this.mediaId = mediaId;
     this.localConfiguration = localConfiguration;
     this.playbackProperties = localConfiguration;
@@ -2351,6 +2390,8 @@ public final class MediaItem {
     this.clippingConfiguration = clippingConfiguration;
     this.clippingProperties = clippingConfiguration;
     this.requestMetadata = requestMetadata;
+    this.adblock = adblock;
+    this.decode = decode;
   }
 
   /** Returns a {@link Builder} initialized with the values of this instance. */
